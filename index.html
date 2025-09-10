@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>暗号資産ポートフォリオビューアー</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            margin: 0;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e8ed;
+        }
+
+        .sidebar-header h1 {
+            color: #2c3e50;
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+
+        .nav-item {
+            display: block;
+            width: 100%;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            background: transparent;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 1rem;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: rgba(52, 152, 219, 0.1);
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border-color: transparent;
+        }
+
+        .nav-item.active:hover {
+            background: linear-gradient(45deg, #2980b9, #3498db);
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .upload-area {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-zone {
+            border: 3px dashed #3498db;
+            border-radius: 10px;
+            padding: 40px 20px;
+            background: rgba(52, 152, 219, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: #2980b9;
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .upload-zone.drag-over {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .upload-subtext {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .info-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+
+        .info-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .info-list {
+            list-style: none;
+            color: #555;
+        }
+
+        .info-list li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .info-list li::before {
+            content: "✓";
+            color: #27ae60;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
+        .dashboard-area {
+            margin-top: 20px;
+        }
+
+        .no-data-message {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+
+        .no-data-message h3 {
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .no-data-message p {
+            color: #95a5a6;
+            margin-bottom: 20px;
+        }
+
+        .nav-button {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        /* タブシステム */
+        .tab-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            margin-bottom: 20px;
+        }
+
+        .tab-nav {
+            display: flex;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            flex: 1;
+            min-width: 120px;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            background: rgba(52, 152, 219, 0.1);
+            color: #495057;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #2980b9;
+        }
+
+        .tab-content {
+            padding: 30px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .subtab-content {
+            display: none;
+        }
+
+        .subtab-content.active {
+            display: block;
+        }
+
+        .subtab-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .subtab-button {
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 20px;
+            color: #6c757d;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .subtab-button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .subtab-button.active {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-color: #2980b9;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .portfolio-summary {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        /* レスポンシブデザイン */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                margin-bottom: 20px;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-area, .info-section {
+                padding: 20px;
+            }
+            
+            .upload-zone {
+                padding: 30px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- サイドバー -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🚀 ポートフォリオビューアー</h1>
+            <p style="font-size: 0.9rem; color: #7f8c8d; margin: 0;">暗号資産分析ツール</p>
+        </div>
+        
+        <nav>
+            <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+                📊 ダッシュボード
+            </button>
+            <button class="nav-item" onclick="showPage('upload')" id="nav-upload">
+                📁 CSVアップロード
+            </button>
+        </nav>
+
+        <!-- データ状態表示 -->
+        <div style="margin-top: 30px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 10px; font-size: 0.9rem;">
+            <div id="data-status" style="color: #7f8c8d;">データなし</div>
+        </div>
+
+        <!-- データ管理 -->
+        <div id="data-management" style="margin-top: 20px; display: none;">
+            <button onclick="clearAllData()" style="width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
+                🗑️ 全データクリア
+            </button>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main-content">
+        <div class="container">
+            <!-- ダッシュボードページ -->
+            <div id="page-dashboard" class="page-content active">
+                <div class="header">
+                    <h1>📊 ポートフォリオダッシュボード</h1>
+                    <p>あなたの暗号資産投資の詳細分析</p>
+                </div>
+
+                <div class="dashboard-area" id="dashboardArea">
+                    <div class="no-data-message">
+                        <h3>📄 データがありません</h3>
+                        <p>CSVファイルをアップロードしてポートフォリオを表示してください</p>
+                        <button class="nav-button" onclick="showPage('upload')">CSVをアップロード</button>
+                    </div>
+                </div>
+
+                <!-- タブコンテンツエリア（データがある時に表示） -->
+                <div class="tab-container" id="tabContainer" style="display: none;">
+                    <div class="tab-nav">
+                        <button class="tab-button active" onclick="switchTab('portfolio')">📊 ポートフォリオ</button>
+                        <button class="tab-button" onclick="switchTab('trading')">📈 取引履歴</button>
+                        <button class="tab-button" onclick="switchTab('charts')">📈 価格チャート</button>
+                    </div>
+
+                    <!-- ポートフォリオタブ -->
+                    <div class="tab-content active" id="tab-portfolio">
+                        <!-- サブタブナビゲーション -->
+                        <div class="subtab-nav" id="subtab-nav">
+                            <button class="subtab-button active" onclick="switchSubtab('summary')" id="subtab-summary">📋 サマリー</button>
+                            <!-- 銘柄別サブタブはJSで動的生成 -->
+                        </div>
+
+                        <!-- サマリータブ内容 -->
+                        <div class="subtab-content active" id="subtab-content-summary">
+                            <!-- 価格更新セクション -->
+                            <div id="price-update-section" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <button onclick="fetchCurrentPrices()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.3s;" onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
+                                        📈 価格更新
+                                    </button>
+                                    <span style="margin-left: 15px; font-size: 0.9rem; color: #6c757d;">
+                                        CoinGecko APIから最新価格を取得
+                                    </span>
+                                </div>
+                                <div id="price-update-status" style="font-size: 0.85rem; color: #6c757d;">
+                                    価格データなし
+                                </div>
+                            </div>
+                            
+                            <div id="portfolio-table-container">
+                                <!-- ポートフォリオテーブルをここに表示 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 銘柄別サブタブ内容（JSで動的生成） -->
+                        <div id="symbol-subtabs-container"></div>
+                    </div>
+
+
+                    <!-- 取引履歴タブ -->
+                    <div class="tab-content" id="tab-trading">
+                        <div class="portfolio-summary">
+                            <h3 style="color: #2c3e50;">📈 取引履歴</h3>
+                            <div id="trading-history-container">
+                                <!-- 取引履歴テーブルをここに表示 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 価格チャートタブ -->
+                    <div class="tab-content" id="tab-charts">
+                        <div class="portfolio-summary">
+                            <h3 style="color: #2c3e50;">📈 価格チャート</h3>
+                            
+                            <!-- チャート選択セクション -->
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                                <label for="chart-symbol-select" style="font-weight: bold; margin-right: 10px;">銘柄選択:</label>
+                                <select id="chart-symbol-select" onchange="onSymbolSelect()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="">-- 銘柄を選択 --</option>
+                                </select>
+                            </div>
+                            
+                            <!-- チャートコンテナ -->
+                            <div id="chart-container" style="position: relative; height: 500px; background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                                <canvas id="price-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- アップロードページ -->
+            <div id="page-upload" class="page-content">
+                <div class="header">
+                    <h1>📁 CSVファイルアップロード</h1>
+                    <p>取引履歴CSVをアップロードして、ポートフォリオを分析・可視化</p>
+                </div>
+
+                <div class="upload-area">
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">CSVファイルをドラッグ&ドロップ</div>
+                        <div class="upload-subtext">または下のボタンをクリックしてファイルを選択</div>
+                        
+                        <!-- 取引所選択 -->
+                        <div style="margin: 20px 0;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50;">取引所を選択:</label>
+                            <div style="display: flex; justify-content: center; gap: 20px;">
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="radio" name="exchange" value="GMO" checked style="margin-right: 8px;">
+                                    <span>GMO コイン</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="radio" name="exchange" value="OKJ" style="margin-right: 8px;">
+                                    <span>OKCoin Japan</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="radio" name="exchange" value="AUTO" style="margin-right: 8px;">
+                                    <span>自動判定</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                            📂 ファイルを選択
+                        </button>
+                        <input type="file" id="fileInput" class="file-input" accept=".csv" multiple>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h2 class="info-title">🛡️ プライバシー保護</h2>
+                    <ul class="info-list">
+                        <li>あなたのデータは完全にブラウザ内で処理されます</li>
+                        <li>ファイルがサーバーにアップロードされることはありません</li>
+                        <li>データは端末にのみ保存され、外部に送信されません</li>
+                        <li>一度処理したデータは次回も自動で表示されます</li>
+                    </ul>
+
+                    <h2 class="info-title" style="margin-top: 25px;">📊 対応形式</h2>
+                    <ul class="info-list">
+                        <li>GMO コイン取引履歴CSV</li>
+                        <li>OKCoin Japan 取引履歴CSV</li>
+                        <li>その他の取引所（今後対応予定）</li>
+                        <li>複数のCSVファイルを同時アップロード可能</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Papa Parse for CSV processing -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+    <script>
+        // ファイルアップロード機能の基礎
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const dashboardArea = document.getElementById('dashboardArea');
+
+        // ドラッグ&ドロップ機能
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        // ファイル選択機能
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            handleFiles(files);
+        });
+
+        // ファイル処理（データ統合版）
+        function handleFiles(files) {
+            console.log('選択されたファイル:', files.length);
+            
+            const csvFiles = Array.from(files).filter(file => 
+                file.type === 'text/csv' || file.name.endsWith('.csv')
+            );
+            
+            if (csvFiles.length === 0) {
+                showErrorMessage('CSVファイルを選択してください');
+                return;
+            }
+            
+            // 既存データを取得
+            const existingData = getExistingTransactions();
+            console.log('既存取引データ:', existingData.length, '件');
+            
+            // 並列でCSVファイルを読み込み
+            const promises = csvFiles.map(file => parseCSVFile(file));
+            
+            Promise.all(promises)
+                .then(results => {
+                    const newData = results.flat();
+                    console.log('新規取引データ:', newData.length, '件');
+                    
+                    if (newData.length > 0) {
+                        // 重複データを除外して統合
+                        const mergedData = mergeTransactionData(existingData, newData);
+                        const addedCount = mergedData.length - existingData.length;
+                        
+                        console.log('統合後取引データ:', mergedData.length, '件（新規追加:', addedCount, '件）');
+                        
+                        // ポートフォリオ再計算
+                        const portfolioData = analyzePortfolioData(mergedData);
+                        
+                        // 生の取引データも保存（次回の重複チェック用）
+                        localStorage.setItem('rawTransactions', JSON.stringify(mergedData));
+                        localStorage.setItem('portfolioData', JSON.stringify(portfolioData));
+                        
+                        displayDashboard(portfolioData);
+                        
+                        if (addedCount > 0) {
+                            showSuccessMessage(`${csvFiles.length}個のCSVファイルを処理し、${addedCount}件の新しい取引を追加しました`);
+                        } else {
+                            showInfoMessage(`${csvFiles.length}個のCSVファイルを処理しましたが、新しい取引はありませんでした（重複データのため）`);
+                        }
+                    } else {
+                        showErrorMessage('有効な取引データが見つかりませんでした');
+                    }
+                })
+                .catch(error => {
+                    console.error('CSV処理エラー:', error);
+                    showErrorMessage('CSVファイルの処理中にエラーが発生しました');
+                });
+        }
+
+        // 既存取引データ取得
+        function getExistingTransactions() {
+            try {
+                const rawData = localStorage.getItem('rawTransactions');
+                return rawData ? JSON.parse(rawData) : [];
+            } catch (error) {
+                console.error('既存データ読み込みエラー:', error);
+                return [];
+            }
+        }
+
+        // 取引データ統合（重複除外）
+        function mergeTransactionData(existingData, newData) {
+            const merged = [...existingData];
+            let duplicateCount = 0;
+            
+            newData.forEach(newTx => {
+                // 重複チェック：日時・銘柄・取引所・数量・金額が完全一致
+                const isDuplicate = existingData.some(existingTx => 
+                    existingTx.date === newTx.date &&
+                    existingTx.symbol === newTx.symbol &&
+                    existingTx.exchange === newTx.exchange &&
+                    Math.abs(existingTx.quantity - newTx.quantity) < 0.00000001 &&
+                    Math.abs(existingTx.amount - newTx.amount) < 0.01 &&
+                    existingTx.type === newTx.type
+                );
+                
+                if (!isDuplicate) {
+                    merged.push(newTx);
+                } else {
+                    duplicateCount++;
+                }
+            });
+            
+            console.log(`重複除外: ${duplicateCount}件の重複取引をスキップしました`);
+            return merged;
+        }
+
+        // CSVファイル解析
+        function parseCSVFile(file) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    encoding: 'UTF-8',
+                    complete: function(results) {
+                        console.log(`${file.name} 解析完了:`, results.data.length, '行');
+                        const processedData = processCSVData(results.data, file.name);
+                        resolve(processedData);
+                    },
+                    error: function(error) {
+                        console.error(`${file.name} 解析エラー:`, error);
+                        reject(error);
+                    }
+                });
+            });
+        }
+
+        // CSV データ処理（GMO・OKJ対応）
+        function processCSVData(data, fileName) {
+            const transactions = [];
+            const selectedExchange = document.querySelector('input[name="exchange"]:checked').value;
+            
+            data.forEach(row => {
+                // GMOコイン形式
+                if ((selectedExchange === 'GMO' || selectedExchange === 'AUTO') && 
+                    row['精算区分'] && row['精算区分'].includes('取引所現物取引')) {
+                    const symbol = row['銘柄名'];
+                    if (symbol && symbol !== 'JPY') {
+                        const transaction = {
+                            exchange: 'GMO',
+                            symbol: symbol,
+                            type: row['売買区分'], // 買 or 売
+                            amount: parseFloat(row['日本円受渡金額']?.replace(/,/g, '') || 0),
+                            quantity: parseFloat(row['約定数量']?.replace(/,/g, '') || 0),
+                            fee: parseFloat(row['注文手数料']?.replace(/,/g, '') || 0),
+                            date: row['約定日時'],
+                            rate: parseFloat(row['約定レート']?.replace(/,/g, '') || 0)
+                        };
+                        
+                        if (transaction.quantity > 0) {
+                            transactions.push(transaction);
+                        }
+                    }
+                }
+                
+                // OKCoin Japan形式
+                if ((selectedExchange === 'OKJ' || selectedExchange === 'AUTO') && 
+                    row['取引銘柄'] && row['売買'] && row['ステータス'] === '全部約定') {
+                    const pair = row['取引銘柄'];
+                    const symbol = pair.replace('/JPY', '');
+                    
+                    if (symbol !== 'JPY' && row['売買'] === '購入') {
+                        const transaction = {
+                            exchange: 'OKJ',
+                            symbol: symbol,
+                            type: '買', // OKJの「購入」を「買」に統一
+                            amount: parseFloat(row['約定代金']?.replace(/,/g, '') || 0),
+                            quantity: parseFloat(row['約定数量']?.replace(/,/g, '') || 0),
+                            fee: 0, // OKJのCSVには手数料列がないため0とする
+                            date: row['注文日時'],
+                            rate: parseFloat(row['平均約定価格']?.replace(/,/g, '') || 0)
+                        };
+                        
+                        if (transaction.quantity > 0 && transaction.amount > 0) {
+                            transactions.push(transaction);
+                        }
+                    }
+                }
+            });
+            
+            console.log(`${fileName} (${selectedExchange}): ${transactions.length}件の取引データを抽出`);
+            return transactions;
+        }
+
+        // メッセージ表示
+        function showSuccessMessage(message) {
+            alert('✅ ' + message);
+        }
+
+        function showErrorMessage(message) {
+            alert('❌ ' + message);
+        }
+
+        function showInfoMessage(message) {
+            alert('ℹ️ ' + message);
+        }
+
+        // ポートフォリオ分析（損益計算強化版）
+        function analyzePortfolioData(transactions) {
+            const symbolData = {};
+            
+            transactions.forEach(tx => {
+                if (!symbolData[tx.symbol]) {
+                    symbolData[tx.symbol] = {
+                        totalBuyAmount: 0,
+                        totalSellAmount: 0,
+                        totalQuantity: 0,
+                        totalFees: 0,
+                        buyTransactions: [],
+                        sellTransactions: [],
+                        totalBuyQuantity: 0,
+                        totalSellQuantity: 0,
+                        weightedRateSum: 0,
+                        allTransactions: []
+                    };
+                }
+                
+                const data = symbolData[tx.symbol];
+                data.allTransactions.push(tx);
+                
+                if (tx.type === '買') {
+                    data.totalBuyAmount += tx.amount;
+                    data.totalBuyQuantity += tx.quantity;
+                    data.weightedRateSum += tx.rate * tx.quantity;
+                    data.buyTransactions.push(tx);
+                } else if (tx.type === '売') {
+                    data.totalSellAmount += tx.amount;
+                    data.totalSellQuantity += tx.quantity;
+                    data.sellTransactions.push(tx);
+                }
+                
+                data.totalQuantity += tx.type === '買' ? tx.quantity : -tx.quantity;
+                data.totalFees += tx.fee;
+            });
+            
+            // 各銘柄の統計・損益計算
+            const portfolioSummary = [];
+            let totalInvestment = 0;
+            let totalRealizedProfit = 0;
+            let totalFees = 0;
+            
+            Object.keys(symbolData).forEach(symbol => {
+                const data = symbolData[symbol];
+                const averagePurchaseRate = data.totalBuyQuantity > 0 ? 
+                    data.weightedRateSum / data.totalBuyQuantity : 0;
+                
+                // 現在の保有分の投資額（平均購入レートベース）
+                const currentHoldingInvestment = data.totalQuantity > 0 ? 
+                    data.totalQuantity * averagePurchaseRate : 0;
+                
+                // 実現損益計算（売却時の損益）
+                let realizedProfit = 0;
+                if (data.totalSellQuantity > 0 && averagePurchaseRate > 0) {
+                    // 売却金額 - 売却分の平均購入コスト
+                    const soldCost = data.totalSellQuantity * averagePurchaseRate;
+                    realizedProfit = data.totalSellAmount - soldCost;
+                }
+                
+                // 投資効率計算
+                const investmentEfficiency = data.totalBuyAmount > 0 ? 
+                    (realizedProfit / data.totalBuyAmount) * 100 : 0;
+                
+                const summary = {
+                    symbol,
+                    holdingQuantity: data.totalQuantity,
+                    totalInvestment: data.totalBuyAmount,
+                    currentHoldingInvestment,
+                    averagePurchaseRate,
+                    totalFees: data.totalFees,
+                    buyTransactionCount: data.buyTransactions.length,
+                    sellTransactionCount: data.sellTransactions.length,
+                    totalSellAmount: data.totalSellAmount,
+                    realizedProfit,
+                    investmentEfficiency,
+                    // 表示用の損益ステータス
+                    profitStatus: realizedProfit > 0 ? 'profit' : realizedProfit < 0 ? 'loss' : 'neutral'
+                };
+                
+                totalInvestment += summary.totalInvestment;
+                totalRealizedProfit += realizedProfit;
+                totalFees += summary.totalFees;
+                portfolioSummary.push(summary);
+            });
+            
+            // 全体統計
+            const portfolioStats = {
+                totalInvestment,
+                totalRealizedProfit,
+                totalFees,
+                overallProfitMargin: totalInvestment > 0 ? (totalRealizedProfit / totalInvestment) * 100 : 0,
+                symbolCount: portfolioSummary.length,
+                profitableSymbols: portfolioSummary.filter(s => s.realizedProfit > 0).length,
+                lossSymbols: portfolioSummary.filter(s => s.realizedProfit < 0).length
+            };
+            
+            return {
+                summary: portfolioSummary,
+                stats: portfolioStats,
+                symbols: symbolData,
+                lastUpdated: new Date().toISOString()
+            };
+        }
+
+        // ページ切り替え
+        function showPage(pageId) {
+            // 全ページを非表示
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // ナビアイテムのアクティブ状態をリセット
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 選択されたページを表示
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            document.getElementById(`nav-${pageId}`).classList.add('active');
+        }
+
+        // データ状態更新
+        function updateDataStatus(portfolioData) {
+            const statusElement = document.getElementById('data-status');
+            const managementElement = document.getElementById('data-management');
+            
+            if (portfolioData && portfolioData.summary.length > 0) {
+                const stats = portfolioData.stats;
+                const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
+                const profitIcon = stats.totalRealizedProfit > 0 ? '📈' : stats.totalRealizedProfit < 0 ? '📉' : '➖';
+                
+                statusElement.innerHTML = `
+                    <div style="color: #27ae60; font-weight: 600;">✅ データあり</div>
+                    <div style="margin-top: 5px; font-size: 0.8rem;">
+                        ${stats.symbolCount}銘柄<br>
+                        投資額: ¥${stats.totalInvestment.toLocaleString()}<br>
+                        <span style="color: ${profitColor}; font-weight: 600;">
+                            ${profitIcon} ¥${Math.round(stats.totalRealizedProfit).toLocaleString()}
+                        </span>
+                    </div>
+                `;
+                managementElement.style.display = 'block';
+            } else {
+                statusElement.innerHTML = `<div style="color: #7f8c8d;">データなし</div>`;
+                managementElement.style.display = 'none';
+            }
+        }
+
+        // 全データクリア
+        function clearAllData() {
+            if (confirm('本当に全てのデータをクリアしますか？この操作は元に戻せません。')) {
+                localStorage.removeItem('portfolioData');
+                localStorage.removeItem('rawTransactions');
+                
+                // UI初期状態に戻す
+                document.getElementById('dashboardArea').style.display = 'block';
+                document.getElementById('tabContainer').style.display = 'none';
+                updateDataStatus(null);
+                
+                showSuccessMessage('全データをクリアしました');
+                console.log('全データをクリアしました');
+            }
+        }
+
+        // タブ切り替え機能
+        function switchTab(tabName) {
+            // 全タブボタンのアクティブ状態をリセット
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 選択されたタブをアクティブに
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // サブタブ切り替え機能
+        function switchSubtab(subtabName) {
+            // 全サブタブボタンのアクティブ状態をリセット
+            document.querySelectorAll('.subtab-button').forEach(btn => {
+                btn.classList.remove('active');
+                // ボタンの背景色をリセット
+                if (!btn.classList.contains('active')) {
+                    btn.style.backgroundColor = '';
+                }
+            });
+            document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
+            
+            // 選択されたサブタブをアクティブに
+            const targetButton = document.getElementById(`subtab-${subtabName}`);
+            const targetContent = document.getElementById(`subtab-content-${subtabName}`);
+            
+            if (targetButton) {
+                targetButton.classList.add('active');
+                // アクティブボタンの背景色を設定
+                targetButton.style.backgroundColor = '';
+            }
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        }
+
+        // 銘柄別サブタブ生成（復活版）
+        function createSymbolSubtabs(portfolioData) {
+            const subtabNav = document.getElementById('subtab-nav');
+            const symbolContainer = document.getElementById('symbol-subtabs-container');
+            
+            // 既存の銘柄サブタブをクリア
+            subtabNav.querySelectorAll('.symbol-subtab').forEach(tab => tab.remove());
+            symbolContainer.innerHTML = '';
+            
+            // 銘柄別サブタブを生成
+            if (portfolioData && portfolioData.summary) {
+                // 実現損益で降順ソート
+                const sortedSymbols = [...portfolioData.summary].sort((a, b) => b.realizedProfit - a.realizedProfit);
+                
+                sortedSymbols.forEach(symbolData => {
+                    // サブタブボタンを作成
+                    const tabButton = document.createElement('button');
+                    tabButton.className = 'subtab-button symbol-subtab';
+                    tabButton.id = `subtab-${symbolData.symbol.toLowerCase()}`;
+                    tabButton.textContent = symbolData.symbol;
+                    tabButton.onclick = () => switchSubtab(symbolData.symbol.toLowerCase());
+                    
+                    // 損益に応じて色分け（非選択時のスタイル）
+                    if (symbolData.realizedProfit > 0) {
+                        tabButton.style.borderColor = '#28a745';
+                        tabButton.style.color = '#28a745';
+                    } else if (symbolData.realizedProfit < 0) {
+                        tabButton.style.borderColor = '#dc3545';
+                        tabButton.style.color = '#dc3545';
+                    }
+                    
+                    // ホバー効果とアクティブ状態のスタイルを追加
+                    tabButton.addEventListener('mouseenter', function() {
+                        if (!this.classList.contains('active')) {
+                            this.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+                        }
+                    });
+                    
+                    tabButton.addEventListener('mouseleave', function() {
+                        if (!this.classList.contains('active')) {
+                            this.style.backgroundColor = '';
+                        }
+                    });
+                    
+                    subtabNav.appendChild(tabButton);
+                    
+                    // サブタブコンテンツを作成
+                    const tabContent = document.createElement('div');
+                    tabContent.className = 'subtab-content';
+                    tabContent.id = `subtab-content-${symbolData.symbol.toLowerCase()}`;
+                    tabContent.innerHTML = generateSymbolDetailPage(symbolData, portfolioData.symbols[symbolData.symbol]);
+                    
+                    symbolContainer.appendChild(tabContent);
+                });
+            }
+        }
+
+        // グローバル変数（ソート用）
+        let currentPortfolioData = null;
+        let currentSortField = 'realizedProfit';
+        let currentSortDirection = 'desc';
+
+        // 価格データ関連
+        let currentPrices = {};
+        let lastPriceUpdate = null;
+
+        // 銘柄マッピング（CoinGecko API用）
+        const SYMBOL_MAPPING = {
+            'BTC': 'bitcoin',
+            'ETH': 'ethereum', 
+            'SOL': 'solana',
+            'XRP': 'ripple',
+            'ADA': 'cardano',
+            'DOGE': 'dogecoin',
+            'ASTR': 'astar',
+            'XTZ': 'tezos',
+            'XLM': 'stellar',
+            'SHIB': 'shiba-inu',
+            'PEPE': 'pepe',
+            'SUI': 'sui',
+            'DAI': 'dai'
+        };
+
+        // ダッシュボード表示（タブシステム版）
+        function displayDashboard(portfolioData) {
+            // グローバル変数に保存
+            currentPortfolioData = portfolioData;
+            
+            // デフォルトソート（実現損益降順）
+            sortPortfolioData('realizedProfit', 'desc');
+            
+            // 旧表示エリアを非表示
+            document.getElementById('dashboardArea').style.display = 'none';
+            
+            // タブコンテナを表示
+            document.getElementById('tabContainer').style.display = 'block';
+            
+            // ポートフォリオサマリーエリアは削除済み
+            
+            // ポートフォリオテーブル表示
+            const tableContainer = document.getElementById('portfolio-table-container');
+            tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+            
+            // 保存済み価格データを復元
+            if (loadSavedPrices()) {
+                // 価格データが復元できた場合、テーブルを再描画
+                tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+                updatePriceStatus();
+            } else {
+                updatePriceStatus('価格データなし');
+            }
+            
+            // 取引履歴テーブル表示
+            const tradingContainer = document.getElementById('trading-history-container');
+            tradingContainer.innerHTML = generateTradingHistoryTable(portfolioData);
+            
+            // 銘柄別サブタブ作成
+            createSymbolSubtabs(portfolioData);
+            
+            // サマリータブを明示的にアクティブに設定
+            switchSubtab('summary');
+            
+            // チャートタブ初期化
+            initializeChartTab();
+            
+            updateDataStatus(portfolioData);
+            
+            // アップロード成功後はダッシュボードページに切り替え
+            showPage('dashboard');
+        }
+
+        // テーブルソート機能
+        function sortTable(field) {
+            if (!currentPortfolioData) return;
+            
+            // 同じフィールドクリック時は方向を逆転
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // 新しいフィールドの場合は降順から開始
+                currentSortField = field;
+                currentSortDirection = 'desc';
+            }
+            
+            sortPortfolioData(field, currentSortDirection);
+            
+            // テーブル再描画
+            const tableContainer = document.getElementById('portfolio-table-container');
+            tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+            
+            console.log(`ソート実行: ${field} ${currentSortDirection}`);
+        }
+
+        // ポートフォリオデータソート
+        function sortPortfolioData(field, direction) {
+            if (!currentPortfolioData || !currentPortfolioData.summary) return;
+            
+            currentPortfolioData.summary.sort((a, b) => {
+                let aVal, bVal;
+                
+                // フィールド値取得
+                switch(field) {
+                    case 'symbol':
+                        aVal = a.symbol;
+                        bVal = b.symbol;
+                        break;
+                    case 'averagePurchaseRate':
+                        aVal = a.averagePurchaseRate;
+                        bVal = b.averagePurchaseRate;
+                        break;
+                    case 'totalInvestment':
+                        aVal = a.totalInvestment;
+                        bVal = b.totalInvestment;
+                        break;
+                    case 'heldInvestment':
+                        aVal = a.currentHoldingInvestment;
+                        bVal = b.currentHoldingInvestment;
+                        break;
+                    case 'currentPrice':
+                        aVal = a.currentPrice || 0;
+                        bVal = b.currentPrice || 0;
+                        break;
+                    case 'currentValue':
+                        aVal = a.currentValue || 0;
+                        bVal = b.currentValue || 0;
+                        break;
+                    case 'realizedProfit':
+                        aVal = a.realizedProfit;
+                        bVal = b.realizedProfit;
+                        break;
+                    case 'unrealizedProfit':
+                        aVal = a.unrealizedProfit || 0;
+                        bVal = b.unrealizedProfit || 0;
+                        break;
+                    case 'totalProfit':
+                        aVal = a.totalProfit || a.realizedProfit;
+                        bVal = b.totalProfit || b.realizedProfit;
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                // ソート実行
+                if (field === 'symbol') {
+                    // 文字列ソート
+                    if (direction === 'asc') {
+                        return aVal.localeCompare(bVal);
+                    } else {
+                        return bVal.localeCompare(aVal);
+                    }
+                } else {
+                    // 数値ソート
+                    if (direction === 'asc') {
+                        return aVal - bVal;
+                    } else {
+                        return bVal - aVal;
+                    }
+                }
+            });
+            
+            updateSortIndicators(field, direction);
+        }
+
+        // ソートアイコン取得
+        function getSortIcon(field) {
+            if (currentSortField === field) {
+                return currentSortDirection === 'asc' ? '▲' : '▼';
+            }
+            return '';
+        }
+
+        // ソート方向表示更新
+        function updateSortIndicators(activeField, direction) {
+            const fields = ['symbol', 'holdingQuantity', 'averagePurchaseRate', 'totalInvestment', 
+                           'currentPrice', 'currentValue', 'totalSellAmount', 'realizedProfit', 
+                           'unrealizedProfit', 'realizedProfit', 'totalProfit'];
+            
+            fields.forEach(field => {
+                const indicator = document.getElementById(`sort-${field}`);
+                if (indicator) {
+                    if (field === activeField) {
+                        indicator.textContent = direction === 'asc' ? '▲' : '▼';
+                        indicator.style.color = '#3498db';
+                    } else {
+                        indicator.textContent = '';
+                        indicator.style.color = '';
+                    }
+                }
+            });
+        }
+
+        // 価格取得関連機能
+        async function fetchCurrentPrices() {
+            try {
+                console.log('価格取得開始', currentPortfolioData);
+                
+                if (!currentPortfolioData || !currentPortfolioData.summary) {
+                    throw new Error('ポートフォリオデータが見つかりません');
+                }
+
+                // 対応銘柄のCoinGecko IDを取得
+                const portfolioSymbols = currentPortfolioData.summary.map(item => item.symbol);
+                const validSymbols = portfolioSymbols.filter(symbol => SYMBOL_MAPPING[symbol]);
+                
+                console.log('ポートフォリオ銘柄:', portfolioSymbols);
+                console.log('対応銘柄:', validSymbols);
+                
+                if (validSymbols.length === 0) {
+                    throw new Error('対応銘柄が見つかりません');
+                }
+
+                const coingeckoIds = validSymbols.map(symbol => SYMBOL_MAPPING[symbol]).join(',');
+                const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
+                
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('CoinGecko APIレスポンス:', data);
+                
+                // データを整理
+                const prices = {};
+                for (const symbol of validSymbols) {
+                    const coingeckoId = SYMBOL_MAPPING[symbol];
+                    if (data[coingeckoId]) {
+                        prices[symbol] = {
+                            price_jpy: data[coingeckoId].jpy,
+                            last_updated: data[coingeckoId].last_updated_at
+                        };
+                        console.log(`${symbol} (${coingeckoId}): ¥${data[coingeckoId].jpy}`);
+                    }
+                }
+                console.log('整理された価格データ:', prices);
+                
+                // グローバル変数に保存
+                currentPrices = prices;
+                lastPriceUpdate = new Date();
+                
+                // localStorage に保存
+                localStorage.setItem('currentPrices', JSON.stringify(prices));
+                localStorage.setItem('lastPriceUpdate', lastPriceUpdate.toISOString());
+                
+                // ポートフォリオデータを再計算（含み損益含む）
+                updatePortfolioWithPrices(currentPortfolioData, prices);
+                
+                // 現在のソート順を維持してテーブル再描画
+                sortPortfolioData(currentSortField, currentSortDirection);
+                const tableContainer = document.getElementById('portfolio-table-container');
+                tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+                
+                showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄`);
+                updatePriceStatus();
+                
+            } catch (error) {
+                console.error('価格取得エラー:', error);
+                showErrorMessage(`価格取得失敗: ${error.message}`);
+                updatePriceStatus('取得失敗');
+            }
+        }
+
+        // 価格データでポートフォリオを更新（含み損益計算）
+        function updatePortfolioWithPrices(portfolioData, prices) {
+            let totalUnrealizedProfit = 0;
+            
+            portfolioData.summary.forEach(item => {
+                if (prices[item.symbol] && item.holdingQuantity > 0) {
+                    const currentPrice = prices[item.symbol].price_jpy;
+                    const currentValue = item.holdingQuantity * currentPrice;
+                    // 現在保有分の投資額 = 保有数量 × 平均購入レート
+                    const currentHoldingCost = item.holdingQuantity * item.averagePurchaseRate;
+                    const unrealizedProfit = currentValue - currentHoldingCost;
+                    
+                    // 含み損益を追加
+                    item.currentPrice = currentPrice;
+                    item.currentValue = currentValue;
+                    item.unrealizedProfit = unrealizedProfit;
+                    item.totalProfit = item.realizedProfit + unrealizedProfit;
+                    
+                    totalUnrealizedProfit += unrealizedProfit;
+                } else {
+                    // 価格データがない場合はゼロで初期化
+                    item.currentPrice = 0;
+                    item.currentValue = 0;
+                    item.unrealizedProfit = 0;
+                    item.totalProfit = item.realizedProfit;
+                }
+            });
+            
+            // 統計に含み損益を追加
+            portfolioData.stats.totalUnrealizedProfit = totalUnrealizedProfit;
+            portfolioData.stats.totalProfit = portfolioData.stats.totalRealizedProfit + totalUnrealizedProfit;
+            
+            console.log('価格更新後統計:');
+            console.log('実現損益:', portfolioData.stats.totalRealizedProfit);
+            console.log('含み損益:', totalUnrealizedProfit);
+            console.log('総合損益:', portfolioData.stats.totalProfit);
+        }
+
+        // 保存済み価格データを復元
+        function loadSavedPrices() {
+            try {
+                const savedPrices = localStorage.getItem('currentPrices');
+                const savedUpdate = localStorage.getItem('lastPriceUpdate');
+                
+                if (savedPrices && savedUpdate) {
+                    currentPrices = JSON.parse(savedPrices);
+                    lastPriceUpdate = new Date(savedUpdate);
+                    
+                    // 1時間以内のデータのみ使用
+                    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                    if (lastPriceUpdate > oneHourAgo) {
+                        updatePortfolioWithPrices(currentPortfolioData, currentPrices);
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.error('保存済み価格データ読み込みエラー:', error);
+            }
+            return false;
+        }
+
+        // 価格更新ステータス表示
+        function updatePriceStatus(message = null) {
+            const statusElement = document.getElementById('price-update-status');
+            if (!statusElement) return;
+            
+            if (message) {
+                statusElement.textContent = message;
+                return;
+            }
+            
+            if (lastPriceUpdate) {
+                const symbols = Object.keys(currentPrices).length;
+                const timeStr = lastPriceUpdate.toLocaleString('ja-JP');
+                statusElement.textContent = `${symbols}銘柄 | ${timeStr}`;
+                statusElement.style.color = '#28a745';
+            } else {
+                statusElement.textContent = '価格データなし';
+                statusElement.style.color = '#6c757d';
+            }
+        }
+
+        // Chart.js関連機能
+        let priceChart = null;
+        let historicalData = {};
+
+        // チャート用のダミーデータ生成
+        function generateDummyChartData(symbol) {
+            const data = [];
+            const basePrice = symbol === 'BTC' ? 4000000 : symbol === 'ETH' ? 300000 : 100000;
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30); // 30日前から
+
+            for (let i = 0; i < 30; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                const variance = (Math.random() - 0.5) * 0.1; // ±10%の変動
+                const price = basePrice * (1 + variance);
+                
+                data.push({
+                    x: date.getTime(), // タイムスタンプ形式に変更
+                    y: Math.round(price)
+                });
+            }
+            return data;
+        }
+
+        // 銘柄選択時のイベントハンドラ（自動履歴データ取得）
+        async function onSymbolSelect() {
+            const select = document.getElementById('chart-symbol-select');
+            if (!select) return;
+            
+            const selectedSymbol = select.value;
+            
+            if (!selectedSymbol) {
+                // 銘柄が選択されていない場合はチャートをクリア
+                if (priceChart) {
+                    priceChart.destroy();
+                    priceChart = null;
+                }
+                return;
+            }
+
+            // 履歴データがない場合は自動取得
+            if (!historicalData[selectedSymbol]) {
+                await fetchHistoricalDataForSymbol(selectedSymbol);
+            }
+            
+            // チャート表示
+            loadPriceChart();
+        }
+
+        // 価格チャート表示
+        function loadPriceChart() {
+            const select = document.getElementById('chart-symbol-select');
+            if (!select) return;
+            
+            const selectedSymbol = select.value;
+            
+            if (!selectedSymbol) {
+                if (priceChart) {
+                    priceChart.destroy();
+                    priceChart = null;
+                }
+                return;
+            }
+
+            const canvas = document.getElementById('price-chart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 既存のチャートを削除
+            if (priceChart) {
+                priceChart.destroy();
+            }
+
+            // データ準備（まずはダミーデータ）
+            let chartData = [];
+            if (historicalData[selectedSymbol] && Array.isArray(historicalData[selectedSymbol])) {
+                chartData = historicalData[selectedSymbol];
+            } else {
+                chartData = generateDummyChartData(selectedSymbol);
+            }
+            
+            // データが空の場合のフォールバック
+            if (!chartData || chartData.length === 0) {
+                chartData = generateDummyChartData(selectedSymbol);
+            }
+
+            // チャート作成
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: `${selectedSymbol} 価格 (JPY)`,
+                        data: chartData,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 2,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${selectedSymbol} 価格チャート`
+                        },
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'M/d'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: '日付'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '価格 (JPY)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '¥' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 特定銘柄の履歴データ取得（内部用）
+        async function fetchHistoricalDataForSymbol(symbol) {
+            const coingeckoId = SYMBOL_MAPPING[symbol];
+            if (!coingeckoId) {
+                console.error(`対応していない銘柄: ${symbol}`);
+                return false;
+            }
+
+            try {
+                console.log(`履歴データ取得開始: ${symbol}`);
+                
+                // 30日間のデータを取得
+                const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // データを整形
+                const chartData = data.prices.map(([timestamp, price]) => ({
+                    x: timestamp,
+                    y: Math.round(price)
+                }));
+                
+                // データを保存
+                historicalData[symbol] = chartData;
+                
+                console.log(`履歴データ取得完了: ${symbol} (${chartData.length}件)`);
+                return true;
+                
+            } catch (error) {
+                console.error(`履歴データ取得エラー (${symbol}):`, error);
+                return false;
+            }
+        }
+
+        // 履歴データ取得（CoinGecko API）- 手動実行用（非推奨）
+        async function fetchHistoricalData() {
+            const select = document.getElementById('chart-symbol-select');
+            const selectedSymbol = select.value;
+            
+            if (!selectedSymbol) {
+                showErrorMessage('銘柄を選択してください');
+                return;
+            }
+
+            const success = await fetchHistoricalDataForSymbol(selectedSymbol);
+            
+            if (success) {
+                loadPriceChart();
+                showSuccessMessage(`${selectedSymbol}の履歴データを取得しました`);
+            } else {
+                showErrorMessage(`${selectedSymbol}の履歴データ取得に失敗しました`);
+            }
+        }
+
+        // チャートタブの初期化（銘柄選択肢を設定）
+        function initializeChartTab() {
+            const select = document.getElementById('chart-symbol-select');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">-- 銘柄を選択 --</option>';
+            
+            if (currentPortfolioData && currentPortfolioData.summary && Array.isArray(currentPortfolioData.summary)) {
+                currentPortfolioData.summary.forEach(item => {
+                    if (item && item.symbol && SYMBOL_MAPPING[item.symbol]) {
+                        const option = document.createElement('option');
+                        option.value = item.symbol;
+                        option.textContent = item.symbol;
+                        select.appendChild(option);
+                    }
+                });
+            }
+        }
+
+        // ポートフォリオテーブル生成（損益計算版）
+        function generatePortfolioTable(portfolioData) {
+            const stats = portfolioData.stats;
+            const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
+            
+            let html = `
+                <!-- ポートフォリオサマリー -->
+                <div style="margin-bottom: 25px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;">
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📊 ポートフォリオサマリー（${stats.symbolCount}銘柄）</h3>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                        <!-- 総合損益（最優先表示） -->
+                        <div style="text-align: center; padding: 12px; background: ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '#10b981' : '#ef4444'};">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">総合損益</div>
+                            <div style="font-size: 18px; font-weight: 800; color: ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit || stats.totalRealizedProfit).toLocaleString()}</div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${stats.overallProfitMargin >= 0 ? '+' : ''}${stats.overallProfitMargin.toFixed(1)}%</div>
+                        </div>
+                        
+                        <!-- 投資額 -->
+                        <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">投資額</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${Math.abs(stats.totalInvestment).toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 実現損益 -->
+                        <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid ${stats.totalRealizedProfit >= 0 ? '#10b981' : '#ef4444'};">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">実現損益</div>
+                            <div style="font-size: 16px; font-weight: 700; color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 含み損益 -->
+                        <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">含み損益</div>
+                            <div style="font-size: 16px; font-weight: 700; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 手数料 -->
+                        <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #64748b;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">手数料</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #475569;">¥${stats.totalFees.toLocaleString()}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 銘柄別詳細テーブル -->
+                <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-bottom: 30px; width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
+                    <thead>
+                        <tr style="background-color: #e8f5e8;">
+                            <th onclick="sortTable('symbol')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">銘柄 <span id="sort-symbol">${getSortIcon('symbol')}</span></th>
+                            <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
+                            <th onclick="sortTable('averagePurchaseRate')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
+                            <th onclick="sortTable('currentValue')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
+                            <th onclick="sortTable('heldInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">保有分購入額 <span id="sort-heldInvestment">${getSortIcon('heldInvestment')}</span></th>
+                            <th onclick="sortTable('totalInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
+                            <th onclick="sortTable('unrealizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
+                            <th onclick="sortTable('realizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">実現損益 <span id="sort-realizedProfit" style="color: #3498db;">${getSortIcon('realizedProfit')}</span></th>
+                            <th onclick="sortTable('totalProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">総合損益 <span id="sort-totalProfit">${getSortIcon('totalProfit')}</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            portfolioData.summary.forEach(item => {
+                const profitColor = item.realizedProfit > 0 ? '#27ae60' : item.realizedProfit < 0 ? '#e74c3c' : '#6c757d';
+                const profitBg = item.realizedProfit > 0 ? 'rgba(39, 174, 96, 0.05)' : item.realizedProfit < 0 ? 'rgba(231, 76, 60, 0.05)' : '';
+                
+                html += `
+                    <tr style="transition: all 0.2s ease; ${profitBg ? `background-color: ${profitBg};` : ''}" onmouseover="this.style.backgroundColor='rgba(74, 144, 226, 0.08)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.backgroundColor='${profitBg}'; this.style.transform=''">
+                        <td style="padding: 12px; font-weight: bold; color: #2196F3; border-bottom: 1px solid #f1f3f4;">${item.symbol}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">¥${item.averagePurchaseRate.toLocaleString()}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentValue > 0 ? '¥' + item.currentValue.toLocaleString() : '-'}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">¥${item.currentHoldingInvestment.toLocaleString()}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">¥${item.totalInvestment.toLocaleString()}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem; color: ${(item.unrealizedProfit || 0) >= 0 ? '#27ae60' : '#e74c3c'}; font-weight: ${Math.abs(item.unrealizedProfit || 0) > 0 ? 'bold' : 'normal'};">${(item.unrealizedProfit || 0) !== 0 ? '¥' + Math.round(item.unrealizedProfit || 0).toLocaleString() : '-'}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem; color: ${profitColor}; font-weight: ${Math.abs(item.realizedProfit) > 0 ? 'bold' : 'normal'};">${item.realizedProfit !== 0 ? '¥' + Math.round(item.realizedProfit).toLocaleString() : '-'}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem; color: ${(item.totalProfit || item.realizedProfit) >= 0 ? '#27ae60' : '#e74c3c'}; font-weight: ${Math.abs(item.totalProfit || item.realizedProfit) > 0 ? 'bold' : 'normal'};">${(item.totalProfit || item.realizedProfit) !== 0 ? '¥' + Math.round(item.totalProfit || item.realizedProfit).toLocaleString() : '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            return html;
+        }
+
+        // 取引履歴テーブル生成
+        function generateTradingHistoryTable(portfolioData) {
+            const allTransactions = [];
+            Object.values(portfolioData.symbols).forEach(symbolData => {
+                allTransactions.push(...symbolData.buyTransactions, ...symbolData.sellTransactions);
+            });
+            
+            // 日付順にソート
+            allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            let html = `
+                <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <h4 style="color: #2c3e50; margin-bottom: 20px;">全取引履歴（新しい順）</h4>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background-color: #f8f9fa;">
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">銘柄</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">売買</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">数量</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">レート</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">金額</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">取引所</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            allTransactions.slice(0, 50).forEach(tx => { // 最新50件のみ表示
+                const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
+                html += `
+                    <tr>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; font-weight: bold;">${tx.symbol}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold;">${tx.type}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">${tx.quantity.toFixed(8)}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">¥${tx.rate.toLocaleString()}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">¥${tx.amount.toLocaleString()}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem;">${tx.exchange}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    ${allTransactions.length > 50 ? `<p style="color: #7f8c8d; text-align: center; margin-top: 15px;">※最新50件のみ表示（全${allTransactions.length}件）</p>` : ''}
+                </div>
+            `;
+            return html;
+        }
+
+        // 個別銘柄詳細ページ生成
+        function generateSymbolDetailPage(symbolSummary, symbolData) {
+            const profitColor = symbolSummary.realizedProfit >= 0 ? '#27ae60' : '#e74c3c';
+            const profitIcon = symbolSummary.realizedProfit > 0 ? '📈' : symbolSummary.realizedProfit < 0 ? '📉' : '➖';
+            
+            let html = `
+                <!-- 銘柄サマリーカード -->
+                <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; font-size: 24px; font-weight: 700; color: #1e293b;">${symbolSummary.symbol} 詳細分析</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #64748b;">個別銘柄の取引履歴・統計・損益分析</p>
+                    </div>
+                    
+                    <!-- 損益カード（1行目） -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                        <!-- 総合損益 -->
+                        <div style="text-align: center; padding: 15px; background: ${symbolSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : (symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? 'linear-gradient(135deg, #d4f1d4 0%, #a8e6a8 100%)' : 'linear-gradient(135deg, #fcd4d4 0%, #f8a8a8 100%)'}; border-radius: 8px; border: 3px solid ${symbolSummary.totalSellAmount === 0 ? '#9ca3af' : (symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'};">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 700;">総合損益</div>
+                            <div style="font-size: 20px; font-weight: 900; color: ${symbolSummary.totalSellAmount === 0 ? '#6b7280' : (symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? '#047857' : '#b91c1c'};">${symbolSummary.totalSellAmount === 0 ? '⏳ ' : profitIcon + ' '}${symbolSummary.totalSellAmount === 0 ? '未確定' : ((symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? '+' : '') + '¥' + Math.round(symbolSummary.totalProfit || symbolSummary.realizedProfit).toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 実現損益 -->
+                        <div style="text-align: center; padding: 15px; background: ${symbolSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : symbolSummary.realizedProfit >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${symbolSummary.totalSellAmount === 0 ? '#9ca3af' : symbolSummary.realizedProfit >= 0 ? '#10b981' : '#ef4444'};">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">実現損益</div>
+                            <div style="font-size: 18px; font-weight: 800; color: ${symbolSummary.totalSellAmount === 0 ? '#6b7280' : symbolSummary.realizedProfit >= 0 ? '#059669' : '#dc2626'};">${symbolSummary.totalSellAmount === 0 ? '⏳ 未確定' : (symbolSummary.realizedProfit >= 0 ? '+' : '') + '¥' + Math.round(symbolSummary.realizedProfit).toLocaleString()}</div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${symbolSummary.totalSellAmount === 0 ? '' : (symbolSummary.investmentEfficiency >= 0 ? '+' : '') + symbolSummary.investmentEfficiency.toFixed(1) + '%'}</div>
+                        </div>
+                        
+                        <!-- 含み損益 -->
+                        <div style="text-align: center; padding: 15px; background: ${(symbolSummary.unrealizedProfit || 0) >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${(symbolSummary.unrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">含み損益</div>
+                            <div style="font-size: 18px; font-weight: 800; color: ${(symbolSummary.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(symbolSummary.unrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(symbolSummary.unrealizedProfit || 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 詳細統計（2行目） -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
+                        <!-- 保有数量 -->
+                        <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">保有数量</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${parseFloat(symbolSummary.holdingQuantity.toFixed(8))}</div>
+                        </div>
+                        
+                        <!-- 平均購入レート -->
+                        <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">平均購入レート</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${symbolSummary.averagePurchaseRate.toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 総投資額 -->
+                        <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">総投資額</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${symbolSummary.totalInvestment.toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 売却金額 -->
+                        <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #06b6d4;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">売却金額</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${symbolSummary.totalSellAmount.toLocaleString()}</div>
+                        </div>
+                        
+                        <!-- 取引回数 -->
+                        <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #84cc16;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">取引回数</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">買${symbolSummary.buyTransactionCount}回・売${symbolSummary.sellTransactionCount}回</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 取引履歴テーブル -->
+                <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${symbolSummary.symbol} 全取引履歴（${symbolData.allTransactions.length}件）</h4>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background-color: #f8f9fa;">
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">売買</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">数量</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">レート</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">金額</th>
+                                    <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">取引所</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            // 取引履歴を日付順に並び替え（新しい順）
+            const sortedTransactions = [...symbolData.allTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedTransactions.forEach(tx => {
+                const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
+                const typeBg = tx.type === '買' ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)';
+                
+                html += `
+                    <tr style="background-color: ${typeBg};">
+                        <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold; font-size: 0.95rem;">${tx.type}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">${parseFloat(tx.quantity.toFixed(8))}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">¥${tx.rate.toLocaleString()}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace; font-weight: 600;">¥${tx.amount.toLocaleString()}</td>
+                        <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem; font-weight: 600;">${tx.exchange}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            return html;
+        }
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('暗号資産ポートフォリオビューアー 初期化完了');
+            
+            // 既存のデータがあるかチェック（localStorage）
+            const savedData = localStorage.getItem('portfolioData');
+            if (savedData) {
+                try {
+                    const portfolioData = JSON.parse(savedData);
+                    // データがある場合はタブシステムで表示
+                    displayDashboard(portfolioData);
+                    console.log('既存のポートフォリオデータを復元しました');
+                } catch (error) {
+                    console.error('データ復元エラー:', error);
+                    localStorage.removeItem('portfolioData');
+                    updateDataStatus(null);
+                }
+            } else {
+                updateDataStatus(null);
+            }
+        });
+    </script>
+</body>
+</html>
