@@ -1029,9 +1029,9 @@
             if (targetContent) {
                 targetContent.classList.add('active');
                 
-                // ETHタブが選択された場合、チャートを描画
-                if (subtabName === 'eth') {
-                    setTimeout(() => displayETHChart(), 100);
+                // 銘柄タブが選択された場合、チャートを描画（summaryは除外）
+                if (subtabName !== 'summary') {
+                    setTimeout(() => displaySymbolChart(subtabName.toUpperCase()), 100);
                 }
             }
         }
@@ -1501,42 +1501,62 @@
             }
         }
 
-        // ETHタブ内チャート描画
-        function displayETHChart() {
-            const canvas = document.getElementById('eth-chart-canvas');
+        // 銘柄別チャート描画
+        function displaySymbolChart(symbol) {
+            const canvas = document.getElementById(`${symbol.toLowerCase()}-chart-canvas`);
             if (!canvas) {
-                console.log('ETHチャートcanvas要素が見つかりません');
+                console.log(`${symbol}チャートcanvas要素が見つかりません`);
                 return;
             }
             
             const ctx = canvas.getContext('2d');
             
             // 既存のチャートを削除
-            if (window.ethTabChart) {
-                window.ethTabChart.destroy();
+            const chartKey = `${symbol.toLowerCase()}TabChart`;
+            if (window[chartKey]) {
+                window[chartKey].destroy();
             }
 
-            // ETHデータ準備
+            // データ準備
             let chartData = [];
-            if (historicalData['ETH'] && Array.isArray(historicalData['ETH'])) {
-                chartData = historicalData['ETH'];
+            if (historicalData[symbol] && Array.isArray(historicalData[symbol])) {
+                chartData = historicalData[symbol];
             } else {
-                chartData = generateDummyChartData('ETH');
+                chartData = generateDummyChartData(symbol);
             }
             
             if (!chartData || chartData.length === 0) {
-                chartData = generateDummyChartData('ETH');
+                chartData = generateDummyChartData(symbol);
             }
 
+            // 銘柄別の色設定
+            const colors = {
+                'BTC': { border: '#F7931A', bg: 'rgba(247, 147, 26, 0.1)' },
+                'ETH': { border: '#627EEA', bg: 'rgba(98, 126, 234, 0.1)' },
+                'SOL': { border: '#9945FF', bg: 'rgba(153, 69, 255, 0.1)' },
+                'XRP': { border: '#23292F', bg: 'rgba(35, 41, 47, 0.1)' },
+                'ADA': { border: '#0033AD', bg: 'rgba(0, 51, 173, 0.1)' },
+                'DOGE': { border: '#C2A633', bg: 'rgba(194, 166, 51, 0.1)' },
+                'ASTR': { border: '#0070F3', bg: 'rgba(0, 112, 243, 0.1)' },
+                'XTZ': { border: '#2C7DF7', bg: 'rgba(44, 125, 247, 0.1)' },
+                'XLM': { border: '#14B6E7', bg: 'rgba(20, 182, 231, 0.1)' },
+                'SHIB': { border: '#FFA409', bg: 'rgba(255, 164, 9, 0.1)' },
+                'PEPE': { border: '#00D924', bg: 'rgba(0, 217, 36, 0.1)' },
+                'SUI': { border: '#4DA2FF', bg: 'rgba(77, 162, 255, 0.1)' },
+                'DAI': { border: '#FBCC5F', bg: 'rgba(251, 204, 95, 0.1)' }
+            };
+            
+            const color = colors[symbol] || { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
+
             // チャート作成
-            window.ethTabChart = new Chart(ctx, {
+            window[chartKey] = new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: [{
-                        label: 'ETH 価格 (JPY)',
+                        label: `${symbol} 価格 (JPY)`,
                         data: chartData,
-                        borderColor: '#627EEA',
-                        backgroundColor: 'rgba(98, 126, 234, 0.1)',
+                        borderColor: color.border,
+                        backgroundColor: color.bg,
                         borderWidth: 2,
                         fill: true,
                         tension: 0.1,
@@ -1581,25 +1601,25 @@
                 }
             });
 
-            console.log('ETHチャート描画完了');
+            console.log(`${symbol}チャート描画完了`);
             
-            // ETHの履歴データを取得（まだない場合）
-            if (!historicalData['ETH']) {
-                fetchETHHistoricalData();
+            // 履歴データを取得（まだない場合）
+            if (!historicalData[symbol]) {
+                fetchSymbolHistoricalData(symbol);
             }
         }
 
-        // ETH専用履歴データ取得
-        async function fetchETHHistoricalData() {
-            const coingeckoId = SYMBOL_MAPPING['ETH'];
+        // 銘柄別履歴データ取得
+        async function fetchSymbolHistoricalData(symbol) {
+            const coingeckoId = SYMBOL_MAPPING[symbol];
             if (!coingeckoId) {
-                console.log('ETHのCoinGecko ID が見つかりません');
+                console.log(`${symbol}のCoinGecko ID が見つかりません`);
                 return;
             }
 
             try {
                 const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
-                console.log(`ETH履歴データ取得中: ${url}`);
+                console.log(`${symbol}履歴データ取得中: ${url}`);
                 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -1610,14 +1630,14 @@
                         y: Math.round(price)
                     }));
                     
-                    historicalData['ETH'] = chartData;
-                    console.log(`ETH履歴データ取得完了: ${chartData.length}件`);
+                    historicalData[symbol] = chartData;
+                    console.log(`${symbol}履歴データ取得完了: ${chartData.length}件`);
                     
                     // チャートを再描画
-                    displayETHChart();
+                    displaySymbolChart(symbol);
                 }
             } catch (error) {
-                console.error('ETH履歴データ取得エラー:', error);
+                console.error(`${symbol}履歴データ取得エラー:`, error);
             }
         }
 
@@ -2052,18 +2072,16 @@
                 </div>
             `;
 
-            // ETHの場合のみチャートを追加
-            if (symbolSummary.symbol === 'ETH') {
-                html += `
-                    <!-- ETH価格チャート -->
-                    <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 25px;">
-                        <h4 style="color: #2c3e50; margin-bottom: 20px;">📈 ETH 価格チャート（30日間）</h4>
-                        <div id="eth-chart-container" style="position: relative; height: 400px; background: white; border-radius: 8px;">
-                            <canvas id="eth-chart-canvas"></canvas>
-                        </div>
+            // 全銘柄にチャートを追加
+            html += `
+                <!-- ${symbolSummary.symbol}価格チャート -->
+                <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 25px;">
+                    <h4 style="color: #2c3e50; margin-bottom: 20px;">📈 ${symbolSummary.symbol} 価格チャート（30日間）</h4>
+                    <div id="${symbolSummary.symbol.toLowerCase()}-chart-container" style="position: relative; height: 400px; background: white; border-radius: 8px;">
+                        <canvas id="${symbolSummary.symbol.toLowerCase()}-chart-canvas"></canvas>
                     </div>
-                `;
-            }
+                </div>
+            `;
             
             return html;
         }
