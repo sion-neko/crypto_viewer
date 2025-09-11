@@ -1448,7 +1448,25 @@
         // チャート用のダミーデータ生成
         function generateDummyChartData(symbol) {
             const data = [];
-            const basePrice = symbol === 'BTC' ? 4000000 : symbol === 'ETH' ? 300000 : 100000;
+            // 銘柄別の基準価格設定（2024年相場を参考）
+            let basePrice;
+            switch(symbol) {
+                case 'BTC': basePrice = 10000000; break;  // 1000万円前後
+                case 'ETH': basePrice = 400000; break;    // 40万円前後
+                case 'SOL': basePrice = 20000; break;     // 2万円前後
+                case 'XRP': basePrice = 80; break;        // 80円前後
+                case 'ADA': basePrice = 60; break;        // 60円前後
+                case 'DOGE': basePrice = 20; break;       // 20円前後
+                case 'SHIB': basePrice = 0.003; break;    // 0.003円
+                case 'PEPE': basePrice = 0.0015; break;   // 0.0015円
+                case 'SUI': basePrice = 300; break;       // 300円前後
+                case 'ASTR': basePrice = 12; break;       // 12円前後
+                case 'XTZ': basePrice = 120; break;       // 120円前後
+                case 'XLM': basePrice = 16; break;        // 16円前後
+                case 'DAI': basePrice = 145; break;       // 145円前後（USD/JPY連動）
+                default: basePrice = 10000;
+            }
+            
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - 30); // 30日前から
 
@@ -1459,8 +1477,8 @@
                 const price = basePrice * (1 + variance);
                 
                 data.push({
-                    x: date.getTime(), // タイムスタンプ形式に変更
-                    y: Math.round(price)
+                    x: date.getTime(),
+                    y: price  // Math.round()を削除して小数点も保持
                 });
             }
             return data;
@@ -1593,6 +1611,18 @@
                             beginAtZero: false,
                             ticks: {
                                 callback: function(value) {
+                                    // SHIBとPEPEの場合は小数点以下の表示を調整
+                                    if (symbol === 'SHIB' || symbol === 'PEPE') {
+                                        if (value < 0.001) {
+                                            return '¥' + value.toFixed(6);
+                                        } else if (value < 0.01) {
+                                            return '¥' + value.toFixed(4);
+                                        } else if (value < 1) {
+                                            return '¥' + value.toFixed(3);
+                                        } else {
+                                            return '¥' + value.toFixed(2);
+                                        }
+                                    }
                                     return '¥' + value.toLocaleString();
                                 }
                             }
@@ -1627,7 +1657,7 @@
                 if (data.prices) {
                     const chartData = data.prices.map(([timestamp, price]) => ({
                         x: new Date(timestamp),
-                        y: Math.round(price)
+                        y: price  // Math.round()を削除して元の価格を保持
                     }));
                     
                     historicalData[symbol] = chartData;
