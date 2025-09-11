@@ -541,6 +541,7 @@
                                 <select id="chart-symbol-select" onchange="onSymbolSelect()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                                     <option value="">-- 銘柄を選択 --</option>
                                 </select>
+                                <button onclick="selectETHChart()" style="margin-left: 10px; padding: 8px 16px; background: #627EEA; color: white; border: none; border-radius: 4px; cursor: pointer;">ETH表示</button>
                             </div>
                             
                             <!-- チャートコンテナ -->
@@ -1027,6 +1028,11 @@
             }
             if (targetContent) {
                 targetContent.classList.add('active');
+                
+                // ETHタブが選択された場合、チャートを描画
+                if (subtabName === 'eth') {
+                    setTimeout(() => displayETHChart(), 100);
+                }
             }
         }
 
@@ -1485,6 +1491,136 @@
             loadPriceChart();
         }
 
+
+        // ETHチャート表示ボタン
+        function selectETHChart() {
+            const select = document.getElementById('chart-symbol-select');
+            if (select) {
+                select.value = 'ETH';
+                onSymbolSelect();
+            }
+        }
+
+        // ETHタブ内チャート描画
+        function displayETHChart() {
+            const canvas = document.getElementById('eth-chart-canvas');
+            if (!canvas) {
+                console.log('ETHチャートcanvas要素が見つかりません');
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 既存のチャートを削除
+            if (window.ethTabChart) {
+                window.ethTabChart.destroy();
+            }
+
+            // ETHデータ準備
+            let chartData = [];
+            if (historicalData['ETH'] && Array.isArray(historicalData['ETH'])) {
+                chartData = historicalData['ETH'];
+            } else {
+                chartData = generateDummyChartData('ETH');
+            }
+            
+            if (!chartData || chartData.length === 0) {
+                chartData = generateDummyChartData('ETH');
+            }
+
+            // チャート作成
+            window.ethTabChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'ETH 価格 (JPY)',
+                        data: chartData,
+                        borderColor: '#627EEA',
+                        backgroundColor: 'rgba(98, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 2,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        title: {
+                            display: false
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MM/dd'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '¥' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('ETHチャート描画完了');
+            
+            // ETHの履歴データを取得（まだない場合）
+            if (!historicalData['ETH']) {
+                fetchETHHistoricalData();
+            }
+        }
+
+        // ETH専用履歴データ取得
+        async function fetchETHHistoricalData() {
+            const coingeckoId = SYMBOL_MAPPING['ETH'];
+            if (!coingeckoId) {
+                console.log('ETHのCoinGecko ID が見つかりません');
+                return;
+            }
+
+            try {
+                const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
+                console.log(`ETH履歴データ取得中: ${url}`);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.prices) {
+                    const chartData = data.prices.map(([timestamp, price]) => ({
+                        x: new Date(timestamp),
+                        y: Math.round(price)
+                    }));
+                    
+                    historicalData['ETH'] = chartData;
+                    console.log(`ETH履歴データ取得完了: ${chartData.length}件`);
+                    
+                    // チャートを再描画
+                    displayETHChart();
+                }
+            } catch (error) {
+                console.error('ETH履歴データ取得エラー:', error);
+            }
+        }
+
         // 価格チャート表示
         function loadPriceChart() {
             const select = document.getElementById('chart-symbol-select');
@@ -1915,6 +2051,19 @@
                     </div>
                 </div>
             `;
+
+            // ETHの場合のみチャートを追加
+            if (symbolSummary.symbol === 'ETH') {
+                html += `
+                    <!-- ETH価格チャート -->
+                    <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 25px;">
+                        <h4 style="color: #2c3e50; margin-bottom: 20px;">📈 ETH 価格チャート（30日間）</h4>
+                        <div id="eth-chart-container" style="position: relative; height: 400px; background: white; border-radius: 8px;">
+                            <canvas id="eth-chart-canvas"></canvas>
+                        </div>
+                    </div>
+                `;
+            }
             
             return html;
         }
