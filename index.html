@@ -1101,6 +1101,39 @@
         // 価格データ関連
         let currentPrices = {};
         let lastPriceUpdate = null;
+        
+        // キャッシュ機能
+        const CACHE_DURATION_PRICE = 5 * 60 * 1000; // 5分
+        const CACHE_DURATION_CHART = 30 * 60 * 1000; // 30分
+        
+        function getCachedData(key) {
+            try {
+                const cached = localStorage.getItem(key);
+                if (cached) {
+                    const data = JSON.parse(cached);
+                    if (Date.now() - data.timestamp < data.duration) {
+                        return data.value;
+                    }
+                    localStorage.removeItem(key);
+                }
+            } catch (error) {
+                console.error('キャッシュ読み込みエラー:', error);
+            }
+            return null;
+        }
+        
+        function setCachedData(key, value, duration) {
+            try {
+                const data = {
+                    value: value,
+                    timestamp: Date.now(),
+                    duration: duration
+                };
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (error) {
+                console.error('キャッシュ保存エラー:', error);
+            }
+        }
 
         // 銘柄マッピング（CoinGecko API用）
         const SYMBOL_MAPPING = {
@@ -1307,10 +1340,25 @@
                     throw new Error('対応銘柄が見つかりません');
                 }
 
+                // キャッシュキーを生成
+                const cacheKey = `prices_${validSymbols.sort().join('_')}`;
+                
+                // キャッシュチェック
+                const cachedPrices = getCachedData(cacheKey);
+                if (cachedPrices) {
+                    console.log('価格データをキャッシュから取得:', cachedPrices);
+                    currentPrices = cachedPrices;
+                    lastPriceUpdate = new Date(cachedPrices._metadata?.lastUpdate || Date.now());
+                    
+                    updatePortfolioWithPrices();
+                    updatePriceStatus();
+                    return;
+                }
+
                 const coingeckoIds = validSymbols.map(symbol => SYMBOL_MAPPING[symbol]).join(',');
                 const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
                 
-                
+                console.log('API呼び出し実行:', url);
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`API Error: ${response.status}`);
@@ -1331,7 +1379,17 @@
                         console.log(`${symbol} (${coingeckoId}): ¥${data[coingeckoId].jpy}`);
                     }
                 }
+                
+                // メタデータ追加
+                prices._metadata = {
+                    lastUpdate: Date.now(),
+                    symbols: validSymbols
+                };
+                
                 console.log('整理された価格データ:', prices);
+                
+                // キャッシュに保存
+                setCachedData(cacheKey, prices, CACHE_DURATION_PRICE);
                 
                 // グローバル変数に保存
                 currentPrices = prices;
@@ -1647,6 +1705,18 @@
                 return;
             }
 
+            // キャッシュキーを生成
+            const cacheKey = `chart_${symbol}_30days`;
+            
+            // キャッシュチェック
+            const cachedData = getCachedData(cacheKey);
+            if (cachedData) {
+                console.log(`${symbol}チャートデータをキャッシュから取得:`, cachedData.length, '件');
+                historicalData[symbol] = cachedData;
+                displaySymbolChart(symbol);
+                return;
+            }
+
             try {
                 const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
                 console.log(`${symbol}履歴データ取得中: ${url}`);
@@ -1659,6 +1729,9 @@
                         x: new Date(timestamp),
                         y: price  // Math.round()を削除して元の価格を保持
                     }));
+                    
+                    // キャッシュに保存
+                    setCachedData(cacheKey, chartData, CACHE_DURATION_CHART);
                     
                     historicalData[symbol] = chartData;
                     console.log(`${symbol}履歴データ取得完了: ${chartData.length}件`);
