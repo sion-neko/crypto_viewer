@@ -510,6 +510,17 @@
                                 </div>
                             </div>
                             
+                            <!-- キーボードショートカット説明 -->
+                            <div style="margin-bottom: 20px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+                                <div style="font-size: 0.9rem; color: #856404; margin-bottom: 8px;">
+                                    <strong>⌨️ キーボードショートカット</strong>
+                                </div>
+                                <div style="font-size: 0.8rem; color: #6c757d; line-height: 1.4;">
+                                    <strong>タブ切り替え:</strong> Ctrl+1 (ポートフォリオ) / Ctrl+2 (取引履歴) / Ctrl+3 (価格チャート)<br>
+                                    <strong>サブタブ:</strong> Ctrl+S (サマリー) / Ctrl+← (前) / Ctrl+→ (次)
+                                </div>
+                            </div>
+                            
                             <div id="portfolio-table-container">
                                 <!-- ポートフォリオテーブルをここに表示 -->
                             </div>
@@ -1031,7 +1042,7 @@
                 
                 // 銘柄タブが選択された場合、チャートを描画（summaryは除外）
                 if (subtabName !== 'summary') {
-                    setTimeout(() => displaySymbolChart(subtabName.toUpperCase()), 100);
+                    displaySymbolChart(subtabName.toUpperCase());
                 }
             }
         }
@@ -1593,16 +1604,34 @@
                 window[chartKey].destroy();
             }
 
-            // データ準備
+            // データ準備 - 実データがある場合のみチャートを描画
             let chartData = [];
-            if (historicalData[symbol] && Array.isArray(historicalData[symbol])) {
+            if (historicalData[symbol] && Array.isArray(historicalData[symbol]) && historicalData[symbol].length > 0) {
                 chartData = historicalData[symbol];
             } else {
-                chartData = generateDummyChartData(symbol);
-            }
-            
-            if (!chartData || chartData.length === 0) {
-                chartData = generateDummyChartData(symbol);
+                // 実データがない場合はローディング表示してから取得を試行
+                console.log(`${symbol}の履歴データがありません。取得を開始します...`);
+                
+                // ローディング表示
+                const container = canvas.parentElement;
+                if (container && !container.querySelector('.loading-message')) {
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.className = 'loading-message';
+                    loadingDiv.style.cssText = `
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        color: #666;
+                        font-size: 14px;
+                        z-index: 10;
+                    `;
+                    loadingDiv.innerHTML = `📊 ${symbol}の価格データを取得中...`;
+                    container.appendChild(loadingDiv);
+                }
+                
+                fetchSymbolHistoricalData(symbol);
+                return; // ここで終了し、データ取得完了後に再度この関数が呼ばれる
             }
 
             // 銘柄別の色設定
@@ -1624,6 +1653,13 @@
             
             const color = colors[symbol] || { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
 
+            // ローディング表示を削除
+            const container = canvas.parentElement;
+            const loadingDiv = container?.querySelector('.loading-message');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+            
             // チャート作成
             window[chartKey] = new Chart(ctx, {
                 type: 'line',
@@ -2189,9 +2225,87 @@
             return html;
         }
 
+        // キーボードショートカット機能
+        function initializeKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // 入力フィールドにフォーカスがある場合はショートカットを無効化
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                // Ctrlキーが押されている場合のみ処理
+                if (!e.ctrlKey) return;
+                
+                switch (e.key) {
+                    case '1':
+                        e.preventDefault();
+                        switchTab('portfolio');
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        switchTab('trading');
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        switchTab('charts');
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        if (document.getElementById('tab-portfolio').classList.contains('active')) {
+                            switchSubtab('summary');
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        switchToPreviousSubtab();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        switchToNextSubtab();
+                        break;
+                }
+            });
+        }
+        
+        // サブタブ間の移動関数
+        function switchToPreviousSubtab() {
+            if (!document.getElementById('tab-portfolio').classList.contains('active')) return;
+            
+            const activeSubtab = document.querySelector('.subtab-button.active');
+            if (!activeSubtab) return;
+            
+            const allSubtabs = document.querySelectorAll('.subtab-button');
+            const currentIndex = Array.from(allSubtabs).indexOf(activeSubtab);
+            const previousIndex = currentIndex > 0 ? currentIndex - 1 : allSubtabs.length - 1;
+            
+            const previousSubtab = allSubtabs[previousIndex];
+            if (previousSubtab) {
+                previousSubtab.click();
+            }
+        }
+        
+        function switchToNextSubtab() {
+            if (!document.getElementById('tab-portfolio').classList.contains('active')) return;
+            
+            const activeSubtab = document.querySelector('.subtab-button.active');
+            if (!activeSubtab) return;
+            
+            const allSubtabs = document.querySelectorAll('.subtab-button');
+            const currentIndex = Array.from(allSubtabs).indexOf(activeSubtab);
+            const nextIndex = currentIndex < allSubtabs.length - 1 ? currentIndex + 1 : 0;
+            
+            const nextSubtab = allSubtabs[nextIndex];
+            if (nextSubtab) {
+                nextSubtab.click();
+            }
+        }
+
         // ページ読み込み時の初期化
         document.addEventListener('DOMContentLoaded', () => {
             console.log('暗号資産ポートフォリオビューアー 初期化完了');
+            
+            // キーボードショートカット初期化
+            initializeKeyboardShortcuts();
             
             // 既存のデータがあるかチェック（localStorage）
             const savedData = localStorage.getItem('portfolioData');
