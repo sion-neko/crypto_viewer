@@ -402,29 +402,220 @@
         @media (max-width: 768px) {
             body {
                 flex-direction: column;
+                padding: 0;
+                margin: 0;
             }
 
             .sidebar {
                 position: relative;
                 width: 100%;
                 height: auto;
-                margin-bottom: 20px;
+                margin-bottom: 15px;
+                padding: 10px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+            .sidebar-header h1 {
+                font-size: 1.5rem;
+                margin-bottom: 5px;
+            }
+
+            .sidebar-header p {
+                font-size: 0.8rem;
             }
 
             .main-content {
                 margin-left: 0;
+                padding: 10px;
             }
 
             .header h1 {
-                font-size: 2rem;
+                font-size: 1.8rem;
+                margin-bottom: 10px;
             }
             
             .upload-area, .info-section {
-                padding: 20px;
+                padding: 15px;
+                margin-bottom: 15px;
             }
             
             .upload-zone {
-                padding: 30px 15px;
+                padding: 20px 10px;
+                font-size: 0.9rem;
+            }
+
+            /* タブナビゲーション */
+            .tab-nav {
+                flex-direction: column;
+                gap: 5px;
+                margin-bottom: 15px;
+            }
+
+            .tab-button {
+                width: 100%;
+                padding: 12px 15px;
+                font-size: 1rem;
+                border-radius: 8px;
+                margin: 0;
+            }
+
+            /* サブタブナビゲーション */
+            .subtab-nav {
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+
+            .subtab-button {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+                min-width: 80px;
+                flex: 1;
+                max-width: calc(50% - 4px);
+            }
+
+            /* テーブル対応 */
+            .portfolio-table, .trading-history-table {
+                font-size: 0.8rem;
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                width: 100%;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .portfolio-table th,
+            .portfolio-table td,
+            .trading-history-table th,
+            .trading-history-table td {
+                padding: 8px 4px;
+                min-width: 60px;
+            }
+
+            /* カード形式のテーブル表示 */
+            .mobile-card-table {
+                display: block;
+            }
+
+            .mobile-card-table table {
+                display: none;
+            }
+
+            .table-card {
+                background: white;
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 10px;
+                border: 1px solid #e1e8ed;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+
+            .card-header {
+                font-weight: bold;
+                font-size: 1rem;
+                margin-bottom: 8px;
+                color: #2c3e50;
+                border-bottom: 1px solid #ecf0f1;
+                padding-bottom: 5px;
+            }
+
+            .card-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 3px 0;
+                font-size: 0.9rem;
+            }
+
+            .card-label {
+                color: #7f8c8d;
+                font-weight: 500;
+            }
+
+            .card-value {
+                font-weight: bold;
+                text-align: right;
+            }
+
+            /* 価格更新セクション */
+            #price-update-section {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+                padding: 12px;
+            }
+
+            #price-update-section button {
+                width: 100%;
+                padding: 12px;
+                font-size: 1rem;
+            }
+
+            /* キーボードショートカット説明 */
+            .keyboard-shortcuts {
+                display: none !important;
+            }
+
+            /* チャート調整 */
+            .chart-container {
+                height: 250px !important;
+                margin-bottom: 15px;
+            }
+
+            /* ボタン類 */
+            button {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+                border-radius: 6px;
+                min-height: 44px; /* タッチフレンドリー */
+            }
+
+            /* フォーム要素 */
+            input[type="file"] {
+                font-size: 1rem;
+                padding: 10px;
+            }
+
+            /* メッセージ表示 */
+            .success-message, .error-message {
+                font-size: 0.9rem;
+                padding: 10px;
+                margin: 10px 0;
+            }
+
+            /* ナビゲーション */
+            .nav-item {
+                padding: 12px 15px;
+                font-size: 0.95rem;
+                margin-bottom: 5px;
+            }
+        }
+
+        /* より小さいスマホ画面 */
+        @media (max-width: 480px) {
+            .sidebar-header h1 {
+                font-size: 1.3rem;
+            }
+
+            .main-content {
+                padding: 8px;
+            }
+
+            .subtab-button {
+                max-width: 100%;
+                margin-bottom: 5px;
+            }
+
+            .portfolio-table, .trading-history-table {
+                font-size: 0.7rem;
+            }
+
+            .tab-button {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            .chart-container {
+                height: 200px !important;
             }
         }
     </style>
@@ -511,7 +702,7 @@
                             </div>
                             
                             <!-- キーボードショートカット説明 -->
-                            <div style="margin-bottom: 20px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+                            <div class="keyboard-shortcuts" style="margin-bottom: 20px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
                                 <div style="font-size: 0.9rem; color: #856404; margin-bottom: 8px;">
                                     <strong>⌨️ キーボードショートカット</strong>
                                 </div>
@@ -1954,8 +2145,104 @@
             }
         }
 
+        // モバイルデバイス検出
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+
+        // モバイル用ポートフォリオカード生成
+        function generateMobilePortfolioCards(portfolioData) {
+            const stats = portfolioData.stats;
+            
+            // サマリーカード
+            let html = `
+                <div class="table-card" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 2px solid #3b82f6;">
+                    <div class="card-header">📊 ポートフォリオサマリー（${stats.symbolCount}銘柄）</div>
+                    <div class="card-row">
+                        <span class="card-label">総合損益</span>
+                        <span class="card-value" style="color: ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '#059669' : '#dc2626'};">
+                            ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit || stats.totalRealizedProfit).toLocaleString()}
+                            (${stats.overallProfitMargin >= 0 ? '+' : ''}${stats.overallProfitMargin.toFixed(1)}%)
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">投資額</span>
+                        <span class="card-value">¥${Math.abs(stats.totalInvestment).toLocaleString()}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">実現損益</span>
+                        <span class="card-value" style="color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                            ${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">含み損益</span>
+                        <span class="card-value" style="color: ${stats.totalUnrealizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                            ${stats.totalUnrealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit).toLocaleString()}
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            // 各銘柄のカード
+            if (portfolioData.summary) {
+                portfolioData.summary.forEach((row, index) => {
+                    const totalProfit = (row.realizedProfit || 0) + (row.unrealizedProfit || 0);
+                    const profitMargin = row.totalInvestment !== 0 ? ((totalProfit / Math.abs(row.totalInvestment)) * 100) : 0;
+                    
+                    html += `
+                        <div class="table-card">
+                            <div class="card-header" style="color: ${totalProfit >= 0 ? '#059669' : '#dc2626'};">
+                                ${row.symbol} 
+                                <span style="float: right; font-size: 0.9rem;">
+                                    ${totalProfit >= 0 ? '+' : ''}¥${Math.round(totalProfit).toLocaleString()}
+                                </span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">保有量</span>
+                                <span class="card-value">${parseFloat(row.totalHolding).toFixed(6)}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">投資額</span>
+                                <span class="card-value">¥${Math.abs(row.totalInvestment).toLocaleString()}</span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">実現損益</span>
+                                <span class="card-value" style="color: ${row.realizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                                    ${row.realizedProfit >= 0 ? '+' : ''}¥${Math.round(row.realizedProfit).toLocaleString()}
+                                </span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">含み損益</span>
+                                <span class="card-value" style="color: ${row.unrealizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                                    ${row.unrealizedProfit >= 0 ? '+' : ''}¥${Math.round(row.unrealizedProfit || 0).toLocaleString()}
+                                </span>
+                            </div>
+                            <div class="card-row">
+                                <span class="card-label">損益率</span>
+                                <span class="card-value" style="color: ${profitMargin >= 0 ? '#059669' : '#dc2626'};">
+                                    ${profitMargin >= 0 ? '+' : ''}${profitMargin.toFixed(1)}%
+                                </span>
+                            </div>
+                            ${row.currentPrice ? `
+                                <div class="card-row">
+                                    <span class="card-label">現在価格</span>
+                                    <span class="card-value">¥${row.currentPrice.toLocaleString()}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            }
+            
+            return `<div class="mobile-card-table">${html}</div>`;
+        }
+
         // ポートフォリオテーブル生成（損益計算版）
         function generatePortfolioTable(portfolioData) {
+            if (isMobile()) {
+                return generateMobilePortfolioCards(portfolioData);
+            }
             const stats = portfolioData.stats;
             const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
             
@@ -2044,8 +2331,57 @@
             return html;
         }
 
+        // モバイル用取引履歴カード生成
+        function generateMobileTradingCards(portfolioData) {
+            const allTransactions = [];
+            Object.values(portfolioData.symbols).forEach(symbolData => {
+                allTransactions.push(...symbolData.buyTransactions, ...symbolData.sellTransactions);
+            });
+            
+            allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            let html = '';
+            allTransactions.slice(0, 50).forEach((tx, index) => {
+                const date = new Date(tx.date);
+                const typeColor = tx.type === '買い' ? '#059669' : '#dc2626';
+                const typeIcon = tx.type === '買い' ? '📈' : '📉';
+                
+                html += `
+                    <div class="table-card">
+                        <div class="card-header" style="color: ${typeColor};">
+                            ${typeIcon} ${tx.symbol} - ${tx.type}
+                            <span style="float: right; font-size: 0.8rem; color: #7f8c8d;">
+                                ${date.getMonth() + 1}/${date.getDate()}
+                            </span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">数量</span>
+                            <span class="card-value">${parseFloat(tx.amount).toFixed(6)}</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">単価</span>
+                            <span class="card-value">¥${tx.price.toLocaleString()}</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">総額</span>
+                            <span class="card-value">¥${Math.abs(tx.total).toLocaleString()}</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">手数料</span>
+                            <span class="card-value">¥${(tx.fee || 0).toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return `<div class="mobile-card-table">${html}</div>`;
+        }
+
         // 取引履歴テーブル生成
         function generateTradingHistoryTable(portfolioData) {
+            if (isMobile()) {
+                return generateMobileTradingCards(portfolioData);
+            }
             const allTransactions = [];
             Object.values(portfolioData.symbols).forEach(symbolData => {
                 allTransactions.push(...symbolData.buyTransactions, ...symbolData.sellTransactions);
@@ -2306,6 +2642,21 @@
             
             // キーボードショートカット初期化
             initializeKeyboardShortcuts();
+            
+            // ウィンドウリサイズ時にテーブル表示を更新
+            window.addEventListener('resize', () => {
+                if (currentPortfolioData) {
+                    const tableContainer = document.getElementById('portfolio-table-container');
+                    if (tableContainer) {
+                        tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+                    }
+                    
+                    const tradingContainer = document.getElementById('trading-history-container');
+                    if (tradingContainer) {
+                        tradingContainer.innerHTML = generateTradingHistoryTable(currentPortfolioData);
+                    }
+                }
+            });
             
             // 既存のデータがあるかチェック（localStorage）
             const savedData = localStorage.getItem('portfolioData');
