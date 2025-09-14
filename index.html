@@ -673,7 +673,6 @@
                     <div class="tab-nav">
                         <button class="tab-button active" onclick="switchTab('portfolio')">📊 ポートフォリオ</button>
                         <button class="tab-button" onclick="switchTab('trading')">📈 取引履歴</button>
-                        <button class="tab-button" onclick="switchTab('charts')">📈 価格チャート</button>
                     </div>
 
                     <!-- ポートフォリオタブ -->
@@ -707,7 +706,7 @@
                                     <strong>⌨️ キーボードショートカット</strong>
                                 </div>
                                 <div style="font-size: 0.8rem; color: #6c757d; line-height: 1.4;">
-                                    <strong>タブ切り替え:</strong> Ctrl+1 (ポートフォリオ) / Ctrl+2 (取引履歴) / Ctrl+3 (価格チャート)<br>
+                                    <strong>タブ切り替え:</strong> Ctrl+1 (ポートフォリオ) / Ctrl+2 (取引履歴)<br>
                                     <strong>サブタブ:</strong> Ctrl+S (サマリー) / Ctrl+← (前) / Ctrl+→ (次)
                                 </div>
                             </div>
@@ -732,26 +731,6 @@
                         </div>
                     </div>
 
-                    <!-- 価格チャートタブ -->
-                    <div class="tab-content" id="tab-charts">
-                        <div class="portfolio-summary">
-                            <h3 style="color: #2c3e50;">📈 価格チャート</h3>
-                            
-                            <!-- チャート選択セクション -->
-                            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
-                                <label for="chart-symbol-select" style="font-weight: bold; margin-right: 10px;">銘柄選択:</label>
-                                <select id="chart-symbol-select" onchange="onSymbolSelect()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                    <option value="">-- 銘柄を選択 --</option>
-                                </select>
-                                <button onclick="selectETHChart()" style="margin-left: 10px; padding: 8px 16px; background: #627EEA; color: white; border: none; border-radius: 4px; cursor: pointer;">ETH表示</button>
-                            </div>
-                            
-                            <!-- チャートコンテナ -->
-                            <div id="chart-container" style="position: relative; height: 500px; background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                                <canvas id="price-chart"></canvas>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -1240,15 +1219,22 @@
 
         // 銘柄別サブタブ生成（復活版）
         function createSymbolSubtabs(portfolioData) {
+            console.log('createSymbolSubtabs called with:', portfolioData);
             const subtabNav = document.getElementById('subtab-nav');
             const symbolContainer = document.getElementById('symbol-subtabs-container');
-            
+
+            if (!subtabNav || !symbolContainer) {
+                console.error('Required DOM elements not found');
+                return;
+            }
+
             // 既存の銘柄サブタブをクリア
             subtabNav.querySelectorAll('.symbol-subtab').forEach(tab => tab.remove());
             symbolContainer.innerHTML = '';
-            
+
             // 銘柄別サブタブを生成
             if (portfolioData && portfolioData.summary) {
+                console.log('Generating symbol subtabs for', portfolioData.summary.length, 'symbols');
                 // 実現損益で降順ソート
                 const sortedSymbols = [...portfolioData.summary].sort((a, b) => b.realizedProfit - a.realizedProfit);
                 
@@ -1393,8 +1379,6 @@
             // サマリータブを明示的にアクティブに設定
             switchSubtab('summary');
             
-            // チャートタブ初期化
-            initializeChartTab();
             
             updateDataStatus(portfolioData);
             
@@ -1702,82 +1686,7 @@
         }
 
         // Chart.js関連機能
-        let priceChart = null;
         let historicalData = {};
-
-        // チャート用のダミーデータ生成
-        function generateDummyChartData(symbol) {
-            const data = [];
-            // 銘柄別の基準価格設定（2024年相場を参考）
-            let basePrice;
-            switch(symbol) {
-                case 'BTC': basePrice = 10000000; break;  // 1000万円前後
-                case 'ETH': basePrice = 400000; break;    // 40万円前後
-                case 'SOL': basePrice = 20000; break;     // 2万円前後
-                case 'XRP': basePrice = 80; break;        // 80円前後
-                case 'ADA': basePrice = 60; break;        // 60円前後
-                case 'DOGE': basePrice = 20; break;       // 20円前後
-                case 'SHIB': basePrice = 0.003; break;    // 0.003円
-                case 'PEPE': basePrice = 0.0015; break;   // 0.0015円
-                case 'SUI': basePrice = 300; break;       // 300円前後
-                case 'ASTR': basePrice = 12; break;       // 12円前後
-                case 'XTZ': basePrice = 120; break;       // 120円前後
-                case 'XLM': basePrice = 16; break;        // 16円前後
-                case 'DAI': basePrice = 145; break;       // 145円前後（USD/JPY連動）
-                default: basePrice = 10000;
-            }
-            
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - 30); // 30日前から
-
-            for (let i = 0; i < 30; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                const variance = (Math.random() - 0.5) * 0.1; // ±10%の変動
-                const price = basePrice * (1 + variance);
-                
-                data.push({
-                    x: date.getTime(),
-                    y: price  // Math.round()を削除して小数点も保持
-                });
-            }
-            return data;
-        }
-
-        // 銘柄選択時のイベントハンドラ（自動履歴データ取得）
-        async function onSymbolSelect() {
-            const select = document.getElementById('chart-symbol-select');
-            if (!select) return;
-            
-            const selectedSymbol = select.value;
-            
-            if (!selectedSymbol) {
-                // 銘柄が選択されていない場合はチャートをクリア
-                if (priceChart) {
-                    priceChart.destroy();
-                    priceChart = null;
-                }
-                return;
-            }
-
-            // 履歴データがない場合は自動取得
-            if (!historicalData[selectedSymbol]) {
-                await fetchHistoricalDataForSymbol(selectedSymbol);
-            }
-            
-            // チャート表示
-            loadPriceChart();
-        }
-
-
-        // ETHチャート表示ボタン
-        function selectETHChart() {
-            const select = document.getElementById('chart-symbol-select');
-            if (select) {
-                select.value = 'ETH';
-                onSymbolSelect();
-            }
-        }
 
         // 銘柄別チャート描画
         function displaySymbolChart(symbol) {
@@ -1971,179 +1880,9 @@
             }
         }
 
-        // 価格チャート表示
-        function loadPriceChart() {
-            const select = document.getElementById('chart-symbol-select');
-            if (!select) return;
-            
-            const selectedSymbol = select.value;
-            
-            if (!selectedSymbol) {
-                if (priceChart) {
-                    priceChart.destroy();
-                    priceChart = null;
-                }
-                return;
-            }
 
-            const canvas = document.getElementById('price-chart');
-            if (!canvas) return;
-            
-            const ctx = canvas.getContext('2d');
-            
-            // 既存のチャートを削除
-            if (priceChart) {
-                priceChart.destroy();
-            }
 
-            // データ準備（まずはダミーデータ）
-            let chartData = [];
-            if (historicalData[selectedSymbol] && Array.isArray(historicalData[selectedSymbol])) {
-                chartData = historicalData[selectedSymbol];
-            } else {
-                chartData = generateDummyChartData(selectedSymbol);
-            }
-            
-            // データが空の場合のフォールバック
-            if (!chartData || chartData.length === 0) {
-                chartData = generateDummyChartData(selectedSymbol);
-            }
 
-            // チャート作成
-            priceChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: `${selectedSymbol} 価格 (JPY)`,
-                        data: chartData,
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 2,
-                        pointHoverRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `${selectedSymbol} 価格チャート`
-                        },
-                        legend: {
-                            display: true
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                unit: 'day',
-                                displayFormats: {
-                                    day: 'M/d'
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: '日付'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: '価格 (JPY)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return '¥' + value.toLocaleString();
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // 特定銘柄の履歴データ取得（内部用）
-        async function fetchHistoricalDataForSymbol(symbol) {
-            const coingeckoId = SYMBOL_MAPPING[symbol];
-            if (!coingeckoId) {
-                console.error(`対応していない銘柄: ${symbol}`);
-                return false;
-            }
-
-            try {
-                console.log(`履歴データ取得開始: ${symbol}`);
-                
-                // 30日間のデータを取得
-                const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                // データを整形
-                const chartData = data.prices.map(([timestamp, price]) => ({
-                    x: timestamp,
-                    y: Math.round(price)
-                }));
-                
-                // データを保存
-                historicalData[symbol] = chartData;
-                
-                console.log(`履歴データ取得完了: ${symbol} (${chartData.length}件)`);
-                return true;
-                
-            } catch (error) {
-                console.error(`履歴データ取得エラー (${symbol}):`, error);
-                return false;
-            }
-        }
-
-        // 履歴データ取得（CoinGecko API）- 手動実行用（非推奨）
-        async function fetchHistoricalData() {
-            const select = document.getElementById('chart-symbol-select');
-            const selectedSymbol = select.value;
-            
-            if (!selectedSymbol) {
-                showErrorMessage('銘柄を選択してください');
-                return;
-            }
-
-            const success = await fetchHistoricalDataForSymbol(selectedSymbol);
-            
-            if (success) {
-                loadPriceChart();
-                showSuccessMessage(`${selectedSymbol}の履歴データを取得しました`);
-            } else {
-                showErrorMessage(`${selectedSymbol}の履歴データ取得に失敗しました`);
-            }
-        }
-
-        // チャートタブの初期化（銘柄選択肢を設定）
-        function initializeChartTab() {
-            const select = document.getElementById('chart-symbol-select');
-            if (!select) return;
-            
-            select.innerHTML = '<option value="">-- 銘柄を選択 --</option>';
-            
-            if (currentPortfolioData && currentPortfolioData.summary && Array.isArray(currentPortfolioData.summary)) {
-                currentPortfolioData.summary.forEach(item => {
-                    if (item && item.symbol && SYMBOL_MAPPING[item.symbol]) {
-                        const option = document.createElement('option');
-                        option.value = item.symbol;
-                        option.textContent = item.symbol;
-                        select.appendChild(option);
-                    }
-                });
-            }
-        }
 
         // モバイルデバイス検出
         function isMobile() {
@@ -2466,6 +2205,7 @@
                         <div style="text-align: center; padding: 15px; background: ${(symbolSummary.unrealizedProfit || 0) >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${(symbolSummary.unrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
                             <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">含み損益</div>
                             <div style="font-size: 18px; font-weight: 800; color: ${(symbolSummary.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(symbolSummary.unrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(symbolSummary.unrealizedProfit || 0).toLocaleString()}</div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${symbolSummary.currentHoldingInvestment > 0 ? ((symbolSummary.unrealizedProfit || 0) >= 0 ? '+' : '') + (((symbolSummary.unrealizedProfit || 0) / symbolSummary.currentHoldingInvestment) * 100).toFixed(1) + '%' : ''}</div>
                         </div>
                     </div>
                     
@@ -2499,6 +2239,18 @@
                         <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #84cc16;">
                             <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">取引回数</div>
                             <div style="font-size: 16px; font-weight: 700; color: #1e293b;">買${symbolSummary.buyTransactionCount}回・売${symbolSummary.sellTransactionCount}回</div>
+                        </div>
+
+                        <!-- 現在価格 -->
+                        <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #ec4899;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在価格</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${symbolSummary.currentPrice > 0 ? '¥' + symbolSummary.currentPrice.toLocaleString() : '取得中...'}</div>
+                        </div>
+
+                        <!-- 現在評価額 -->
+                        <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #14b8a6;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在評価額</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${symbolSummary.currentValue > 0 ? '¥' + Math.round(symbolSummary.currentValue).toLocaleString() : '計算中...'}</div>
                         </div>
                     </div>
                 </div>
@@ -2580,10 +2332,6 @@
                     case '2':
                         e.preventDefault();
                         switchTab('trading');
-                        break;
-                    case '3':
-                        e.preventDefault();
-                        switchTab('charts');
                         break;
                     case 's':
                         e.preventDefault();
