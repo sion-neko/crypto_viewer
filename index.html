@@ -944,9 +944,14 @@
             const transactions = [];
             const selectedExchange = document.querySelector('input[name="exchange"]:checked').value;
             
+            // 最初の行で列名を確認（デバッグ用）
+            if (data.length > 0) {
+                console.log('CSV列名:', Object.keys(data[0]));
+            }
+
             data.forEach(row => {
                 // GMOコイン形式
-                if ((selectedExchange === 'GMO' || selectedExchange === 'AUTO') && 
+                if ((selectedExchange === 'GMO' || selectedExchange === 'AUTO') &&
                     row['精算区分'] && row['精算区分'].includes('取引所現物取引')) {
                     const symbol = row['銘柄名'];
                     if (symbol && symbol !== 'JPY') {
@@ -957,7 +962,7 @@
                             amount: parseFloat(row['日本円受渡金額']?.replace(/,/g, '') || 0),
                             quantity: parseFloat(row['約定数量']?.replace(/,/g, '') || 0),
                             fee: parseFloat(row['注文手数料']?.replace(/,/g, '') || 0),
-                            date: row['約定日時'],
+                            date: row['日時'] || 'データなし',
                             rate: parseFloat(row['約定レート']?.replace(/,/g, '') || 0)
                         };
                         
