@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 このファイルは、このリポジトリでコードを操作する際のClaude Code (claude.ai/code) へのガイダンスを提供します。
 
 ## プロジェクト概要
@@ -62,6 +64,13 @@ CSVファイル → parseCSVFile() → mergeTransactionData() → analyzePortfol
 
 UI全体が日本語（jaロケール）です。全てのテキスト、数値フォーマット、日付処理は日本の慣例に従っています。
 
-## ビルドシステムなし
+## 開発ワークフロー
 
-これはブラウザで直接開くことができる静的HTMLファイルです。npm、webpack、その他のビルドツールは必要ありません。
+### テスト・実行方法
+- ブラウザで `index.html` を直接開くだけで実行可能
+- ビルドプロセスやパッケージ管理は不要
+- npm、webpack、その他のビルドツールは必要ありません
+
+### デバッグ
+- ブラウザの開発者ツールでコンソールログとネットワークタブを確認
+- localStorageデータは開発者ツールのApplicationタブで確認可能
