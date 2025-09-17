@@ -582,6 +582,26 @@
                 margin: 10px 0;
             }
 
+            /* トースト通知 */
+            .toast {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #28a745;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 5px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                transform: translateX(400px);
+                transition: transform 0.3s ease;
+                font-size: 0.9rem;
+            }
+
+            .toast.show {
+                transform: translateX(0);
+            }
+
             /* ナビゲーション */
             .nav-item {
                 padding: 12px 15px;
@@ -1003,7 +1023,7 @@
 
         // メッセージ表示
         function showSuccessMessage(message) {
-            alert('✅ ' + message);
+            showToast('✅ ' + message);
         }
 
         function showErrorMessage(message) {
@@ -1012,6 +1032,30 @@
 
         function showInfoMessage(message) {
             alert('ℹ️ ' + message);
+        }
+
+        // トースト通知表示
+        function showToast(message) {
+            // 既存のトーストがあれば削除
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            // 新しいトースト作成
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // アニメーション表示
+            setTimeout(() => toast.classList.add('show'), 100);
+
+            // 3秒後に自動削除
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         // ポートフォリオ分析（損益計算強化版）
@@ -1515,9 +1559,21 @@
         async function fetchCurrentPrices() {
             try {
                 console.log('価格取得開始', currentPortfolioData);
-                
-                if (!currentPortfolioData || !currentPortfolioData.summary) {
-                    throw new Error('ポートフォリオデータが見つかりません');
+
+                // ポートフォリオデータの存在確認を強化
+                if (!currentPortfolioData) {
+                    // localStorageから再読み込みを試行
+                    const storedData = localStorage.getItem('portfolioData');
+                    if (storedData) {
+                        currentPortfolioData = JSON.parse(storedData);
+                        console.log('localStorageからポートフォリオデータを復元しました');
+                    } else {
+                        throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
+                    }
+                }
+
+                if (!currentPortfolioData.summary || currentPortfolioData.summary.length === 0) {
+                    throw new Error('ポートフォリオサマリーデータが見つかりません');
                 }
 
                 // 対応銘柄のCoinGecko IDを取得
@@ -1540,8 +1596,8 @@
                     console.log('価格データをキャッシュから取得:', cachedPrices);
                     currentPrices = cachedPrices;
                     lastPriceUpdate = new Date(cachedPrices._metadata?.lastUpdate || Date.now());
-                    
-                    updatePortfolioWithPrices();
+
+                    updatePortfolioWithPrices(currentPortfolioData, currentPrices);
                     updatePriceStatus();
                     return;
                 }
