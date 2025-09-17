@@ -585,21 +585,26 @@
             /* トースト通知 */
             .toast {
                 position: fixed;
-                top: 20px;
-                right: 20px;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%) translateY(-100px);
                 background: #28a745;
                 color: white;
-                padding: 12px 20px;
-                border-radius: 5px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                z-index: 1000;
-                transform: translateX(400px);
-                transition: transform 0.3s ease;
-                font-size: 0.9rem;
+                padding: 15px 25px;
+                border-radius: 8px;
+                box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+                z-index: 99999;
+                transition: transform 0.4s ease, opacity 0.4s ease;
+                font-size: 1rem;
+                font-weight: 500;
+                opacity: 0;
+                min-width: 300px;
+                text-align: center;
             }
 
             .toast.show {
-                transform: translateX(0);
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
             }
 
             /* ナビゲーション */
@@ -1036,9 +1041,12 @@
 
         // トースト通知表示
         function showToast(message) {
+            console.log('🍞 showToast called with message:', message);
+
             // 既存のトーストがあれば削除
             const existingToast = document.querySelector('.toast');
             if (existingToast) {
+                console.log('🗑️ Removing existing toast');
                 existingToast.remove();
             }
 
@@ -1046,13 +1054,19 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.textContent = message;
+            toast.style.border = '3px solid red'; // デバッグ用の境界線
             document.body.appendChild(toast);
+            console.log('📋 Toast element created and added to body:', toast);
 
             // アニメーション表示
-            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                console.log('✨ Adding show class');
+                toast.classList.add('show');
+            }, 100);
 
             // 3秒後に自動削除
             setTimeout(() => {
+                console.log('⏰ Removing toast');
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
@@ -1598,6 +1612,13 @@
                     lastPriceUpdate = new Date(cachedPrices._metadata?.lastUpdate || Date.now());
 
                     updatePortfolioWithPrices(currentPortfolioData, currentPrices);
+
+                    // 現在のソート順を維持してテーブル再描画
+                    sortPortfolioData(currentSortField, currentSortDirection);
+                    const tableContainer = document.getElementById('portfolio-table-container');
+                    tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+
+                    showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄 (キャッシュ)`);
                     updatePriceStatus();
                     return;
                 }
