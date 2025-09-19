@@ -586,25 +586,39 @@
             .toast {
                 position: fixed;
                 top: 80px;
-                left: 50%;
-                transform: translateX(-50%) translateY(-100px);
-                background: #28a745;
+                right: 20px;
+                transform: translateX(120%);
+                background: linear-gradient(135deg, #28a745, #20c997);
                 color: white;
-                padding: 15px 25px;
-                border-radius: 8px;
-                box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+                padding: 16px 24px;
+                border-radius: 12px;
+                box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
                 z-index: 99999;
-                transition: transform 0.4s ease, opacity 0.4s ease;
+                transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s ease;
                 font-size: 1rem;
                 font-weight: 500;
                 opacity: 0;
-                min-width: 300px;
-                text-align: center;
+                min-width: 320px;
+                max-width: 400px;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(10px);
             }
 
             .toast.show {
-                transform: translateX(-50%) translateY(0);
+                transform: translateX(0);
                 opacity: 1;
+            }
+
+            .toast::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(45deg, rgba(255,255,255,0.1), transparent);
+                border-radius: 12px;
+                pointer-events: none;
             }
 
             /* ナビゲーション */
@@ -1054,22 +1068,25 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.textContent = message;
-            toast.style.border = '3px solid red'; // デバッグ用の境界線
             document.body.appendChild(toast);
             console.log('📋 Toast element created and added to body:', toast);
 
-            // アニメーション表示
+            // スライドイン表示
             setTimeout(() => {
                 console.log('✨ Adding show class');
                 toast.classList.add('show');
             }, 100);
 
-            // 3秒後に自動削除
+            // 4秒後にフェードアウト開始
             setTimeout(() => {
-                console.log('⏰ Removing toast');
+                console.log('⏰ Starting toast fadeout');
                 toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+                // フェードアウト完了後に要素削除
+                setTimeout(() => {
+                    console.log('🗑️ Removing toast element');
+                    toast.remove();
+                }, 500);
+            }, 4000);
         }
 
         // ポートフォリオ分析（損益計算強化版）
