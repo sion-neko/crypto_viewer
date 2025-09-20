@@ -228,6 +228,43 @@
             margin-top: 20px;
         }
 
+        .loaded-files-info {
+            margin-top: 20px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.2);
+        }
+
+        .loaded-files-header h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .loaded-files-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .file-tag {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            border: 1px solid #bbdefb;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .file-tag .file-icon {
+            font-size: 1rem;
+        }
+
         .no-data-message {
             text-align: center;
             background: rgba(255, 255, 255, 0.95);
@@ -699,6 +736,16 @@
                     <p>あなたの暗号資産投資の詳細分析</p>
                 </div>
 
+                <!-- 読み込み済みファイル情報 -->
+                <div class="loaded-files-info" id="loadedFilesInfo" style="display: none;">
+                    <div class="loaded-files-header">
+                        <h3>📁 読み込み済みファイル</h3>
+                    </div>
+                    <div class="loaded-files-list" id="loadedFilesList">
+                        <!-- ファイル名がここに表示される -->
+                    </div>
+                </div>
+
                 <div class="dashboard-area" id="dashboardArea">
                     <div class="no-data-message">
                         <h3>📄 データがありません</h3>
@@ -889,8 +936,14 @@
                 .then(results => {
                     const newData = results.flat();
                     console.log('新規取引データ:', newData.length, '件');
-                    
+
                     if (newData.length > 0) {
+                        // ファイル名を保存
+                        const fileNames = csvFiles.map(file => file.name);
+                        const existingFileNames = getLoadedFileNames();
+                        const allFileNames = [...new Set([...existingFileNames, ...fileNames])];
+                        saveLoadedFileNames(allFileNames);
+
                         // 重複データを除外して統合
                         const mergedData = mergeTransactionData(existingData, newData);
                         const addedCount = mergedData.length - existingData.length;
@@ -1051,6 +1104,42 @@
 
         function showInfoMessage(message) {
             alert('ℹ️ ' + message);
+        }
+
+        // ファイル名を保存
+        function saveLoadedFileNames(fileNames) {
+            localStorage.setItem('loadedFileNames', JSON.stringify(fileNames));
+        }
+
+        // 保存されたファイル名を取得
+        function getLoadedFileNames() {
+            const stored = localStorage.getItem('loadedFileNames');
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        // 読み込み済みファイル情報を表示
+        function displayLoadedFiles() {
+            const fileNames = getLoadedFileNames();
+            const infoElement = document.getElementById('loadedFilesInfo');
+            const listElement = document.getElementById('loadedFilesList');
+
+            console.log('📁 displayLoadedFiles called, fileNames:', fileNames);
+            console.log('📁 infoElement:', infoElement);
+            console.log('📁 listElement:', listElement);
+
+            if (fileNames.length > 0) {
+                console.log('📁 Showing loaded files info');
+                infoElement.style.display = 'block';
+                listElement.innerHTML = fileNames.map(fileName =>
+                    `<span class="file-tag">
+                        <span class="file-icon">📄</span>
+                        ${fileName}
+                    </span>`
+                ).join('');
+            } else {
+                console.log('📁 No files to display, hiding info');
+                infoElement.style.display = 'none';
+            }
         }
 
         // トースト通知表示
@@ -1430,7 +1519,10 @@
             
             // 旧表示エリアを非表示
             document.getElementById('dashboardArea').style.display = 'none';
-            
+
+            // 読み込み済みファイル情報を表示
+            displayLoadedFiles();
+
             // タブコンテナを表示
             document.getElementById('tabContainer').style.display = 'block';
             
@@ -2666,7 +2758,10 @@
         // ページ読み込み時の初期化
         document.addEventListener('DOMContentLoaded', () => {
             console.log('暗号資産ポートフォリオビューアー 初期化完了');
-            
+
+            // 保存されたファイル名を表示
+            displayLoadedFiles();
+
             // キーボードショートカット初期化
             initializeKeyboardShortcuts();
             
