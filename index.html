@@ -228,43 +228,6 @@
             margin-top: 20px;
         }
 
-        .loaded-files-info {
-            margin-top: 20px;
-            margin-bottom: 15px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.2);
-        }
-
-        .loaded-files-header h3 {
-            margin: 0 0 10px 0;
-            color: #2c3e50;
-            font-size: 1.1rem;
-        }
-
-        .loaded-files-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .file-tag {
-            background: #e3f2fd;
-            color: #1565c0;
-            padding: 6px 12px;
-            border-radius: 16px;
-            font-size: 0.85rem;
-            border: 1px solid #bbdefb;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .file-tag .file-icon {
-            font-size: 1rem;
-        }
-
         .no-data-message {
             text-align: center;
             background: rgba(255, 255, 255, 0.95);
@@ -713,8 +676,20 @@
             </button>
         </nav>
 
+        <!-- 読み込み済みファイル一覧 -->
+        <div id="sidebar-files-section" style="margin-top: 20px; display: none;">
+            <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #495057; display: flex; align-items: center; gap: 5px;">
+                    📁 読み込み済みファイル
+                </h3>
+                <div id="sidebar-files-list" style="max-height: 120px; overflow-y: auto;">
+                    <!-- ファイル名がここに表示される -->
+                </div>
+            </div>
+        </div>
+
         <!-- データ状態表示 -->
-        <div style="margin-top: 30px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 10px; font-size: 0.9rem;">
+        <div style="margin-top: 20px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 10px; font-size: 0.9rem;">
             <div id="data-status" style="color: #7f8c8d;">データなし</div>
         </div>
 
@@ -734,16 +709,6 @@
                 <div class="header">
                     <h1>📊 ポートフォリオダッシュボード</h1>
                     <p>あなたの暗号資産投資の詳細分析</p>
-                </div>
-
-                <!-- 読み込み済みファイル情報 -->
-                <div class="loaded-files-info" id="loadedFilesInfo" style="display: none;">
-                    <div class="loaded-files-header">
-                        <h3>📁 読み込み済みファイル</h3>
-                    </div>
-                    <div class="loaded-files-list" id="loadedFilesList">
-                        <!-- ファイル名がここに表示される -->
-                    </div>
                 </div>
 
                 <div class="dashboard-area" id="dashboardArea">
@@ -1117,28 +1082,38 @@
             return stored ? JSON.parse(stored) : [];
         }
 
-        // 読み込み済みファイル情報を表示
+        // 読み込み済みファイル情報を表示（サイドバー版）
         function displayLoadedFiles() {
             const fileNames = getLoadedFileNames();
-            const infoElement = document.getElementById('loadedFilesInfo');
-            const listElement = document.getElementById('loadedFilesList');
+            const sidebarSection = document.getElementById('sidebar-files-section');
+            const sidebarList = document.getElementById('sidebar-files-list');
 
             console.log('📁 displayLoadedFiles called, fileNames:', fileNames);
-            console.log('📁 infoElement:', infoElement);
-            console.log('📁 listElement:', listElement);
 
             if (fileNames.length > 0) {
-                console.log('📁 Showing loaded files info');
-                infoElement.style.display = 'block';
-                listElement.innerHTML = fileNames.map(fileName =>
-                    `<span class="file-tag">
-                        <span class="file-icon">📄</span>
-                        ${fileName}
-                    </span>`
+                console.log('📁 Showing loaded files in sidebar');
+                sidebarSection.style.display = 'block';
+                sidebarList.innerHTML = fileNames.map(fileName =>
+                    `<div style="
+                        background: white;
+                        padding: 8px 10px;
+                        margin-bottom: 5px;
+                        border-radius: 6px;
+                        border: 1px solid #dee2e6;
+                        font-size: 0.8rem;
+                        color: #495057;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    ">
+                        <span style="font-size: 0.9rem;">📄</span>
+                        <span style="word-break: break-all;">${fileName}</span>
+                    </div>`
                 ).join('');
             } else {
-                console.log('📁 No files to display, hiding info');
-                infoElement.style.display = 'none';
+                console.log('📁 No files to display, hiding sidebar section');
+                sidebarSection.style.display = 'none';
             }
         }
 
@@ -1519,9 +1494,6 @@
             
             // 旧表示エリアを非表示
             document.getElementById('dashboardArea').style.display = 'none';
-
-            // 読み込み済みファイル情報を表示
-            displayLoadedFiles();
 
             // タブコンテナを表示
             document.getElementById('tabContainer').style.display = 'block';
