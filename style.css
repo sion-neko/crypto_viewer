@@ -21,9 +21,80 @@ body {
     padding: 20px;
     height: 100vh;
     position: fixed;
-    left: 0;
+    left: -240px;
     top: 0;
     overflow-y: auto;
+    transition: left 0.3s ease;
+    z-index: 1000;
+}
+
+/* ホバーエリアを拡張するための見えないエリア */
+.sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -60px;
+    width: 60px;
+    height: 100%;
+    background: transparent;
+    z-index: -1;
+}
+
+.sidebar:hover {
+    left: 0;
+}
+
+/* ミニマルな縦線インジケーター */
+.sidebar::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -4px;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 60px;
+    background: linear-gradient(to bottom,
+        transparent 0%,
+        rgba(52, 152, 219, 0.3) 20%,
+        rgba(52, 152, 219, 0.8) 50%,
+        rgba(52, 152, 219, 0.3) 80%,
+        transparent 100%
+    );
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 0 rgba(52, 152, 219, 0);
+}
+
+.sidebar:hover::after,
+.sidebar-trigger:hover + .sidebar::after {
+    width: 4px;
+    height: 120px;
+    background: linear-gradient(to bottom,
+        transparent 0%,
+        rgba(52, 152, 219, 0.6) 10%,
+        rgba(52, 152, 219, 1) 50%,
+        rgba(52, 152, 219, 0.6) 90%,
+        transparent 100%
+    );
+    box-shadow: 0 0 20px rgba(52, 152, 219, 0.5);
+    right: -6px;
+}
+
+/* ホバートリガーエリア */
+.sidebar-trigger {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 30px;
+    height: 100vh;
+    z-index: 999;
+    background: transparent;
+    cursor: pointer;
+}
+
+.sidebar-trigger:hover + .sidebar {
+    left: 0;
 }
 
 .sidebar-header {
@@ -74,8 +145,9 @@ body {
 
 .main-content {
     flex: 1;
-    margin-left: 280px;
+    margin-left: 20px;
     padding: 20px;
+    transition: margin-left 0.3s ease;
 }
 
 .container {
@@ -403,6 +475,17 @@ body {
         margin-bottom: 15px;
         padding: 10px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        left: 0 !important;
+        transition: none;
+    }
+
+    .sidebar::before,
+    .sidebar::after {
+        display: none;
+    }
+
+    .main-content {
+        margin-left: 0;
     }
 
     .sidebar-header h1 {
