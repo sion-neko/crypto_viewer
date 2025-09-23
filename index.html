@@ -30,17 +30,6 @@
             </button>
         </nav>
 
-        <!-- 読み込み済みファイル一覧 -->
-        <div id="sidebar-files-section" style="margin-top: 20px; display: none;">
-            <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-                <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #495057; display: flex; align-items: center; gap: 5px;">
-                    📁 読み込み済みファイル
-                </h3>
-                <div id="sidebar-files-list" style="max-height: 120px; overflow-y: auto;">
-                    <!-- ファイル名がここに表示される -->
-                </div>
-            </div>
-        </div>
 
         <!-- データ状態表示 -->
         <div style="margin-top: 20px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-radius: 10px; font-size: 0.9rem;">
@@ -175,6 +164,18 @@
                             📂 ファイルを選択
                         </button>
                         <input type="file" id="fileInput" class="file-input" accept=".csv" multiple>
+                    </div>
+                </div>
+
+                <!-- 読み込み済みファイル一覧 -->
+                <div id="upload-files-section" style="margin-top: 20px; margin-bottom: 30px; display: none;">
+                    <div style="background: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; padding: 20px;">
+                        <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #495057; display: flex; align-items: center; gap: 8px;">
+                            📁 読み込み済みファイル
+                        </h3>
+                        <div id="upload-files-list" style="max-height: 150px; overflow-y: auto;">
+                            <!-- ファイル名がここに表示される -->
+                        </div>
                     </div>
                 </div>
 

@@ -358,34 +358,36 @@ function getLoadedFileNames() {
     return stored ? JSON.parse(stored) : [];
 }
 
-// 読み込み済みファイル情報を表示（サイドバー版）
+// 読み込み済みファイル情報を表示（アップロードタブのみ）
 function displayLoadedFiles() {
     const fileNames = getLoadedFileNames();
-    const sidebarSection = document.getElementById('sidebar-files-section');
-    const sidebarList = document.getElementById('sidebar-files-list');
+    const uploadSection = document.getElementById('upload-files-section');
+    const uploadList = document.getElementById('upload-files-list');
 
     if (fileNames.length > 0) {
-        sidebarSection.style.display = 'block';
-        sidebarList.innerHTML = fileNames.map(fileName =>
+        uploadSection.style.display = 'block';
+        uploadList.innerHTML = fileNames.map(fileName =>
             `<div style="
                 background: white;
-                padding: 8px 10px;
-                margin-bottom: 5px;
-                border-radius: 6px;
+                padding: 12px 15px;
+                margin-bottom: 8px;
+                border-radius: 8px;
                 border: 1px solid #dee2e6;
-                font-size: 0.8rem;
+                font-size: 0.95rem;
                 color: #495057;
                 display: flex;
                 align-items: center;
-                gap: 6px;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            ">
-                <span style="font-size: 0.9rem;">📄</span>
-                <span style="word-break: break-all;">${fileName}</span>
+                gap: 10px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)'">
+                <span style="font-size: 1.2rem;">📄</span>
+                <span style="word-break: break-all; flex: 1;">${fileName}</span>
+                <span style="font-size: 0.8rem; color: #28a745; background: #d4edda; padding: 2px 8px; border-radius: 12px;">読み込み済み</span>
             </div>`
         ).join('');
     } else {
-        sidebarSection.style.display = 'none';
+        uploadSection.style.display = 'none';
     }
 }
 
@@ -394,11 +396,15 @@ function clearAllData() {
     if (confirm('本当に全てのデータをクリアしますか？この操作は元に戻せません。')) {
         localStorage.removeItem('portfolioData');
         localStorage.removeItem('rawTransactions');
+        localStorage.removeItem('loadedFileNames');
 
         // UI初期状態に戻す
         document.getElementById('dashboardArea').style.display = 'block';
         document.getElementById('tabContainer').style.display = 'none';
         updateDataStatus(null);
+
+        // ファイル表示もクリア
+        displayLoadedFiles();
 
         showSuccessMessage('全データをクリアしました');
     }
