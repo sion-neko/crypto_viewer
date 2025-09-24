@@ -69,10 +69,14 @@ async function fetchCurrentPrices() {
             const tableContainer = document.getElementById('portfolio-table-container');
             tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
 
-            showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄 (キャッシュ)`);
+            // キャッシュから取得した場合の通知
+            showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄`);
             updatePriceStatus();
             return;
         }
+
+        // API取得開始の通知
+        showInfoMessage('価格データを取得中...');
 
         const coingeckoIds = validSymbols.map(symbol => SYMBOL_MAPPING[symbol]).join(',');
         const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
@@ -121,11 +125,13 @@ async function fetchCurrentPrices() {
         const tableContainer = document.getElementById('portfolio-table-container');
         tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
 
+        // 成功通知を表示
         showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄`);
         updatePriceStatus();
 
     } catch (error) {
         console.error('価格取得エラー:', error);
+        // エラー通知を表示
         showErrorMessage(`価格取得失敗: ${error.message}`);
         updatePriceStatus('取得失敗');
     }

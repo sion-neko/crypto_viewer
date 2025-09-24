@@ -2,33 +2,8 @@
 // MAIN.JS - File handling, CSV processing, UI navigation, utilities
 // ===================================================================
 
-// DOM Elements and Event Listeners
-const uploadZone = document.getElementById('uploadZone');
-const fileInput = document.getElementById('fileInput');
-const dashboardArea = document.getElementById('dashboardArea');
-
-// ドラッグ&ドロップ機能
-uploadZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadZone.classList.add('drag-over');
-});
-
-uploadZone.addEventListener('dragleave', () => {
-    uploadZone.classList.remove('drag-over');
-});
-
-uploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadZone.classList.remove('drag-over');
-    const files = e.dataTransfer.files;
-    handleFiles(files);
-});
-
-// ファイル選択機能
-fileInput.addEventListener('change', (e) => {
-    const files = e.target.files;
-    handleFiles(files);
-});
+// DOM Elements and Event Listeners (will be initialized in DOMContentLoaded)
+let uploadZone, fileInput, dashboardArea;
 
 // ファイル処理（データ統合版）
 function handleFiles(files) {
@@ -129,11 +104,11 @@ function parseCSVFile(file) {
         Papa.parse(file, {
             header: true,
             encoding: 'UTF-8',
-            complete: function(results) {
+            complete: function (results) {
                 const processedData = processCSVData(results.data, file.name);
                 resolve(processedData);
             },
-            error: function(error) {
+            error: function (error) {
                 console.error(`${file.name} 解析エラー:`, error);
                 reject(error);
             }
@@ -301,47 +276,102 @@ function switchToNextSubtab() {
 // MESSAGE AND NOTIFICATION FUNCTIONS
 // ===================================================================
 
-// メッセージ表示
+// メッセージ表示（シンプル版）
 function showSuccessMessage(message) {
-    showToast('✅ ' + message);
+    showSimpleToast(message, 'success');
 }
 
 function showErrorMessage(message) {
-    alert('❌ ' + message);
+    showSimpleToast(message, 'error');
 }
 
 function showInfoMessage(message) {
-    alert('ℹ️ ' + message);
+    showSimpleToast(message, 'info');
 }
 
-// トースト通知表示
-function showToast(message) {
+function showWarningMessage(message) {
+    showSimpleToast(message, 'warning');
+}
+
+// ===================================================================
+// SIMPLE TOAST SYSTEM (FALLBACK)
+// ===================================================================
+
+// シンプルなトースト表示関数（フォールバック）
+function showSimpleToast(message, type = 'success') {
     // 既存のトーストがあれば削除
-    const existingToast = document.querySelector('.toast');
+    const existingToast = document.querySelector('.simple-toast');
     if (existingToast) {
         existingToast.remove();
     }
 
     // 新しいトースト作成
     const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = message;
+    toast.className = 'simple-toast';
+
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${colors[type] || colors.success};
+        color: white;
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 99999;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 14px;
+        max-width: 350px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    `;
+
+    toast.innerHTML = `
+        <span>${icons[type] || icons.success}</span>
+        <span>${message}</span>
+    `;
+
     document.body.appendChild(toast);
 
-    // スライドイン表示
+    // 表示アニメーション
     setTimeout(() => {
-        toast.classList.add('show');
+        toast.style.transform = 'translateX(0)';
     }, 100);
 
-    // 4秒後にフェードアウト開始
+    // 自動削除
     setTimeout(() => {
-        toast.classList.remove('show');
-        // フェードアウト完了後に要素削除
+        toast.style.transform = 'translateX(100%)';
         setTimeout(() => {
-            toast.remove();
-        }, 500);
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
     }, 4000);
 }
+
+// 後方互換性のための関数
+function showToast(message) {
+    showSimpleToast(message, 'success');
+}
+
+
 
 // ===================================================================
 // FILE MANAGEMENT FUNCTIONS
@@ -500,6 +530,37 @@ function setCachedData(key, value, duration) {
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM要素を初期化
+    uploadZone = document.getElementById('uploadZone');
+    fileInput = document.getElementById('fileInput');
+    dashboardArea = document.getElementById('dashboardArea');
+
+    // イベントリスナーを設定
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            handleFiles(files);
+        });
+    }
+
     // 保存されたファイル名を表示
     displayLoadedFiles();
 
@@ -537,3 +598,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDataStatus(null);
     }
 });
+
+// グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
+(function () {
+    // 関数が定義されているか確認してからグローバルに設定
+    if (typeof showPage === 'function') window.showPage = showPage;
+    if (typeof switchTab === 'function') window.switchTab = switchTab;
+    if (typeof switchSubtab === 'function') window.switchSubtab = switchSubtab;
+    if (typeof clearAllData === 'function') window.clearAllData = clearAllData;
+})();

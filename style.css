@@ -655,7 +655,67 @@ body {
         margin: 10px 0;
     }
 
-    /* トースト通知 */
+    /* 改善版トースト通知 */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 99999;
+        pointer-events: none;
+    }
+
+    .toast-item {
+        position: relative;
+        background: #28a745;
+        color: white;
+        padding: 16px 20px;
+        margin-bottom: 10px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        transform: translateX(120%);
+        transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease;
+        opacity: 0;
+        pointer-events: auto;
+        min-width: 320px;
+        max-width: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 1rem;
+        font-weight: 500;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+    }
+
+    .toast-item.toast-show {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    .toast-item.toast-success {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    }
+
+    .toast-item.toast-error {
+        background: linear-gradient(135deg, #dc3545, #e74c3c);
+        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+    }
+
+    .toast-item.toast-warning {
+        background: linear-gradient(135deg, #ffc107, #ffb300);
+        box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+        color: #212529;
+    }
+
+    .toast-item.toast-info {
+        background: linear-gradient(135deg, #17a2b8, #138496);
+        box-shadow: 0 8px 25px rgba(23, 162, 184, 0.3);
+    }
+
+    /* 後方互換性のための旧クラス */
     .toast {
         position: fixed;
         top: 80px;
@@ -680,18 +740,6 @@ body {
     .toast.show {
         transform: translateX(0);
         opacity: 1;
-    }
-
-    .toast::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(45deg, rgba(255,255,255,0.1), transparent);
-        border-radius: 12px;
-        pointer-events: none;
     }
 
     /* ナビゲーション */
