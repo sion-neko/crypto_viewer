@@ -142,22 +142,42 @@ function updatePortfolioWithPrices(portfolioData, prices) {
     let totalUnrealizedProfit = 0;
 
     portfolioData.summary.forEach(item => {
-        if (prices[item.symbol] && item.holdingQuantity > 0) {
+        // 価格データが存在する場合
+        if (prices[item.symbol]) {
             const currentPrice = prices[item.symbol].price_jpy;
-            const currentValue = item.holdingQuantity * currentPrice;
-            // 現在保有分の投資額 = 保有数量 × 平均購入レート
-            const currentHoldingCost = item.holdingQuantity * item.averagePurchaseRate;
-            const unrealizedProfit = currentValue - currentHoldingCost;
-
-            // 含み損益を追加
             item.currentPrice = currentPrice;
-            item.currentValue = currentValue;
-            item.unrealizedProfit = unrealizedProfit;
-            item.totalProfit = item.realizedProfit + unrealizedProfit;
+            
+            // 保有量が正の場合のみ含み損益を計算
+            if (item.holdingQuantity > 0 && item.averagePurchaseRate > 0) {
+                const currentValue = item.holdingQuantity * currentPrice;
+                // 現在保有分の投資額 = 保有数量 × 平均購入レート
+                const currentHoldingCost = item.holdingQuantity * item.averagePurchaseRate;
+                const unrealizedProfit = currentValue - currentHoldingCost;
 
-            totalUnrealizedProfit += unrealizedProfit;
+                // デバッグログ（開発時のみ）
+                console.log(`${item.symbol} 含み損益計算:`, {
+                    holdingQuantity: item.holdingQuantity,
+                    currentPrice: currentPrice,
+                    averagePurchaseRate: item.averagePurchaseRate,
+                    currentValue: currentValue,
+                    currentHoldingCost: currentHoldingCost,
+                    unrealizedProfit: unrealizedProfit
+                });
+
+                // 含み損益を追加
+                item.currentValue = currentValue;
+                item.unrealizedProfit = unrealizedProfit;
+                item.totalProfit = item.realizedProfit + unrealizedProfit;
+
+                totalUnrealizedProfit += unrealizedProfit;
+            } else {
+                // 保有量が0以下の場合（完全売却済み）
+                item.currentValue = 0;
+                item.unrealizedProfit = 0;
+                item.totalProfit = item.realizedProfit;
+            }
         } else {
-            // 価格データがない場合はゼロで初期化
+            // 価格データがない場合
             item.currentPrice = 0;
             item.currentValue = 0;
             item.unrealizedProfit = 0;
