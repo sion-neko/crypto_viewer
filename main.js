@@ -235,6 +235,13 @@ function switchSubtab(subtabName) {
         // 銘柄タブが選択された場合、チャートを描画（summaryは除外）
         if (subtabName !== 'summary') {
             displaySymbolChart(subtabName.toUpperCase());
+            
+            // ETHの場合は損益推移チャートも描画
+            if (subtabName.toUpperCase() === 'ETH') {
+                setTimeout(() => {
+                    renderETHProfitChart();
+                }, 100); // DOM更新後に実行
+            }
         }
     }
 }
