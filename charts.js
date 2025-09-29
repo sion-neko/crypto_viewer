@@ -6,24 +6,54 @@
 let historicalData = {};
 let profitChartInstance = null;
 
+// API使用状況の監視
+let apiCallCount = 0;
+const API_CALL_LIMIT = 50; // CoinGecko無料プランの制限
+
 // ===================================================================
 // PRICE HISTORY FUNCTIONS
 // ===================================================================
 
-// ETHの過去1か月の価格履歴を取得
-async function fetchETHPriceHistory() {
-    const cacheKey = 'eth_price_history_30d';
+// 銘柄の過去1か月の価格履歴を取得（汎用版）
+async function fetchSymbolPriceHistory(symbol) {
+    // api.jsのSYMBOL_MAPPINGを参照
+    const SYMBOL_MAPPING = {
+        'BTC': 'bitcoin',
+        'ETH': 'ethereum',
+        'SOL': 'solana',
+        'XRP': 'ripple',
+        'ADA': 'cardano',
+        'DOGE': 'dogecoin',
+        'ASTR': 'astar',
+        'XTZ': 'tezos',
+        'XLM': 'stellar',
+        'SHIB': 'shiba-inu',
+        'PEPE': 'pepe',
+        'SUI': 'sui',
+        'DAI': 'dai'
+    };
+
+    const coingeckoId = SYMBOL_MAPPING[symbol];
+    if (!coingeckoId) {
+        throw new Error(`${symbol}はサポートされていない銘柄です`);
+    }
+
+    const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
     
     // キャッシュチェック（1時間有効）
     const cachedData = getCachedData(cacheKey, 60 * 60 * 1000);
     if (cachedData) {
-        console.log('ETH価格履歴をキャッシュから取得');
+        console.log(`${symbol}価格履歴をキャッシュから取得`);
         return cachedData;
     }
 
     try {
         // CoinGecko APIで過去30日の価格データを取得
-        const url = 'https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=jpy&days=30&interval=daily';
+        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30&interval=daily`;
+        
+        // API呼び出し回数を記録
+        apiCallCount++;
+        console.log(`API呼び出し: ${apiCallCount}/${API_CALL_LIMIT} - ${symbol}価格履歴`);
         
         const response = await fetch(url);
         if (!response.ok) {
@@ -42,16 +72,27 @@ async function fetchETHPriceHistory() {
             price: price
         }));
 
+        // 最新価格を現在価格として保存（API効率化）
+        if (priceHistory.length > 0) {
+            const latestPrice = priceHistory[priceHistory.length - 1].price;
+            updateSymbolCurrentPrice(symbol, latestPrice);
+        }
+
         // キャッシュに保存
         setCachedData(cacheKey, priceHistory, 60 * 60 * 1000);
         
-        console.log(`ETH価格履歴を取得: ${priceHistory.length}日分`);
+        console.log(`${symbol}価格履歴を取得: ${priceHistory.length}日分`);
         return priceHistory;
 
     } catch (error) {
-        console.error('ETH価格履歴取得エラー:', error);
+        console.error(`${symbol}価格履歴取得エラー:`, error);
         throw error;
     }
+}
+
+// ETH専用関数（後方互換性のため）
+async function fetchETHPriceHistory() {
+    return await fetchSymbolPriceHistory('ETH');
 }
 
 // キャッシュ機能（charts.js用）
@@ -84,57 +125,161 @@ function setCachedData(key, value, duration) {
     }
 }
 
+// 銘柄の現在価格を更新（API効率化）
+function updateSymbolCurrentPrice(symbol, price) {
+    try {
+        // currentPortfolioDataが利用可能な場合、現在価格を更新
+        const portfolioData = window.currentPortfolioData;
+        if (portfolioData && portfolioData.summary) {
+            const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
+            if (symbolSummary) {
+                symbolSummary.currentPrice = price;
+                
+                // 含み損益も再計算
+                if (symbolSummary.holdingQuantity > 0 && symbolSummary.averagePurchaseRate > 0) {
+                    const currentValue = symbolSummary.holdingQuantity * price;
+                    const holdingCost = symbolSummary.holdingQuantity * symbolSummary.averagePurchaseRate;
+                    symbolSummary.currentValue = currentValue;
+                    symbolSummary.unrealizedProfit = currentValue - holdingCost;
+                    symbolSummary.totalProfit = symbolSummary.realizedProfit + symbolSummary.unrealizedProfit;
+                }
+                
+                console.log(`${symbol}の現在価格を更新: ¥${price.toLocaleString()}`);
+            }
+        }
+    } catch (error) {
+        console.error('現在価格更新エラー:', error);
+    }
+}
+
 // ===================================================================
 // PROFIT CHART FUNCTIONS
 // ===================================================================
 
-// ETH損益推移チャートを描画
-async function renderETHProfitChart() {
+// 複数銘柄の価格履歴を効率的に取得
+async function fetchMultipleSymbolPriceHistories(symbols) {
+    const results = {};
+    const promises = symbols.map(async (symbol) => {
+        try {
+            const priceHistory = await fetchSymbolPriceHistory(symbol);
+            results[symbol] = priceHistory;
+        } catch (error) {
+            console.warn(`${symbol}の価格履歴取得をスキップ:`, error.message);
+            results[symbol] = null;
+        }
+    });
+    
+    await Promise.all(promises);
+    return results;
+}
+
+// 銘柄別損益推移チャートを描画（汎用版）
+async function renderSymbolProfitChart(symbol) {
+    console.log(`🔄 renderSymbolProfitChart called for ${symbol}`);
+    
     // portfolio.jsのcurrentPortfolioDataを参照
     const portfolioData = window.currentPortfolioData || currentPortfolioData;
     if (!portfolioData) {
-        console.log('Portfolio data not available');
+        console.error('❌ Portfolio data not available');
         return;
     }
 
-    // ETHの取引データを取得
-    const ethData = portfolioData.symbols['ETH'];
-    if (!ethData || !ethData.allTransactions || ethData.allTransactions.length === 0) {
-        console.log('ETH transaction data not found');
+    // 指定銘柄の取引データを取得
+    const symbolData = portfolioData.symbols[symbol];
+    if (!symbolData || !symbolData.allTransactions || symbolData.allTransactions.length === 0) {
+        console.error(`❌ ${symbol} transaction data not found`);
         return;
     }
 
+    const canvasId = `${symbol.toLowerCase()}-profit-chart`;
+    console.log(`📊 Canvas ID: ${canvasId}`);
+    
+    // Canvas要素の存在確認
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error(`❌ Canvas element not found: ${canvasId}`);
+        return;
+    }
+    
     // ローディング表示
-    showLoadingMessage('eth-profit-chart', 'ETHの価格履歴を取得中...');
+    showLoadingMessage(canvasId, `${symbol}の価格履歴を取得中...`);
 
     try {
-        // 過去1か月のETH価格履歴を取得
-        const priceHistory = await fetchETHPriceHistory();
+        console.log(`📈 Fetching price history for ${symbol}...`);
+        
+        // 過去1か月の価格履歴を取得
+        const priceHistory = await fetchSymbolPriceHistory(symbol);
         
         if (!priceHistory || priceHistory.length === 0) {
             throw new Error('価格履歴データを取得できませんでした');
         }
 
+        console.log(`✅ Price history fetched: ${priceHistory.length} days`);
+
         // 時系列総合損益データを生成
-        const profitData = generateHistoricalProfitTimeSeries('ETH', ethData.allTransactions, priceHistory);
+        console.log(`🔢 Generating profit data...`);
+        const profitData = generateHistoricalProfitTimeSeries(symbol, symbolData.allTransactions, priceHistory);
+        
+        console.log(`✅ Profit data generated: ${profitData.length} points`);
         
         // チャートを描画
-        displayProfitChart('eth-profit-chart', profitData, 'ETH総合損益推移（過去1か月・日次）');
+        console.log(`🎨 Displaying chart...`);
+        displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（過去1か月・日次）`);
+        
+        console.log(`✅ ${symbol} profit chart rendered successfully`);
         
     } catch (error) {
-        console.error('ETH損益チャート描画エラー:', error);
-        showErrorMessage('ETH価格履歴の取得に失敗しました: ' + error.message);
+        console.error(`${symbol}損益チャート描画エラー:`, error);
+        
+        // サポートされていない銘柄の場合は静かに処理
+        if (error.message.includes('サポートされていない銘柄')) {
+            const canvas = document.getElementById(canvasId);
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#6c757d';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${symbol}は価格履歴チャートに対応していません`, canvas.width / 2, canvas.height / 2 - 10);
+                ctx.fillText('現在価格での損益は上記の統計で確認できます', canvas.width / 2, canvas.height / 2 + 10);
+            }
+        } else {
+            showErrorMessage(`${symbol}価格履歴の取得に失敗しました: ` + error.message);
+        }
         
         // フォールバック: 現在価格のみでチャートを描画
-        const ethSummary = portfolioData.summary.find(item => item.symbol === 'ETH');
-        const currentPrice = ethSummary ? ethSummary.currentPrice : 0;
-        const profitData = generateTotalProfitTimeSeries('ETH', ethData.allTransactions, currentPrice);
-        displayProfitChart('eth-profit-chart', profitData, 'ETH総合損益推移（現在価格ベース）');
+        const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
+        const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
+        
+        if (currentPrice > 0) {
+            const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
+            displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（現在価格ベース）`);
+        } else {
+            // 価格データがない場合はエラーメッセージを表示
+            const canvas = document.getElementById(canvasId);
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#dc3545';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${symbol}の価格データが利用できません`, canvas.width / 2, canvas.height / 2 - 10);
+                ctx.fillText('価格更新ボタンをクリックしてください', canvas.width / 2, canvas.height / 2 + 10);
+            }
+        }
     }
+}
+
+// ETH専用関数（後方互換性のため）
+async function renderETHProfitChart() {
+    return await renderSymbolProfitChart('ETH');
 }
 
 // 価格履歴を使った日次総合損益データを生成
 function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) {
+    console.log(`🔢 Generating profit data for ${symbol}`);
+    console.log(`📊 Transactions: ${transactions.length}, Price history: ${priceHistory.length}`);
+    
     // 取引を日付順にソート
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
     
@@ -142,7 +287,7 @@ function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) 
     const dailyProfitData = [];
     
     priceHistory.forEach(pricePoint => {
-        const targetDate = pricePoint.date;
+        const targetDate = pricePoint.date instanceof Date ? pricePoint.date : new Date(pricePoint.date);
         const price = pricePoint.price;
         
         // この日付までの取引を集計
@@ -196,6 +341,15 @@ function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) 
             currentPrice: price
         });
     });
+    
+    console.log(`✅ Generated ${dailyProfitData.length} profit data points`);
+    if (dailyProfitData.length > 0) {
+        console.log('📅 Sample data point:', {
+            date: dailyProfitData[0].date,
+            dateType: typeof dailyProfitData[0].date,
+            isDate: dailyProfitData[0].date instanceof Date
+        });
+    }
     
     return dailyProfitData;
 }
@@ -276,9 +430,12 @@ function showLoadingMessage(canvasId, message) {
 
 // 損益チャートを描画
 function displayProfitChart(canvasId, profitData, title) {
+    console.log(`🎨 displayProfitChart called for ${canvasId}`);
+    console.log(`📊 Profit data points: ${profitData ? profitData.length : 0}`);
+    
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
-        console.log(`Canvas ${canvasId} not found`);
+        console.error(`❌ Canvas ${canvasId} not found`);
         return;
     }
 
@@ -286,11 +443,13 @@ function displayProfitChart(canvasId, profitData, title) {
 
     // 既存のチャートを削除
     if (profitChartInstance) {
+        console.log('🗑️ Destroying existing chart instance');
         profitChartInstance.destroy();
     }
 
     // データが空の場合
     if (!profitData || profitData.length === 0) {
+        console.warn('⚠️ No profit data available');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#666';
         ctx.font = '14px Arial';
@@ -299,11 +458,16 @@ function displayProfitChart(canvasId, profitData, title) {
         return;
     }
 
+    console.log('✅ Creating Chart.js instance...');
+
     // Chart.jsでチャートを作成
     profitChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: profitData.map(d => d.date.toLocaleDateString('ja-JP')),
+            labels: profitData.map(d => {
+                const date = d.date instanceof Date ? d.date : new Date(d.date);
+                return date.toLocaleDateString('ja-JP');
+            }),
             datasets: [
                 {
                     label: '総合損益 (¥)',
@@ -387,7 +551,7 @@ function displayProfitChart(canvasId, profitData, title) {
                             
                             if (datasetLabel === '総合損益 (¥)') {
                                 return [
-                                    `📅 ${dataPoint.date.toLocaleDateString('ja-JP')}`,
+                                    `📅 ${(dataPoint.date instanceof Date ? dataPoint.date : new Date(dataPoint.date)).toLocaleDateString('ja-JP')}`,
                                     `💰 総合損益: ¥${Math.round(dataPoint.totalProfit || dataPoint.profit || 0).toLocaleString()}`,
                                     `　├ 実現損益: ¥${Math.round(dataPoint.realizedProfit || dataPoint.profit || 0).toLocaleString()}`,
                                     `　└ 含み損益: ¥${Math.round(dataPoint.unrealizedProfit || 0).toLocaleString()}`,

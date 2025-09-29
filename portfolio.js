@@ -779,20 +779,19 @@ function generateSymbolDetailPage(symbolSummary, symbolData) {
             </div>
         </div>
 
-        ${symbolSummary.symbol === 'ETH' ? `
-        <!-- ETH総合損益推移チャート -->
+        <!-- 総合損益推移チャート（全銘柄対応） -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px;">
-            <h4 style="color: #2c3e50; margin-bottom: 15px;">📈 ETH 総合損益推移チャート（過去1か月・日次）</h4>
+            <h4 style="color: #2c3e50; margin-bottom: 15px;">📈 ${symbolSummary.symbol} 総合損益推移チャート（過去1か月・日次）</h4>
             <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 20px;">
-                💡 ETHの過去1か月の価格変動に基づく日次総合損益推移<br>
+                💡 ${symbolSummary.symbol}の過去1か月の価格変動に基づく日次総合損益推移<br>
                 🟢 実線: 総合損益（実現+含み） | 🔵 点線: 実現損益のみ | 🟡 点線: 含み損益のみ<br>
-                📊 価格データ: CoinGecko API（日次更新）
+                📊 価格データ: CoinGecko API（日次更新）<br>
+                ⚡ 対応銘柄: BTC, ETH, SOL, XRP, ADA, DOGE, ASTR, XTZ, XLM, SHIB, PEPE, SUI, DAI
             </p>
             <div style="height: 400px; position: relative;">
-                <canvas id="eth-profit-chart" style="max-height: 400px;"></canvas>
+                <canvas id="${symbolSummary.symbol.toLowerCase()}-profit-chart" style="max-height: 400px;"></canvas>
             </div>
         </div>
-        ` : ''}
 
         <!-- 取引履歴テーブル -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">

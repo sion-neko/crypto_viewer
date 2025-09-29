@@ -30,6 +30,8 @@ const SYMBOL_MAPPING = {
 // 価格取得関連機能
 async function fetchCurrentPrices() {
     try {
+        console.log('🔄 fetchCurrentPrices called');
+
         // ポートフォリオデータの存在確認を強化
         if (!currentPortfolioData) {
             // localStorageから再読み込みを試行
@@ -49,8 +51,27 @@ async function fetchCurrentPrices() {
         const portfolioSymbols = currentPortfolioData.summary.map(item => item.symbol);
         const validSymbols = portfolioSymbols.filter(symbol => SYMBOL_MAPPING[symbol]);
 
+        console.log('📊 Valid symbols for price fetch:', validSymbols);
+
         if (validSymbols.length === 0) {
             throw new Error('対応銘柄が見つかりません');
+        }
+
+        // まず価格履歴キャッシュから現在価格を取得を試行（API効率化）
+        const pricesFromHistory = await tryGetPricesFromHistory(validSymbols);
+        if (pricesFromHistory && Object.keys(pricesFromHistory).length === validSymbols.length) {
+            console.log('✅ All prices obtained from history cache');
+            currentPrices = pricesFromHistory;
+            lastPriceUpdate = new Date();
+
+            updatePortfolioWithPrices(currentPortfolioData, currentPrices);
+            sortPortfolioData(currentSortField, currentSortDirection);
+            const tableContainer = document.getElementById('portfolio-table-container');
+            tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+
+            showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄 (履歴データより)`);
+            updatePriceStatus();
+            return;
         }
 
         // キャッシュキーを生成
@@ -137,6 +158,42 @@ async function fetchCurrentPrices() {
     }
 }
 
+// 価格履歴キャッシュから現在価格を取得（API効率化）
+async function tryGetPricesFromHistory(symbols) {
+    const prices = {};
+    let successCount = 0;
+
+    for (const symbol of symbols) {
+        try {
+            const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
+            const cachedHistory = getCachedData(cacheKey);
+
+            if (cachedHistory && cachedHistory.length > 0) {
+                const latestPrice = cachedHistory[cachedHistory.length - 1].price;
+                prices[symbol] = {
+                    price_jpy: latestPrice,
+                    last_updated_at: Date.now() / 1000
+                };
+                successCount++;
+                console.log(`📈 ${symbol} price from history: ¥${latestPrice.toLocaleString()}`);
+            }
+        } catch (error) {
+            console.warn(`Failed to get ${symbol} price from history:`, error);
+        }
+    }
+
+    if (successCount > 0) {
+        prices._metadata = {
+            lastUpdate: Date.now(),
+            symbols: Object.keys(prices).filter(key => key !== '_metadata'),
+            source: 'price_history_cache'
+        };
+        return prices;
+    }
+
+    return null;
+}
+
 // 価格データでポートフォリオを更新（含み損益計算）
 function updatePortfolioWithPrices(portfolioData, prices) {
     let totalUnrealizedProfit = 0;
@@ -146,7 +203,7 @@ function updatePortfolioWithPrices(portfolioData, prices) {
         if (prices[item.symbol]) {
             const currentPrice = prices[item.symbol].price_jpy;
             item.currentPrice = currentPrice;
-            
+
             // 保有量が正の場合のみ含み損益を計算
             if (item.holdingQuantity > 0 && item.averagePurchaseRate > 0) {
                 const currentValue = item.holdingQuantity * currentPrice;
