@@ -210,15 +210,22 @@ function switchTab(tabName) {
 
 // サブタブ切り替え機能
 function switchSubtab(subtabName) {
+    console.log(`🔄 switchSubtab called for: ${subtabName}`);
+    
     // 全サブタブボタンのアクティブ状態をリセット
-    document.querySelectorAll('.subtab-button').forEach(btn => {
+    const allButtons = document.querySelectorAll('.subtab-button');
+    const allContents = document.querySelectorAll('.subtab-content');
+    
+    console.log(`📊 Found ${allButtons.length} subtab buttons, ${allContents.length} subtab contents`);
+    
+    allButtons.forEach(btn => {
         btn.classList.remove('active');
         // ボタンの背景色をリセット
         if (!btn.classList.contains('active')) {
             btn.style.backgroundColor = '';
         }
     });
-    document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
+    allContents.forEach(content => content.classList.remove('active'));
 
     // 選択されたサブタブをアクティブに
     const targetButton = document.getElementById(`subtab-${subtabName}`);

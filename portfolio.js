@@ -245,6 +245,9 @@ function updateSortIndicators(activeField, direction) {
 
 // ダッシュボード表示（タブシステム版）
 function displayDashboard(portfolioData) {
+    console.log('🚀 displayDashboard called');
+    console.log('📊 Portfolio data summary:', portfolioData?.summary?.length || 0, 'symbols');
+    
     // グローバル変数に保存
     currentPortfolioData = portfolioData;
     window.currentPortfolioData = portfolioData; // グローバルアクセス用
@@ -320,13 +323,21 @@ function updateDataStatus(portfolioData) {
 
 // 銘柄別サブタブ生成（復活版）
 function createSymbolSubtabs(portfolioData) {
+    console.log('🔄 createSymbolSubtabs called');
+    console.log('📊 Portfolio data:', portfolioData);
+    
     const subtabNav = document.getElementById('subtab-nav');
     const symbolContainer = document.getElementById('symbol-subtabs-container');
 
     if (!subtabNav || !symbolContainer) {
-        console.error('Required DOM elements not found');
+        console.error('❌ Required DOM elements not found:', {
+            subtabNav: !!subtabNav,
+            symbolContainer: !!symbolContainer
+        });
         return;
     }
+
+    console.log('✅ DOM elements found');
 
     // 既存の銘柄サブタブをクリア
     subtabNav.querySelectorAll('.symbol-subtab').forEach(tab => tab.remove());
@@ -334,10 +345,15 @@ function createSymbolSubtabs(portfolioData) {
 
     // 銘柄別サブタブを生成
     if (portfolioData && portfolioData.summary) {
+        console.log('📈 Creating subtabs for symbols:', portfolioData.summary.map(s => s.symbol));
+        
         // 実現損益で降順ソート
         const sortedSymbols = [...portfolioData.summary].sort((a, b) => b.realizedProfit - a.realizedProfit);
+        console.log('🔢 Sorted symbols:', sortedSymbols.map(s => s.symbol));
 
         sortedSymbols.forEach(symbolData => {
+            console.log(`🏷️ Creating subtab for ${symbolData.symbol}`);
+            
             // サブタブボタンを作成
             const tabButton = document.createElement('button');
             tabButton.className = 'subtab-button symbol-subtab';
@@ -376,7 +392,18 @@ function createSymbolSubtabs(portfolioData) {
             tabContent.innerHTML = generateSymbolDetailPage(symbolData, portfolioData.symbols[symbolData.symbol]);
 
             symbolContainer.appendChild(tabContent);
+            console.log(`✅ Created subtab for ${symbolData.symbol}`);
         });
+        
+        console.log(`🎉 Created ${sortedSymbols.length} symbol subtabs`);
+        
+        // デバッグ: 作成されたタブの確認
+        const createdTabs = subtabNav.querySelectorAll('.symbol-subtab');
+        console.log(`🔍 Actually created tabs: ${createdTabs.length}`);
+        createdTabs.forEach(tab => console.log(`  - ${tab.textContent} (${tab.id})`));
+        
+    } else {
+        console.error('❌ No portfolio data or summary available');
     }
 }
 

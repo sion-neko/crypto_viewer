@@ -86,7 +86,19 @@ async function fetchSymbolPriceHistory(symbol) {
 
     } catch (error) {
         console.error(`${symbol}価格履歴取得エラー:`, error);
-        throw error;
+        
+        // より詳細なエラー情報を提供
+        if (error.message.includes('API Error: 429')) {
+            throw new Error(`API制限に達しました (429 Too Many Requests)`);
+        } else if (error.message.includes('API Error: 404')) {
+            throw new Error(`${symbol}の価格データが見つかりません (404 Not Found)`);
+        } else if (error.message.includes('API Error: 500')) {
+            throw new Error(`CoinGecko APIサーバーエラー (500 Internal Server Error)`);
+        } else if (error.message.includes('Failed to fetch')) {
+            throw new Error(`ネットワーク接続エラー - インターネット接続を確認してください`);
+        } else {
+            throw new Error(`価格履歴取得エラー: ${error.message}`);
+        }
     }
 }
 
@@ -231,40 +243,70 @@ async function renderSymbolProfitChart(symbol) {
     } catch (error) {
         console.error(`${symbol}損益チャート描画エラー:`, error);
         
-        // サポートされていない銘柄の場合は静かに処理
+        // エラーの種類に応じて適切な提案を表示
+        let suggestions = [];
+        
         if (error.message.includes('サポートされていない銘柄')) {
-            const canvas = document.getElementById(canvasId);
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#6c757d';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${symbol}は価格履歴チャートに対応していません`, canvas.width / 2, canvas.height / 2 - 10);
-                ctx.fillText('現在価格での損益は上記の統計で確認できます', canvas.width / 2, canvas.height / 2 + 10);
-            }
+            suggestions = [
+                '現在価格での損益は上記の統計で確認できます',
+                '対応銘柄: BTC, ETH, SOL, XRP, ADA, DOGE, ASTR, XTZ, XLM, SHIB, PEPE, SUI, DAI'
+            ];
+        } else if (error.message.includes('価格履歴データを取得できませんでした')) {
+            suggestions = [
+                'インターネット接続を確認してください',
+                'しばらく時間をおいて再度お試しください',
+                'API制限に達している可能性があります'
+            ];
+        } else if (error.message.includes('API Error: 429')) {
+            suggestions = [
+                'API制限に達しました',
+                '1分後に再度お試しください',
+                'キャッシュされたデータがあれば使用されます'
+            ];
+        } else if (error.message.includes('API Error')) {
+            suggestions = [
+                'CoinGecko APIに接続できません',
+                'インターネット接続を確認してください',
+                'API サービスが一時的に利用できない可能性があります'
+            ];
         } else {
-            showErrorMessage(`${symbol}価格履歴の取得に失敗しました: ` + error.message);
+            suggestions = [
+                'ページを再読み込みしてお試しください',
+                'ブラウザのコンソール(F12)で詳細を確認できます'
+            ];
         }
         
-        // フォールバック: 現在価格のみでチャートを描画
-        const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
-        const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
+        // 詳細なエラー表示
+        showChartError(canvasId, symbol, error, suggestions);
         
-        if (currentPrice > 0) {
-            const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
-            displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（現在価格ベース）`);
-        } else {
-            // 価格データがない場合はエラーメッセージを表示
+        // フォールバック: 現在価格のみでチャートを描画を試行
+        try {
+            const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
+            const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
+            
+            if (currentPrice > 0) {
+                console.log(`🔄 Attempting fallback chart for ${symbol} with current price: ¥${currentPrice.toLocaleString()}`);
+                const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
+                
+                if (profitData && profitData.length > 0) {
+                    displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（現在価格ベース）`);
+                    console.log(`✅ Fallback chart displayed for ${symbol}`);
+                    return; // フォールバック成功
+                }
+            }
+        } catch (fallbackError) {
+            console.error(`${symbol}フォールバックチャート描画エラー:`, fallbackError);
+        }
+        
+        // フォールバックも失敗した場合は、価格更新を促すメッセージを追加
+        if (!error.message.includes('サポートされていない銘柄')) {
             const canvas = document.getElementById(canvasId);
             if (canvas) {
                 const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#dc3545';
-                ctx.font = '14px Arial';
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#28a745';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${symbol}の価格データが利用できません`, canvas.width / 2, canvas.height / 2 - 10);
-                ctx.fillText('価格更新ボタンをクリックしてください', canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillText('💡 「価格更新」ボタンをクリックして現在価格を取得してください', canvas.width / 2, canvas.height / 2 + 100);
             }
         }
     }
@@ -428,37 +470,99 @@ function showLoadingMessage(canvasId, message) {
     ctx.fillText(message, canvas.width / 2, canvas.height / 2);
 }
 
+// チャートエラー表示（詳細版）
+function showChartError(canvasId, symbol, error, suggestions = []) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // エラーの種類に応じて色とアイコンを設定
+    let color = '#dc3545';
+    let icon = '❌';
+    let title = 'チャート表示エラー';
+    
+    if (error.message.includes('サポートされていない銘柄')) {
+        color = '#6c757d';
+        icon = '⚠️';
+        title = '対応していない銘柄';
+    } else if (error.message.includes('価格履歴データを取得できませんでした')) {
+        color = '#ffc107';
+        icon = '📡';
+        title = 'データ取得エラー';
+    } else if (error.message.includes('API Error')) {
+        color = '#fd7e14';
+        icon = '🌐';
+        title = 'API接続エラー';
+    }
+    
+    // エラー表示
+    ctx.fillStyle = color;
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${icon} ${title}`, canvas.width / 2, canvas.height / 2 - 40);
+    
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#495057';
+    ctx.fillText(`${symbol}: ${error.message}`, canvas.width / 2, canvas.height / 2 - 10);
+    
+    // 提案の表示
+    if (suggestions.length > 0) {
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#6c757d';
+        suggestions.forEach((suggestion, index) => {
+            ctx.fillText(`💡 ${suggestion}`, canvas.width / 2, canvas.height / 2 + 20 + (index * 20));
+        });
+    }
+    
+    // デバッグ情報（開発時のみ）
+    if (console.log) {
+        ctx.font = '10px Arial';
+        ctx.fillStyle = '#adb5bd';
+        ctx.fillText('詳細はブラウザのコンソール(F12)を確認してください', canvas.width / 2, canvas.height / 2 + 80);
+    }
+}
+
 // 損益チャートを描画
 function displayProfitChart(canvasId, profitData, title) {
     console.log(`🎨 displayProfitChart called for ${canvasId}`);
     console.log(`📊 Profit data points: ${profitData ? profitData.length : 0}`);
     
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) {
-        console.error(`❌ Canvas ${canvasId} not found`);
-        return;
-    }
+    try {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            throw new Error(`Canvas element not found: ${canvasId}`);
+        }
 
-    const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            throw new Error(`Cannot get 2D context for canvas: ${canvasId}`);
+        }
 
-    // 既存のチャートを削除
-    if (profitChartInstance) {
-        console.log('🗑️ Destroying existing chart instance');
-        profitChartInstance.destroy();
-    }
+        // 既存のチャートを削除
+        if (profitChartInstance) {
+            console.log('🗑️ Destroying existing chart instance');
+            profitChartInstance.destroy();
+        }
 
-    // データが空の場合
-    if (!profitData || profitData.length === 0) {
-        console.warn('⚠️ No profit data available');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#666';
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('取引データがありません', canvas.width / 2, canvas.height / 2);
-        return;
-    }
+        // データが空の場合
+        if (!profitData || profitData.length === 0) {
+            console.warn('⚠️ No profit data available');
+            showChartError(canvasId, 'データなし', new Error('取引データがありません'), [
+                '取引履歴が存在しない可能性があります',
+                'CSVファイルに該当銘柄のデータが含まれているか確認してください'
+            ]);
+            return;
+        }
 
-    console.log('✅ Creating Chart.js instance...');
+        // データの妥当性チェック
+        const validDataPoints = profitData.filter(d => d && d.date && typeof d.totalProfit === 'number');
+        if (validDataPoints.length === 0) {
+            throw new Error('有効なデータポイントがありません');
+        }
+
+        console.log(`✅ Creating Chart.js instance with ${validDataPoints.length} valid data points...`);
 
     // Chart.jsでチャートを作成
     profitChartInstance = new Chart(ctx, {
@@ -572,6 +676,17 @@ function displayProfitChart(canvasId, profitData, title) {
             }
         }
     });
+    
+    console.log('✅ Chart.js instance created successfully');
+    
+    } catch (error) {
+        console.error('❌ Chart creation failed:', error);
+        showChartError(canvasId, 'チャート作成', error, [
+            'Chart.jsライブラリが正しく読み込まれているか確認してください',
+            'ブラウザを更新してお試しください',
+            'データ形式に問題がある可能性があります'
+        ]);
+    }
 }
 
 // ===================================================================
