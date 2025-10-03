@@ -98,7 +98,7 @@ function analyzePortfolioData(transactions) {
         portfolioSummary.push(summary);
     });
 
-    // 全体統計
+    // 全体統計（総合損益対応）
     const portfolioStats = {
         totalInvestment,
         totalRealizedProfit,
@@ -106,7 +106,13 @@ function analyzePortfolioData(transactions) {
         overallProfitMargin: totalInvestment > 0 ? (totalRealizedProfit / totalInvestment) * 100 : 0,
         symbolCount: portfolioSummary.length,
         profitableSymbols: portfolioSummary.filter(s => s.realizedProfit > 0).length,
-        lossSymbols: portfolioSummary.filter(s => s.realizedProfit < 0).length
+        lossSymbols: portfolioSummary.filter(s => s.realizedProfit < 0).length,
+        // 総合損益関連の統計（価格更新後に計算される）
+        totalUnrealizedProfit: 0,
+        totalProfit: totalRealizedProfit,
+        totalProfitableSymbols: 0,
+        totalLossSymbols: 0,
+        overallTotalProfitMargin: 0
     };
 
     return {
@@ -297,8 +303,10 @@ function updateDataStatus(portfolioData) {
 
     if (portfolioData && portfolioData.summary.length > 0) {
         const stats = portfolioData.stats;
-        const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
-        const profitIcon = stats.totalRealizedProfit > 0 ? '📈' : stats.totalRealizedProfit < 0 ? '📉' : '➖';
+        // 総合損益を優先表示（含み損益込み）
+        const displayProfit = stats.totalProfit || stats.totalRealizedProfit;
+        const profitColor = displayProfit >= 0 ? '#27ae60' : '#e74c3c';
+        const profitIcon = displayProfit > 0 ? '📈' : displayProfit < 0 ? '📉' : '➖';
 
         statusElement.innerHTML = `
             <div style="color: #27ae60; font-weight: 600;">✅ データあり</div>
@@ -306,8 +314,9 @@ function updateDataStatus(portfolioData) {
                 ${stats.symbolCount}銘柄<br>
                 投資額: ¥${stats.totalInvestment.toLocaleString()}<br>
                 <span style="color: ${profitColor}; font-weight: 600;">
-                    ${profitIcon} ¥${Math.round(stats.totalRealizedProfit).toLocaleString()}
+                    ${profitIcon} ¥${Math.round(displayProfit).toLocaleString()}
                 </span>
+                ${stats.totalUnrealizedProfit !== undefined ? `<br><span style="font-size: 0.7rem; color: #6c757d;">実現+含み損益</span>` : ''}
             </div>
         `;
         managementElement.style.display = 'block';
@@ -421,9 +430,9 @@ function generateMobilePortfolioCards(portfolioData) {
             <div class="card-header">📊 ポートフォリオサマリー（${stats.symbolCount}銘柄）</div>
             <div class="card-row">
                 <span class="card-label">総合損益</span>
-                <span class="card-value" style="color: ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '#059669' : '#dc2626'};">
-                    ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit || stats.totalRealizedProfit).toLocaleString()}
-                    (${stats.overallProfitMargin >= 0 ? '+' : ''}${stats.overallProfitMargin.toFixed(1)}%)
+                <span class="card-value" style="color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">
+                    ${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}
+                    (${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%)
                 </span>
             </div>
             <div class="card-row">
@@ -531,10 +540,11 @@ function generatePortfolioTable(portfolioData) {
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
                 <!-- 総合損益（最優先表示） -->
-                <div style="text-align: center; padding: 12px; background: ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '#10b981' : '#ef4444'};">
+                <div style="text-align: center; padding: 12px; background: ${stats.totalProfit >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${stats.totalProfit >= 0 ? '#10b981' : '#ef4444'};">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">総合損益</div>
-                    <div style="font-size: 18px; font-weight: 800; color: ${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalProfit || stats.totalRealizedProfit) >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit || stats.totalRealizedProfit).toLocaleString()}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${stats.overallProfitMargin >= 0 ? '+' : ''}${stats.overallProfitMargin.toFixed(1)}%</div>
+                    <div style="font-size: 18px; font-weight: 800; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
+                    <div style="font-size: 10px; color: #64748b; margin-top: 1px; font-weight: 500;">実現+含み損益</div>
                 </div>
 
                 <!-- 投資額 -->
@@ -553,6 +563,12 @@ function generatePortfolioTable(portfolioData) {
                 <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">含み損益</div>
                     <div style="font-size: 16px; font-weight: 700; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</div>
+                </div>
+
+                <!-- 総合損益の銘柄数 -->
+                <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #6366f1;">
+                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">損益状況</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">利益${stats.totalProfitableSymbols || 0}・損失${stats.totalLossSymbols || 0}</div>
                 </div>
 
                 <!-- 手数料 -->

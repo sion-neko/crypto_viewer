@@ -69,6 +69,12 @@ async function fetchCurrentPrices() {
             const tableContainer = document.getElementById('portfolio-table-container');
             tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
 
+            // サマリー部分も更新（総合損益反映のため）
+            updateDataStatus(currentPortfolioData);
+
+            // 更新されたポートフォリオデータを保存
+            localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
+
             showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄 (履歴データより)`);
             updatePriceStatus();
             return;
@@ -89,6 +95,12 @@ async function fetchCurrentPrices() {
             sortPortfolioData(currentSortField, currentSortDirection);
             const tableContainer = document.getElementById('portfolio-table-container');
             tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+
+            // サマリー部分も更新（総合損益反映のため）
+            updateDataStatus(currentPortfolioData);
+
+            // 更新されたポートフォリオデータを保存
+            localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
 
             // キャッシュから取得した場合の通知
             showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄`);
@@ -145,6 +157,12 @@ async function fetchCurrentPrices() {
         sortPortfolioData(currentSortField, currentSortDirection);
         const tableContainer = document.getElementById('portfolio-table-container');
         tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+
+        // サマリー部分も更新（総合損益反映のため）
+        updateDataStatus(currentPortfolioData);
+
+        // 更新されたポートフォリオデータを保存
+        localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
 
         // 成功通知を表示
         showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄`);
@@ -242,9 +260,32 @@ function updatePortfolioWithPrices(portfolioData, prices) {
         }
     });
 
-    // 統計に含み損益を追加
+    // 統計に含み損益と総合損益を追加
     portfolioData.stats.totalUnrealizedProfit = totalUnrealizedProfit;
     portfolioData.stats.totalProfit = portfolioData.stats.totalRealizedProfit + totalUnrealizedProfit;
+    
+    // 総合損益に基づく追加統計
+    portfolioData.stats.totalProfitableSymbols = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) > 0).length;
+    portfolioData.stats.totalLossSymbols = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) < 0).length;
+    portfolioData.stats.overallTotalProfitMargin = portfolioData.stats.totalInvestment > 0 ? 
+        (portfolioData.stats.totalProfit / portfolioData.stats.totalInvestment) * 100 : 0;
+    
+    console.log('📊 Portfolio stats updated:', {
+        totalRealizedProfit: Math.round(portfolioData.stats.totalRealizedProfit),
+        totalUnrealizedProfit: Math.round(totalUnrealizedProfit),
+        totalProfit: Math.round(portfolioData.stats.totalProfit),
+        totalProfitMargin: portfolioData.stats.overallTotalProfitMargin.toFixed(2) + '%',
+        totalProfitableSymbols: portfolioData.stats.totalProfitableSymbols,
+        totalLossSymbols: portfolioData.stats.totalLossSymbols
+    });
+    
+    // 各銘柄の総合損益も確認
+    console.log('💰 Symbol total profits:', portfolioData.summary.map(s => ({
+        symbol: s.symbol,
+        realized: Math.round(s.realizedProfit),
+        unrealized: Math.round(s.unrealizedProfit || 0),
+        total: Math.round(s.totalProfit || s.realizedProfit)
+    })));
 }
 
 // 保存済み価格データを復元
