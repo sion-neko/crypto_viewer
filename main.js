@@ -352,13 +352,14 @@ function showSimpleToast(message, type = 'success') {
         font-size: 14px;
         max-width: 350px;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 8px;
+        line-height: 1.4;
     `;
 
     toast.innerHTML = `
         <span>${icons[type] || icons.success}</span>
-        <span>${message}</span>
+        <span style="white-space: pre-line;">${message}</span>
     `;
 
     document.body.appendChild(toast);
@@ -454,6 +455,206 @@ function clearAllData() {
 }
 
 // ===================================================================
+// PRICE DATA MANAGEMENT FUNCTIONS
+// ===================================================================
+
+// 価格データ管理機能
+function clearPriceData() {
+    if (confirm('価格データをクリアしますか？チャート表示には再取得が必要になります。')) {
+        let clearedCount = 0;
+        
+        // 価格関連のキャッシュを削除
+        const keysToDelete = [];
+        for (let key in localStorage) {
+            if (key.includes('_price_history_') || 
+                key.includes('prices_') || 
+                key.includes('currentPrices') ||
+                key.includes('lastPriceUpdate') ||
+                key.includes('cache_metadata')) {
+                keysToDelete.push(key);
+            }
+        }
+        
+        keysToDelete.forEach(key => {
+            localStorage.removeItem(key);
+            clearedCount++;
+        });
+        
+        // グローバル変数もクリア
+        if (typeof currentPrices !== 'undefined') {
+            currentPrices = {};
+        }
+        if (typeof lastPriceUpdate !== 'undefined') {
+            lastPriceUpdate = null;
+        }
+        
+        // 価格ステータス更新
+        if (typeof updatePriceStatus === 'function') {
+            updatePriceStatus('価格データクリア済み');
+        }
+        
+        showSuccessMessage(`価格データをクリアしました (${clearedCount}件)`);
+        console.log(`🧹 価格データクリア完了: ${clearedCount}件のキャッシュを削除`);
+    }
+}
+
+// 価格データ状況表示
+function showPriceDataStatus() {
+    try {
+        // charts.jsの関数が利用可能かチェック
+        if (typeof showPriceDataReport === 'function') {
+            const status = showPriceDataReport();
+            
+            // ユーザー向けの詳細表示
+            const totalSizeMB = Math.round(status.totalCacheSize / 1024 / 1024 * 100) / 100;
+            const currentPricesInfo = status.currentPrices ? 
+                `${status.currentPrices.symbols.length}銘柄 (${Math.round(status.currentPrices.age / 1000 / 60)}分前)` : 
+                'なし';
+            
+            const historyInfo = status.priceHistories.length > 0 ?
+                status.priceHistories.map(h => `${h.symbol}: ${h.dataPoints}日分`).join(', ') :
+                'なし';
+            
+            const message = `
+📊 価格データ保存状況:
+💾 総サイズ: ${totalSizeMB}MB
+💰 現在価格: ${currentPricesInfo}
+📈 価格履歴: ${status.priceHistories.length}銘柄
+${historyInfo ? `詳細: ${historyInfo}` : ''}
+
+詳細はブラウザのコンソール(F12)で確認できます。
+            `.trim();
+            
+            alert(message);
+        } else {
+            // フォールバック: 基本的な情報のみ表示
+            let priceDataCount = 0;
+            let totalSize = 0;
+            
+            for (let key in localStorage) {
+                if (key.includes('_price_') || key.includes('prices_')) {
+                    priceDataCount++;
+                    totalSize += localStorage[key].length;
+                }
+            }
+            
+            const sizeMB = Math.round(totalSize / 1024 / 1024 * 100) / 100;
+            alert(`価格データ: ${priceDataCount}件のキャッシュ (${sizeMB}MB)`);
+        }
+    } catch (error) {
+        console.error('価格データ状況表示エラー:', error);
+        showErrorMessage('価格データ状況の取得に失敗しました');
+    }
+}
+
+// 古い価格データの自動クリーンアップ
+function autoCleanupOldPriceData() {
+    try {
+        let cleanedCount = 0;
+        const now = Date.now();
+        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7日間
+        
+        const keysToDelete = [];
+        for (let key in localStorage) {
+            if (key.includes('_price_') || key.includes('prices_')) {
+                try {
+                    const data = JSON.parse(localStorage[key]);
+                    if (data.timestamp && (now - data.timestamp) > maxAge) {
+                        keysToDelete.push(key);
+                    }
+                } catch (e) {
+                    // 破損したデータも削除対象
+                    keysToDelete.push(key);
+                }
+            }
+        }
+        
+        keysToDelete.forEach(key => {
+            localStorage.removeItem(key);
+            cleanedCount++;
+        });
+        
+        if (cleanedCount > 0) {
+            console.log(`🧹 古い価格データを自動クリーンアップ: ${cleanedCount}件削除`);
+        }
+        
+        return cleanedCount;
+    } catch (error) {
+        console.error('自動クリーンアップエラー:', error);
+        return 0;
+    }
+}
+
+// 価格データの整合性チェック
+function validatePriceDataIntegrity() {
+    let validCount = 0;
+    let invalidCount = 0;
+    const issues = [];
+    
+    try {
+        for (let key in localStorage) {
+            if (key.includes('_price_') || key.includes('prices_')) {
+                try {
+                    const data = JSON.parse(localStorage[key]);
+                    
+                    // 基本構造チェック
+                    if (!data.timestamp || !data.value) {
+                        issues.push(`${key}: 基本構造が不正`);
+                        invalidCount++;
+                        continue;
+                    }
+                    
+                    // 価格履歴データの場合
+                    if (key.includes('_price_history_')) {
+                        if (!Array.isArray(data.value) || data.value.length === 0) {
+                            issues.push(`${key}: 価格履歴データが空または不正`);
+                            invalidCount++;
+                            continue;
+                        }
+                        
+                        // サンプルデータポイントをチェック
+                        const sample = data.value[0];
+                        if (!sample.date || typeof sample.price !== 'number') {
+                            issues.push(`${key}: 価格データ形式が不正`);
+                            invalidCount++;
+                            continue;
+                        }
+                    }
+                    
+                    // 現在価格データの場合
+                    if (key.includes('prices_')) {
+                        if (!data.value._metadata || !data.value._metadata.symbols) {
+                            issues.push(`${key}: 現在価格メタデータが不正`);
+                            invalidCount++;
+                            continue;
+                        }
+                    }
+                    
+                    validCount++;
+                } catch (parseError) {
+                    issues.push(`${key}: JSON解析エラー`);
+                    invalidCount++;
+                }
+            }
+        }
+        
+        console.log(`🔍 価格データ整合性チェック結果:`);
+        console.log(`✅ 正常: ${validCount}件`);
+        console.log(`❌ 異常: ${invalidCount}件`);
+        
+        if (issues.length > 0) {
+            console.log(`⚠️ 問題のあるデータ:`);
+            issues.forEach(issue => console.log(`  - ${issue}`));
+        }
+        
+        return { valid: validCount, invalid: invalidCount, issues };
+    } catch (error) {
+        console.error('整合性チェックエラー:', error);
+        return { valid: 0, invalid: 0, issues: ['整合性チェック実行エラー'] };
+    }
+}
+
+// ===================================================================
 // KEYBOARD SHORTCUTS
 // ===================================================================
 
@@ -505,7 +706,6 @@ function isMobile() {
 }
 
 // キャッシュ機能
-const CACHE_DURATION_PRICE = 5 * 60 * 1000; // 5分
 const CACHE_DURATION_CHART = 30 * 60 * 1000; // 30分
 
 function getCachedData(key) {
@@ -610,6 +810,19 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         updateDataStatus(null);
     }
+
+    // 起動時に古い価格データを自動クリーンアップ
+    setTimeout(() => {
+        const cleanedCount = autoCleanupOldPriceData();
+        if (cleanedCount > 0) {
+            console.log(`🧹 起動時クリーンアップ: ${cleanedCount}件の古い価格データを削除`);
+        }
+        
+        // 価格データ整合性チェック（開発時のみ）
+        if (console.log) {
+            validatePriceDataIntegrity();
+        }
+    }, 2000);
 });
 
 // グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
@@ -619,4 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof switchTab === 'function') window.switchTab = switchTab;
     if (typeof switchSubtab === 'function') window.switchSubtab = switchSubtab;
     if (typeof clearAllData === 'function') window.clearAllData = clearAllData;
+    if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
+    if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
 })();

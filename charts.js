@@ -26,7 +26,7 @@ setInterval(() => {
 // PRICE HISTORY FUNCTIONS
 // ===================================================================
 
-// 銘柄の過去1か月の価格履歴を取得（汎用版）
+// 銘柄の過去1か月の価格履歴を取得（永続化強化版）
 async function fetchSymbolPriceHistory(symbol) {
     // api.jsのSYMBOL_MAPPINGを参照
     const SYMBOL_MAPPING = {
@@ -52,11 +52,59 @@ async function fetchSymbolPriceHistory(symbol) {
 
     const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
 
-    // キャッシュチェック（1時間有効）
-    const cachedData = getCachedData(cacheKey, 60 * 60 * 1000);
-    if (cachedData) {
-        console.log(`${symbol}価格履歴をキャッシュから取得`);
-        return cachedData;
+    // 永続化キャッシュチェック（24時間有効 - 古くなったら最新を取得）
+    const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
+    if (cachedDataWithMeta) {
+        const cachedData = cachedDataWithMeta.value;
+        const cacheTimestamp = cachedDataWithMeta.timestamp;
+        const cacheDate = new Date(cacheTimestamp);
+        
+        console.log(`📈 ${symbol}の価格履歴キャッシュを使用 (${cachedData.length}日分)`);
+        
+        console.log(`✅ ${symbol}価格履歴を永続キャッシュから取得 (${cachedData.length}日分)`);
+
+        // キャッシュデータの最新性をチェック
+        const latestDataDate = new Date(cachedData[cachedData.length - 1].date);
+        const hoursOld = (Date.now() - latestDataDate.getTime()) / (1000 * 60 * 60);
+
+        if (hoursOld < 6) {
+            // 6時間以内のデータは新鮮とみなす
+            const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric'
+            });
+            
+
+            
+            showSuccessMessage(`${symbol}: キャッシュから表示\n${cacheTimeStr}保存`);
+            return cachedData;
+        } else {
+            console.log(`⏰ ${symbol}価格履歴が古い (${Math.round(hoursOld)}時間前) - 最新データを取得中...`);
+            showInfoMessage(`${symbol}: 価格データが古いため最新データを取得中...`);
+        }
+    } else {
+        // フォールバック: 従来のキャッシュ取得を試行
+        const fallbackCachedData = getCachedData(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
+        if (fallbackCachedData) {
+            console.log(`✅ ${symbol}価格履歴をフォールバックキャッシュから取得 (${fallbackCachedData.length}日分)`);
+            
+            // キャッシュデータの最新性をチェック
+            const latestDataDate = new Date(fallbackCachedData[fallbackCachedData.length - 1].date);
+            const hoursOld = (Date.now() - latestDataDate.getTime()) / (1000 * 60 * 60);
+            
+            if (hoursOld < 6) {
+                showSuccessMessage(`${symbol}: キャッシュから表示 (保存時刻不明)`);
+                return fallbackCachedData;
+            } else {
+                console.log(`⏰ ${symbol}価格履歴が古い (${Math.round(hoursOld)}時間前) - 最新データを取得中...`);
+                showInfoMessage(`${symbol}: 価格データが古いため最新データを取得中...`);
+            }
+        } else {
+            console.log(`📡 ${symbol}価格履歴のキャッシュなし - 新規取得中...`);
+            showInfoMessage(`${symbol}: 価格履歴を新規取得中...`);
+        }
     }
 
     try {
@@ -130,14 +178,20 @@ async function fetchSymbolPriceHistory(symbol) {
             updateSymbolCurrentPrice(symbol, latestPrice);
         }
 
-        // キャッシュに保存
-        setCachedData(cacheKey, priceHistory, 60 * 60 * 1000);
+        // 永続キャッシュに保存（24時間有効）
+        setCachedData(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
 
-        console.log(`${symbol}価格履歴を取得: ${priceHistory.length}日分`);
+        console.log(`✅ ${symbol}価格履歴を永続保存: ${priceHistory.length}日分 (24時間有効)`);
 
-        // 成功時のトースト通知（控えめに、エラーが多い場合のみ）
-        if (priceHistory.length > 0 && apiCallCount <= 3) {
-            showSuccessMessage(`${symbol}: ${priceHistory.length}日分の価格履歴を取得`);
+        // 成功時のトースト通知
+        if (priceHistory.length > 0) {
+            showSuccessMessage(`${symbol}: ${priceHistory.length}日分の価格履歴をキャッシュに保存しました`);
+        }
+
+        // 価格データレポート更新
+        if (console.log) {
+            const status = getPriceDataStatus();
+            console.log(`💾 価格データ保存状況: ${status.priceHistories.length}銘柄, ${Math.round(status.totalCacheSize / 1024)}KB`);
         }
 
         return priceHistory;
@@ -169,34 +223,298 @@ async function fetchETHPriceHistory() {
     return await fetchSymbolPriceHistory('ETH');
 }
 
-// キャッシュ機能（charts.js用）
-function getCachedData(key, duration) {
+// ===================================================================
+// PRICE DATA PERSISTENCE FUNCTIONS
+// ===================================================================
+
+// 価格データ永続化設定
+const PRICE_CACHE_CONFIG = {
+    CURRENT_PRICES_DURATION: 30 * 60 * 1000,      // 現在価格: 30分
+    PRICE_HISTORY_DURATION: 24 * 60 * 60 * 1000,  // 価格履歴: 24時間
+    CHART_DATA_DURATION: 6 * 60 * 60 * 1000,      // チャートデータ: 6時間
+    MAX_STORAGE_SIZE: 50 * 1024 * 1024,           // 最大50MB
+    CLEANUP_THRESHOLD: 0.8                         // 80%使用時にクリーンアップ
+};
+
+// 永続化キャッシュ機能（強化版）
+function getCachedData(key, duration = null) {
     try {
         const cached = localStorage.getItem(key);
         if (cached) {
             const data = JSON.parse(cached);
-            if (Date.now() - data.timestamp < duration) {
+
+            // durationが指定されていない場合は、保存時のdurationを使用
+            const effectiveDuration = duration || data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
+
+            // データが有効期限内かチェック
+            if (Date.now() - data.timestamp < effectiveDuration) {
+                console.log(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
                 return data.value;
+            } else {
+                console.log(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                localStorage.removeItem(key);
             }
-            localStorage.removeItem(key);
         }
     } catch (error) {
         console.error('キャッシュ読み込みエラー:', error);
+        // 破損したキャッシュを削除
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {
+            console.error('破損キャッシュ削除エラー:', e);
+        }
     }
     return null;
 }
 
-function setCachedData(key, value, duration) {
+// メタデータ付きキャッシュ取得（保存時刻情報付き）
+function getCachedDataWithMetadata(key, duration = null) {
     try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+            const data = JSON.parse(cached);
+            
+            // durationが指定されていない場合は、保存時のdurationを使用
+            const effectiveDuration = duration || data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
+            
+            // データが有効期限内かチェック
+            if (Date.now() - data.timestamp < effectiveDuration) {
+                console.log(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                return {
+                    value: data.value,
+                    timestamp: data.timestamp,
+                    duration: data.duration,
+                    key: data.key
+                };
+            } else {
+                console.log(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                localStorage.removeItem(key);
+            }
+        }
+    } catch (error) {
+        console.error('キャッシュ読み込みエラー:', error);
+        // 破損したキャッシュを削除
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {
+            console.error('破損キャッシュ削除エラー:', e);
+        }
+    }
+    return null;
+}
+
+function setCachedData(key, value, duration = PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION) {
+    try {
+        // ストレージ使用量チェック
+        checkStorageUsage();
+
         const data = {
             value: value,
             timestamp: Date.now(),
-            duration: duration
+            duration: duration,
+            key: key,
+            size: JSON.stringify(value).length
         };
-        localStorage.setItem(key, JSON.stringify(data));
+
+        const serializedData = JSON.stringify(data);
+        localStorage.setItem(key, serializedData);
+
+        console.log(`💾 キャッシュ保存: ${key} (${Math.round(serializedData.length / 1024)}KB, ${Math.round(duration / 1000 / 60)}分有効)`);
+
+        // メタデータ更新
+        updateCacheMetadata(key, data.size, duration);
+
     } catch (error) {
         console.error('キャッシュ保存エラー:', error);
+
+        // ストレージ容量不足の場合、古いデータを削除して再試行
+        if (error.name === 'QuotaExceededError') {
+            console.log('🧹 ストレージ容量不足のため古いキャッシュを削除中...');
+            cleanupOldCache();
+
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+                console.log(`✅ キャッシュ保存成功（再試行）: ${key}`);
+            } catch (retryError) {
+                console.error('キャッシュ保存再試行失敗:', retryError);
+                showWarningMessage('ストレージ容量不足のため、一部のデータが保存できませんでした');
+            }
+        }
     }
+}
+
+// ストレージ使用量監視
+function checkStorageUsage() {
+    try {
+        // 概算使用量計算
+        let totalSize = 0;
+        for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                totalSize += localStorage[key].length;
+            }
+        }
+
+        const usageRatio = totalSize / PRICE_CACHE_CONFIG.MAX_STORAGE_SIZE;
+
+        if (usageRatio > PRICE_CACHE_CONFIG.CLEANUP_THRESHOLD) {
+            console.log(`⚠️ ストレージ使用量: ${Math.round(usageRatio * 100)}% (${Math.round(totalSize / 1024 / 1024)}MB)`);
+            cleanupOldCache();
+        }
+
+    } catch (error) {
+        console.error('ストレージ使用量チェックエラー:', error);
+    }
+}
+
+// 古いキャッシュデータのクリーンアップ
+function cleanupOldCache() {
+    try {
+        const cacheKeys = [];
+        const now = Date.now();
+
+        // キャッシュキーを収集
+        for (let key in localStorage) {
+            if (key.includes('_price_history_') || key.includes('prices_') || key.includes('_chart_')) {
+                try {
+                    const data = JSON.parse(localStorage[key]);
+                    if (data.timestamp) {
+                        cacheKeys.push({
+                            key: key,
+                            timestamp: data.timestamp,
+                            age: now - data.timestamp,
+                            size: localStorage[key].length
+                        });
+                    }
+                } catch (e) {
+                    // 破損したデータは削除対象
+                    cacheKeys.push({
+                        key: key,
+                        timestamp: 0,
+                        age: Infinity,
+                        size: localStorage[key].length
+                    });
+                }
+            }
+        }
+
+        // 古い順にソート
+        cacheKeys.sort((a, b) => b.age - a.age);
+
+        // 古いデータから削除（上位30%）
+        const deleteCount = Math.ceil(cacheKeys.length * 0.3);
+        let deletedSize = 0;
+
+        for (let i = 0; i < deleteCount && i < cacheKeys.length; i++) {
+            const item = cacheKeys[i];
+            localStorage.removeItem(item.key);
+            deletedSize += item.size;
+            console.log(`🗑️ 古いキャッシュ削除: ${item.key} (${Math.round(item.age / 1000 / 60)}分前)`);
+        }
+
+        console.log(`✅ キャッシュクリーンアップ完了: ${deleteCount}件削除 (${Math.round(deletedSize / 1024)}KB解放)`);
+
+    } catch (error) {
+        console.error('キャッシュクリーンアップエラー:', error);
+    }
+}
+
+// キャッシュメタデータ管理
+function updateCacheMetadata(key, size, duration) {
+    try {
+        const metadata = JSON.parse(localStorage.getItem('cache_metadata') || '{}');
+        metadata[key] = {
+            size: size,
+            duration: duration,
+            lastAccess: Date.now()
+        };
+        localStorage.setItem('cache_metadata', JSON.stringify(metadata));
+    } catch (error) {
+        console.error('キャッシュメタデータ更新エラー:', error);
+    }
+}
+
+// 価格データの永続化状態確認
+function getPriceDataStatus() {
+    const status = {
+        currentPrices: null,
+        priceHistories: [],
+        totalCacheSize: 0,
+        oldestData: null,
+        newestData: null
+    };
+
+    try {
+        // 現在価格データ
+        const currentPricesKey = Object.keys(localStorage).find(key => key.startsWith('prices_'));
+        if (currentPricesKey) {
+            const data = JSON.parse(localStorage[currentPricesKey]);
+            status.currentPrices = {
+                key: currentPricesKey,
+                timestamp: data.timestamp,
+                age: Date.now() - data.timestamp,
+                symbols: data.value._metadata?.symbols || []
+            };
+        }
+
+        // 価格履歴データ
+        for (let key in localStorage) {
+            if (key.includes('_price_history_')) {
+                try {
+                    const data = JSON.parse(localStorage[key]);
+                    const symbol = key.split('_')[0].toUpperCase();
+                    status.priceHistories.push({
+                        symbol: symbol,
+                        key: key,
+                        timestamp: data.timestamp,
+                        age: Date.now() - data.timestamp,
+                        dataPoints: data.value?.length || 0
+                    });
+
+                    status.totalCacheSize += localStorage[key].length;
+
+                    if (!status.oldestData || data.timestamp < status.oldestData.timestamp) {
+                        status.oldestData = { key, timestamp: data.timestamp };
+                    }
+                    if (!status.newestData || data.timestamp > status.newestData.timestamp) {
+                        status.newestData = { key, timestamp: data.timestamp };
+                    }
+                } catch (e) {
+                    console.warn(`破損した価格履歴データ: ${key}`);
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('価格データ状態確認エラー:', error);
+    }
+
+    return status;
+}
+
+// 価格データ永続化レポート表示
+function showPriceDataReport() {
+    const status = getPriceDataStatus();
+
+    console.log('📊 価格データ永続化レポート:');
+    console.log(`💾 総キャッシュサイズ: ${Math.round(status.totalCacheSize / 1024)}KB`);
+
+    if (status.currentPrices) {
+        console.log(`💰 現在価格: ${status.currentPrices.symbols.length}銘柄 (${Math.round(status.currentPrices.age / 1000 / 60)}分前)`);
+    } else {
+        console.log('💰 現在価格: なし');
+    }
+
+    console.log(`📈 価格履歴: ${status.priceHistories.length}銘柄`);
+    status.priceHistories.forEach(history => {
+        console.log(`  - ${history.symbol}: ${history.dataPoints}日分 (${Math.round(history.age / 1000 / 60 / 60)}時間前)`);
+    });
+
+    if (status.oldestData) {
+        const oldestAge = Math.round((Date.now() - status.oldestData.timestamp) / 1000 / 60 / 60);
+        console.log(`⏰ 最古データ: ${oldestAge}時間前`);
+    }
+
+    return status;
 }
 
 // 銘柄の現在価格を更新（API効率化）
@@ -278,27 +596,110 @@ async function renderSymbolProfitChart(symbol) {
     // 現在価格ベースでのチャート表示（CORS回避）
     const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
     const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
-    
+
+    if (!symbolSummary) {
+        console.log(`⚠️ ${symbol}のポートフォリオデータが見つかりません`);
+    } else if (currentPrice <= 0) {
+        console.log(`⚠️ ${symbol}の現在価格が設定されていません`);
+    }
+
     if (currentPrice > 0) {
         console.log(`💡 Using current price for ${symbol}: ¥${currentPrice.toLocaleString()}`);
-        
+
         // 現在価格での損益推移チャートを生成
         const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
-        
+
         if (profitData && profitData.length > 0) {
             displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（取引履歴ベース）`);
-            showSuccessMessage(`${symbol}: 損益推移チャートを表示しました`);
+            
+            // 価格データの取得元を判定してメッセージを表示
+            const lastPriceUpdate = window.lastPriceUpdate;
+            
+            // 現在価格キャッシュから保存時刻を取得を試行
+            let priceSourceMessage = `${symbol}: 現在価格でチャート表示`;
+            
+            if (lastPriceUpdate) {
+                const ageMinutes = Math.round((Date.now() - lastPriceUpdate.getTime()) / 1000 / 60);
+                const updateTimeStr = lastPriceUpdate.toLocaleString('ja-JP', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric'
+                });
+                
+                if (ageMinutes < 30) {
+                    priceSourceMessage = `${symbol}: 最新価格でチャート表示\n${updateTimeStr}取得`;
+                } else {
+                    priceSourceMessage = `${symbol}: キャッシュ価格でチャート表示\n${updateTimeStr}取得`;
+                }
+            } else {
+                // 価格キャッシュから保存時刻を取得を試行
+                try {
+                    // 複数の可能なキャッシュキーを試行
+                    const possibleKeys = [
+                        `prices_${symbol.toLowerCase()}`,
+                        `prices_${[symbol].sort().join('_')}`,
+                        'currentPrices'
+                    ];
+                    
+                    let cachedPricesWithMeta = null;
+                    
+                    // 各キーを試行
+                    for (const key of possibleKeys) {
+                        cachedPricesWithMeta = getCachedDataWithMetadata(key);
+                        if (cachedPricesWithMeta) {
+                            console.log(`💾 ${symbol}の価格キャッシュを発見`);
+                            break;
+                        }
+                    }
+                    
+                    if (cachedPricesWithMeta) {
+                        const cacheDate = new Date(cachedPricesWithMeta.timestamp);
+                        const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: 'numeric'
+                        });
+                        priceSourceMessage = `${symbol}: キャッシュ価格でチャート表示\n${cacheTimeStr}保存`;
+                    } else {
+                        // フォールバック: 従来のlastPriceUpdateを確認
+                        const savedLastUpdate = localStorage.getItem('lastPriceUpdate');
+                        if (savedLastUpdate) {
+                            try {
+                                const updateDate = new Date(savedLastUpdate);
+                                const updateTimeStr = updateDate.toLocaleString('ja-JP', {
+                                    month: 'numeric',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: 'numeric'
+                                });
+                                priceSourceMessage = `${symbol}: 保存済み価格でチャート表示\n${updateTimeStr}取得`;
+                            } catch (dateError) {
+                                priceSourceMessage = `${symbol}: 保存済み価格でチャート表示 (保存時刻不明)`;
+                            }
+                        } else {
+                            priceSourceMessage = `${symbol}: 保存済み価格でチャート表示 (保存時刻不明)`;
+                        }
+                    }
+                } catch (error) {
+                    priceSourceMessage = `${symbol}: 保存済み価格でチャート表示 (保存時刻不明)`;
+                }
+            }
+            
+            showSuccessMessage(priceSourceMessage);
+            
             console.log(`✅ ${symbol} profit chart rendered successfully`);
             return;
         }
     }
-    
+
     // 現在価格がない場合のエラー表示
     showChartError(canvasId, symbol, new Error('現在価格データがありません'), [
         '「価格更新」ボタンをクリックして現在価格を取得してください',
         '価格データ取得後にチャートが表示されます'
     ]);
-    
+
     showWarningMessage(`${symbol}: 価格データがないためチャートを表示できません`);
 
     try {
@@ -325,9 +726,28 @@ async function renderSymbolProfitChart(symbol) {
 
         console.log(`✅ ${symbol} profit chart rendered successfully`);
 
-        // チャート描画成功時のトースト通知（控えめに）
+        // チャート描画成功時のトースト通知（データソース明記）
         if (profitData.length > 0) {
-            showSuccessMessage(`${symbol}: 総合損益チャートを表示しました`);
+            // 価格履歴キャッシュの保存時刻を取得
+            try {
+                const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
+                const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey);
+                
+                if (cachedDataWithMeta) {
+                    const cacheDate = new Date(cachedDataWithMeta.timestamp);
+                    const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric'
+                    });
+                    showSuccessMessage(`${symbol}: キャッシュから価格履歴チャート表示\n${cacheTimeStr}保存`);
+                } else {
+                    showSuccessMessage(`${symbol}: キャッシュから価格履歴チャート表示 (保存時刻不明)`);
+                }
+            } catch (error) {
+                showSuccessMessage(`${symbol}: キャッシュから価格履歴チャート表示 (保存時刻不明)`);
+            }
         }
 
     } catch (error) {
@@ -400,6 +820,27 @@ async function renderSymbolProfitChart(symbol) {
 
                 if (profitData && profitData.length > 0) {
                     displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（現在価格ベース）`);
+                    // フォールバック時も価格キャッシュの保存時刻を取得を試行
+                    try {
+                        const validSymbols = [symbol];
+                        const cacheKey = `prices_${validSymbols.sort().join('_')}`;
+                        const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey);
+                        
+                        if (cachedPricesWithMeta) {
+                            const cacheDate = new Date(cachedPricesWithMeta.timestamp);
+                            const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
+                                month: 'numeric',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: 'numeric'
+                            });
+                            showSuccessMessage(`${symbol}: フォールバック価格でチャート表示\n${cacheTimeStr}保存`);
+                        } else {
+                            showSuccessMessage(`${symbol}: フォールバック価格でチャート表示 (保存時刻不明)`);
+                        }
+                    } catch (error) {
+                        showSuccessMessage(`${symbol}: フォールバック価格でチャート表示 (保存時刻不明)`);
+                    }
                     console.log(`✅ Fallback chart displayed for ${symbol}`);
                     return; // フォールバック成功
                 }

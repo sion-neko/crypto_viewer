@@ -271,13 +271,17 @@ function displayDashboard(portfolioData) {
     const tableContainer = document.getElementById('portfolio-table-container');
     tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
 
-    // 保存済み価格データを復元
-    if (loadSavedPrices()) {
+    // 保存済み価格データを復元（api.jsの関数が利用可能な場合）
+    if (typeof loadSavedPrices === 'function' && loadSavedPrices()) {
         // 価格データが復元できた場合、テーブルを再描画
         tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-        updatePriceStatus();
+        if (typeof updatePriceStatus === 'function') {
+            updatePriceStatus();
+        }
     } else {
-        updatePriceStatus('価格データなし');
+        if (typeof updatePriceStatus === 'function') {
+            updatePriceStatus('価格データなし');
+        }
     }
 
     // 取引履歴テーブル表示
