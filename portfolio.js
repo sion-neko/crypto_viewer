@@ -301,12 +301,35 @@ function displayDashboard(portfolioData) {
     setTimeout(() => {
         console.log('🔄 Setting summary tab as active...');
         switchSubtab('summary');
+        
+        // 銘柄タブが作成されている場合、最初の銘柄のチャートを事前準備
+        const firstSymbolTab = document.querySelector('.symbol-subtab');
+        if (firstSymbolTab) {
+            const firstSymbol = firstSymbolTab.textContent;
+            console.log(`🎨 Pre-loading chart data for first symbol: ${firstSymbol}`);
+            
+            // 最初の銘柄の価格履歴をバックグラウンドで取得（キャッシュ用）
+            if (typeof fetchSymbolPriceHistory === 'function') {
+                setTimeout(() => {
+                    fetchSymbolPriceHistory(firstSymbol).catch(error => {
+                        console.log(`Pre-loading ${firstSymbol} price history failed:`, error.message);
+                    });
+                }, 500);
+            }
+        }
     }, 50);
 
     updateDataStatus(portfolioData);
 
     // アップロード成功後はダッシュボードページに切り替え
     showPage('dashboard');
+
+    // 全銘柄の損益推移チャートを描画（非同期）
+    setTimeout(() => {
+        if (typeof renderAllSymbolsProfitChart === 'function') {
+            renderAllSymbolsProfitChart();
+        }
+    }, 1000);
 }
 
 // データ状態更新
@@ -611,16 +634,23 @@ function generateMobilePortfolioCards(portfolioData) {
     // 損益チャートをモバイル版にも追加
     html += `
         <div class="table-card" style="background: white; border: 1px solid #cbd5e1;">
-            <div class="card-header">📈 直近1か月の総合損益推移</div>
-            <div style="height: 250px; padding: 10px; position: relative;">
-                <canvas id="profitChart" style="max-height: 250px;"></canvas>
+            <div class="card-header">
+                📈 各銘柄の総合損益推移（過去1か月）
+                <button onclick="renderAllSymbolsProfitChart()" style="float: right; padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    更新
+                </button>
+            </div>
+            <div style="height: 300px; padding: 10px; position: relative;">
+                <canvas id="all-symbols-profit-chart" style="max-height: 300px;"></canvas>
             </div>
         </div>
     `;
 
     // チャートを非同期で描画（DOM更新後）
     setTimeout(() => {
-        renderProfitChart(portfolioData);
+        if (typeof renderAllSymbolsProfitChart === 'function') {
+            renderAllSymbolsProfitChart();
+        }
     }, 100);
 
     return `<div class="mobile-card-table">${html}</div>`;
@@ -684,8 +714,16 @@ function generatePortfolioTable(portfolioData) {
 
         <!-- 1か月の損益推移チャート -->
         <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <h3 style="margin: 0 0 15px 0; font-size: 18px; font-weight: 600; color: #1e293b; text-align: center;">📈 直近1か月の総合損益推移</h3>
-            <div style="height: 300px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 各銘柄の総合損益推移（過去1か月）</h3>
+                <button onclick="renderAllSymbolsProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                    チャート更新
+                </button>
+            </div>
+            <div style="height: 400px; position: relative;">
+                <canvas id="all-symbols-profit-chart" style="max-height: 400px;"></canvas>
+            </div>
+        </div>ative;">
                 <canvas id="profitChart" style="max-height: 300px;"></canvas>
             </div>
         </div>
@@ -927,11 +965,16 @@ function generateSymbolDetailPage(symbolSummary, symbolData) {
 
         <!-- 総合損益推移チャート（全銘柄対応） -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px;">
-            <h4 style="color: #2c3e50; margin-bottom: 15px;">📈 ${symbolSummary.symbol} 総合損益推移チャート（過去1か月・日次）</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="color: #2c3e50; margin: 0;">📈 ${symbolSummary.symbol} 総合損益推移チャート（過去1か月・日次）</h4>
+                <button onclick="renderSymbolProfitChart('${symbolSummary.symbol}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                    チャート更新
+                </button>
+            </div>
             <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 20px;">
                 💡 ${symbolSummary.symbol}の過去1か月の価格変動に基づく日次総合損益推移<br>
                 🟢 実線: 総合損益（実現+含み） | 🔵 点線: 実現損益のみ | 🟡 点線: 含み損益のみ<br>
-                📊 価格データ: CoinGecko API（日次更新）<br>
+                📊 価格データ: CoinGecko API（日次更新・キャッシュ対応）<br>
                 ⚡ 対応銘柄: BTC, ETH, SOL, XRP, ADA, DOGE, ASTR, XTZ, XLM, SHIB, PEPE, SUI, DAI
             </p>
             <div style="height: 400px; position: relative;">

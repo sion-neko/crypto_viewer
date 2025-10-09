@@ -58,9 +58,9 @@ async function fetchSymbolPriceHistory(symbol) {
         const cachedData = cachedDataWithMeta.value;
         const cacheTimestamp = cachedDataWithMeta.timestamp;
         const cacheDate = new Date(cacheTimestamp);
-        
+
         console.log(`📈 ${symbol}の価格履歴キャッシュを使用 (${cachedData.length}日分)`);
-        
+
         console.log(`✅ ${symbol}価格履歴を永続キャッシュから取得 (${cachedData.length}日分)`);
 
         // キャッシュデータの最新性をチェック
@@ -75,9 +75,9 @@ async function fetchSymbolPriceHistory(symbol) {
                 hour: 'numeric',
                 minute: 'numeric'
             });
-            
 
-            
+
+
             showSuccessMessage(`${symbol}: キャッシュから表示\n${cacheTimeStr}保存`);
             return cachedData;
         } else {
@@ -89,11 +89,11 @@ async function fetchSymbolPriceHistory(symbol) {
         const fallbackCachedData = getCachedData(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
         if (fallbackCachedData) {
             console.log(`✅ ${symbol}価格履歴をフォールバックキャッシュから取得 (${fallbackCachedData.length}日分)`);
-            
+
             // キャッシュデータの最新性をチェック
             const latestDataDate = new Date(fallbackCachedData[fallbackCachedData.length - 1].date);
             const hoursOld = (Date.now() - latestDataDate.getTime()) / (1000 * 60 * 60);
-            
+
             if (hoursOld < 6) {
                 showSuccessMessage(`${symbol}: キャッシュから表示 (保存時刻不明)`);
                 return fallbackCachedData;
@@ -273,10 +273,10 @@ function getCachedDataWithMetadata(key, duration = null) {
         const cached = localStorage.getItem(key);
         if (cached) {
             const data = JSON.parse(cached);
-            
+
             // durationが指定されていない場合は、保存時のdurationを使用
             const effectiveDuration = duration || data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
-            
+
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
                 console.log(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
@@ -565,6 +565,89 @@ async function fetchMultipleSymbolPriceHistories(symbols) {
     return results;
 }
 
+// 全銘柄の総合損益推移チャートを描画
+async function renderAllSymbolsProfitChart() {
+    console.log('🔄 renderAllSymbolsProfitChart called');
+
+    const portfolioData = window.currentPortfolioData || currentPortfolioData;
+    if (!portfolioData) {
+        console.error('❌ Portfolio data not available');
+        return;
+    }
+
+    const canvasId = 'all-symbols-profit-chart';
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error(`❌ Canvas element not found: ${canvasId}`);
+        return;
+    }
+
+    try {
+        // 保有銘柄を取得
+        const symbols = portfolioData.summary
+            .filter(item => item.holdingQuantity > 0)
+            .map(item => item.symbol);
+
+        if (symbols.length === 0) {
+            showChartError(canvasId, '全銘柄', new Error('保有銘柄がありません'), [
+                '現在保有している銘柄がないため、チャートを表示できません'
+            ]);
+            return;
+        }
+
+        console.log(`📊 Fetching price histories for ${symbols.length} symbols:`, symbols);
+        showInfoMessage(`${symbols.length}銘柄の価格履歴を取得中...`);
+
+        // 複数銘柄の価格履歴を並列取得
+        const priceHistories = await fetchMultipleSymbolPriceHistories(symbols);
+
+        // 成功した銘柄のみでチャートデータを生成
+        const validSymbols = symbols.filter(symbol => priceHistories[symbol]);
+
+        if (validSymbols.length === 0) {
+            throw new Error('価格履歴を取得できた銘柄がありません');
+        }
+
+        console.log(`✅ Price histories obtained for ${validSymbols.length}/${symbols.length} symbols`);
+
+        // 各銘柄の損益推移データを生成
+        const allProfitData = {};
+        validSymbols.forEach(symbol => {
+            const symbolData = portfolioData.symbols[symbol];
+            if (symbolData && symbolData.allTransactions) {
+                const profitData = generateHistoricalProfitTimeSeries(
+                    symbol,
+                    symbolData.allTransactions,
+                    priceHistories[symbol]
+                );
+                if (profitData && profitData.length > 0) {
+                    allProfitData[symbol] = profitData;
+                }
+            }
+        });
+
+        if (Object.keys(allProfitData).length === 0) {
+            throw new Error('損益データを生成できませんでした');
+        }
+
+        // 複数銘柄の損益推移チャートを表示
+        displayMultiSymbolProfitChart(canvasId, allProfitData, '全銘柄総合損益推移（過去1か月）');
+
+        const successCount = Object.keys(allProfitData).length;
+        showSuccessMessage(`${successCount}銘柄の損益推移チャートを表示しました`);
+
+    } catch (error) {
+        console.error('全銘柄損益チャート描画エラー:', error);
+
+        showChartError(canvasId, '全銘柄', error, [
+            '一部の銘柄で価格履歴を取得できませんでした',
+            'しばらく時間をおいて再度お試しください'
+        ]);
+
+        showErrorMessage(`全銘柄チャート表示失敗: ${error.message}`);
+    }
+}
+
 // 銘柄別損益推移チャートを描画（汎用版）
 async function renderSymbolProfitChart(symbol) {
     console.log(`🔄 renderSymbolProfitChart called for ${symbol}`);
@@ -611,13 +694,13 @@ async function renderSymbolProfitChart(symbol) {
 
         if (profitData && profitData.length > 0) {
             displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（取引履歴ベース）`);
-            
+
             // 価格データの取得元を判定してメッセージを表示
             const lastPriceUpdate = window.lastPriceUpdate;
-            
+
             // 現在価格キャッシュから保存時刻を取得を試行
             let priceSourceMessage = `${symbol}: 現在価格でチャート表示`;
-            
+
             if (lastPriceUpdate) {
                 const ageMinutes = Math.round((Date.now() - lastPriceUpdate.getTime()) / 1000 / 60);
                 const updateTimeStr = lastPriceUpdate.toLocaleString('ja-JP', {
@@ -626,7 +709,7 @@ async function renderSymbolProfitChart(symbol) {
                     hour: 'numeric',
                     minute: 'numeric'
                 });
-                
+
                 if (ageMinutes < 30) {
                     priceSourceMessage = `${symbol}: 最新価格でチャート表示\n${updateTimeStr}取得`;
                 } else {
@@ -641,9 +724,9 @@ async function renderSymbolProfitChart(symbol) {
                         `prices_${[symbol].sort().join('_')}`,
                         'currentPrices'
                     ];
-                    
+
                     let cachedPricesWithMeta = null;
-                    
+
                     // 各キーを試行
                     for (const key of possibleKeys) {
                         cachedPricesWithMeta = getCachedDataWithMetadata(key);
@@ -652,7 +735,7 @@ async function renderSymbolProfitChart(symbol) {
                             break;
                         }
                     }
-                    
+
                     if (cachedPricesWithMeta) {
                         const cacheDate = new Date(cachedPricesWithMeta.timestamp);
                         const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
@@ -686,9 +769,9 @@ async function renderSymbolProfitChart(symbol) {
                     priceSourceMessage = `${symbol}: 保存済み価格でチャート表示 (保存時刻不明)`;
                 }
             }
-            
+
             showSuccessMessage(priceSourceMessage);
-            
+
             console.log(`✅ ${symbol} profit chart rendered successfully`);
             return;
         }
@@ -732,7 +815,7 @@ async function renderSymbolProfitChart(symbol) {
             try {
                 const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
                 const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey);
-                
+
                 if (cachedDataWithMeta) {
                     const cacheDate = new Date(cachedDataWithMeta.timestamp);
                     const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
@@ -825,7 +908,7 @@ async function renderSymbolProfitChart(symbol) {
                         const validSymbols = [symbol];
                         const cacheKey = `prices_${validSymbols.sort().join('_')}`;
                         const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey);
-                        
+
                         if (cachedPricesWithMeta) {
                             const cacheDate = new Date(cachedPricesWithMeta.timestamp);
                             const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
@@ -902,21 +985,45 @@ function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) 
                     weightedAvgPrice = totalQuantity > 0 ? newTotalValue / totalQuantity : 0;
                     totalBought += tx.amount;
                 } else if (tx.type === '売') {
-                    // 売却時の実現損益を計算
+                    // 売却時の実現損益を計算（売却前の加重平均価格を使用）
                     const sellProfit = tx.amount - (tx.quantity * weightedAvgPrice);
                     realizedProfit += sellProfit;
+
+                    // 保有数量を減らす（加重平均価格は変更しない）
                     totalQuantity -= tx.quantity;
                     totalSold += tx.amount;
+
+                    // 保有数量が0以下になった場合、加重平均価格をリセット
+                    if (totalQuantity <= 0) {
+                        totalQuantity = 0;
+                        weightedAvgPrice = 0;
+                    }
                 }
             }
         });
 
         // 含み損益を計算
         let unrealizedProfit = 0;
-        if (price > 0 && totalQuantity > 0 && weightedAvgPrice > 0) {
+        if (price > 0 && totalQuantity > 0.00000001 && weightedAvgPrice > 0) {
             const currentValue = totalQuantity * price;
             const holdingCost = totalQuantity * weightedAvgPrice;
             unrealizedProfit = currentValue - holdingCost;
+
+            // 異常に大きな含み損益をチェック（デバッグ用）
+            if (Math.abs(unrealizedProfit) > 1000000) {
+                console.warn(`⚠️ Large unrealized profit detected for ${symbol}:`, {
+                    date: targetDate.toISOString().split('T')[0],
+                    totalQuantity,
+                    price,
+                    weightedAvgPrice,
+                    currentValue,
+                    holdingCost,
+                    unrealizedProfit
+                });
+            }
+        } else if (totalQuantity <= 0.00000001) {
+            // 保有数量が極小の場合は含み損益を0にする
+            unrealizedProfit = 0;
         }
 
         // 総合損益 = 実現損益 + 含み損益
@@ -933,6 +1040,18 @@ function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) 
             avgPrice: weightedAvgPrice,
             currentPrice: price
         });
+
+        // デバッグ用：異常な値をログ出力
+        if (Math.abs(unrealizedProfit) > 100000 || Math.abs(totalProfit) > 500000) {
+            console.log(`📊 ${symbol} ${targetDate.toISOString().split('T')[0]}:`, {
+                holdingQuantity: totalQuantity.toFixed(8),
+                avgPrice: Math.round(weightedAvgPrice),
+                currentPrice: Math.round(price),
+                realizedProfit: Math.round(realizedProfit),
+                unrealizedProfit: Math.round(unrealizedProfit),
+                totalProfit: Math.round(totalProfit)
+            });
+        }
     });
 
     console.log(`✅ Generated ${dailyProfitData.length} profit data points`);
@@ -1188,7 +1307,41 @@ function displayProfitChart(canvasId, profitData, title) {
                         },
                         ticks: {
                             callback: function (value) {
-                                return '¥' + value.toLocaleString();
+                                // 大きな値は簡略表示
+                                if (Math.abs(value) >= 1000000) {
+                                    return '¥' + (value / 1000000).toFixed(1) + 'M';
+                                } else if (Math.abs(value) >= 1000) {
+                                    return '¥' + (value / 1000).toFixed(0) + 'K';
+                                } else {
+                                    return '¥' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        // Y軸の範囲を自動調整（異常値を除外）
+                        beforeUpdate: function (scale) {
+                            if (profitData && profitData.length > 0) {
+                                const allValues = [];
+                                profitData.forEach(d => {
+                                    allValues.push(d.totalProfit || 0);
+                                    allValues.push(d.realizedProfit || 0);
+                                    allValues.push(d.unrealizedProfit || 0);
+                                });
+
+                                // 異常値を除外（上位・下位5%を除く）
+                                allValues.sort((a, b) => a - b);
+                                const p5 = Math.floor(allValues.length * 0.05);
+                                const p95 = Math.floor(allValues.length * 0.95);
+                                const filteredValues = allValues.slice(p5, p95);
+
+                                if (filteredValues.length > 0) {
+                                    const min = Math.min(...filteredValues);
+                                    const max = Math.max(...filteredValues);
+                                    const range = max - min;
+                                    const padding = range * 0.1;
+
+                                    scale.options.min = min - padding;
+                                    scale.options.max = max + padding;
+                                }
                             }
                         }
                     }
@@ -1205,12 +1358,16 @@ function displayProfitChart(canvasId, profitData, title) {
                                 const datasetLabel = context.dataset.label;
 
                                 if (datasetLabel === '総合損益 (¥)') {
+                                    // 銘柄名をcanvasIdから取得
+                                    const symbolMatch = canvasId.match(/^([a-z]+)-profit-chart$/);
+                                    const symbolName = symbolMatch ? symbolMatch[1].toUpperCase() : 'SYMBOL';
+
                                     return [
-                                        `📅 ${(dataPoint.date instanceof Date ? dataPoint.date : new Date(dataPoint.date)).toLocaleDateString('ja-JP')}`,
-                                        `💰 総合損益: ¥${Math.round(dataPoint.totalProfit || dataPoint.profit || 0).toLocaleString()}`,
+                                        `� $有{(dataPoint.date instanceof Date ? dataPoint.date : new Date(dataPoint.date)).toLocaleDateString('ja-JP')}`,
+                                        `� 平総合損益: ¥${Math.round(dataPoint.totalProfit || dataPoint.profit || 0).toLocaleString()}`,
                                         `　├ 実現損益: ¥${Math.round(dataPoint.realizedProfit || dataPoint.profit || 0).toLocaleString()}`,
                                         `　└ 含み損益: ¥${Math.round(dataPoint.unrealizedProfit || 0).toLocaleString()}`,
-                                        `📊 保有量: ${dataPoint.holdingQuantity.toFixed(6)} ETH`,
+                                        `📊 保有量: ${dataPoint.holdingQuantity.toFixed(6)} ${symbolName}`,
                                         `📈 平均価格: ¥${Math.round(dataPoint.avgPrice).toLocaleString()}`,
                                         `💹 その日の価格: ¥${Math.round(dataPoint.currentPrice || 0).toLocaleString()}`
                                     ];
@@ -1238,6 +1395,177 @@ function displayProfitChart(canvasId, profitData, title) {
             'データ形式に問題がある可能性があります'
         ]);
     }
+}
+
+// 複数銘柄の損益推移チャート表示
+function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
+    console.log(`🎨 displayMultiSymbolProfitChart called for ${canvasId}`);
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error(`Canvas not found: ${canvasId}`);
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+
+    // 既存のチャートインスタンスを破棄
+    if (window.chartInstances && window.chartInstances[canvasId]) {
+        window.chartInstances[canvasId].destroy();
+    }
+
+    // チャートインスタンス管理用のグローバルオブジェクト
+    if (!window.chartInstances) {
+        window.chartInstances = {};
+    }
+
+    // 全銘柄の日付を統合してソート
+    const allDates = new Set();
+    Object.values(allProfitData).forEach(profitData => {
+        profitData.forEach(point => {
+            allDates.add(point.date.toDateString());
+        });
+    });
+
+    const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+    const labels = sortedDates.map(dateStr => {
+        const date = new Date(dateStr);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    });
+
+    // 銘柄ごとのデータセットを作成
+    const datasets = [];
+    const colors = [
+        '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
+        '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#d35400'
+    ];
+
+    let colorIndex = 0;
+    Object.keys(allProfitData).forEach(symbol => {
+        const profitData = allProfitData[symbol];
+        const color = colors[colorIndex % colors.length];
+
+        // 日付ごとの損益データを作成
+        const data = sortedDates.map(dateStr => {
+            const point = profitData.find(p => p.date.toDateString() === dateStr);
+            return point ? point.totalProfit : null;
+        });
+
+        // 最終損益で線の太さを調整
+        const finalProfit = data[data.length - 1] || 0;
+        const borderWidth = Math.abs(finalProfit) > 10000 ? 3 : 2;
+
+        datasets.push({
+            label: `${symbol}`,
+            data: data,
+            borderColor: color,
+            backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.1)'),
+            borderWidth: borderWidth,
+            fill: false,
+            tension: 0.1,
+            pointBackgroundColor: color,
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 1,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            spanGaps: true
+        });
+
+        colorIndex++;
+    });
+
+    // チャート設定
+    const config = {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: title,
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    color: '#2c3e50'
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function (context) {
+                            const value = context.parsed.y;
+                            if (value === null) return null;
+                            const sign = value >= 0 ? '+' : '';
+                            return `${context.dataset.label}: ${sign}¥${Math.round(value).toLocaleString()}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: '日付',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.1)'
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: '損益 (¥)',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.1)'
+                    },
+                    ticks: {
+                        callback: function (value) {
+                            const sign = value >= 0 ? '+' : '';
+                            return `${sign}¥${Math.round(value).toLocaleString()}`;
+                        }
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    };
+
+    // チャートを作成
+    window.chartInstances[canvasId] = new Chart(ctx, config);
+
+    console.log(`✅ Multi-symbol profit chart displayed: ${canvasId} (${Object.keys(allProfitData).length} symbols)`);
 }
 
 // ===================================================================

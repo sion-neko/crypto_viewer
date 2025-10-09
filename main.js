@@ -242,12 +242,21 @@ function switchSubtab(subtabName) {
         // 銘柄タブが選択された場合、チャートを描画（summaryは除外）
         if (subtabName !== 'summary') {
             const symbol = subtabName.toUpperCase();
-            displaySymbolChart(symbol);
             
-            // 全銘柄で損益推移チャートを描画
+            // 価格チャートを描画
+            if (typeof displaySymbolChart === 'function') {
+                displaySymbolChart(symbol);
+            }
+            
+            // 損益推移チャートを描画
             setTimeout(() => {
-                renderSymbolProfitChart(symbol);
-            }, 100); // DOM更新後に実行
+                if (typeof renderSymbolProfitChart === 'function') {
+                    console.log(`🎨 Auto-rendering profit chart for ${symbol}`);
+                    renderSymbolProfitChart(symbol);
+                } else {
+                    console.warn('⚠️ renderSymbolProfitChart function not available');
+                }
+            }, 200); // DOM更新後に実行
         }
     }
 }
