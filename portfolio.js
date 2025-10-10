@@ -723,9 +723,6 @@ function generatePortfolioTable(portfolioData) {
             <div style="height: 400px; position: relative;">
                 <canvas id="all-symbols-profit-chart" style="max-height: 400px;"></canvas>
             </div>
-        </div>ative;">
-                <canvas id="profitChart" style="max-height: 300px;"></canvas>
-            </div>
         </div>
 
         <!-- 銘柄別詳細テーブル -->
