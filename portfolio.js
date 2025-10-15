@@ -309,12 +309,16 @@ function displayDashboard(portfolioData) {
         window.portfolioChartMode = savedMode;
 
         // ボタンとタイトルの初期状態を設定
-        if (typeof toggleChartMode === 'function') {
-            // 一度切り替えて正しい状態にする
-            const currentMode = window.portfolioChartMode;
-            window.portfolioChartMode = currentMode === 'combined' ? 'individual' : 'combined';
-            toggleChartMode();
-        }
+        setTimeout(() => {
+            if (typeof window.toggleChartMode === 'function') {
+                // 一度切り替えて正しい状態にする
+                const currentMode = window.portfolioChartMode;
+                window.portfolioChartMode = currentMode === 'combined' ? 'individual' : 'combined';
+                window.toggleChartMode();
+            } else {
+                console.warn('⚠️ toggleChartMode function not available');
+            }
+        }, 100);
 
         // チャートを描画（デスクトップ・モバイル両対応）
         if (typeof renderAllSymbolsProfitChart === 'function') {
