@@ -243,6 +243,20 @@ function switchSubtab(subtabName) {
         if (subtabName !== 'summary') {
             const symbol = subtabName.toUpperCase();
             
+            // 重複実行を防ぐため、最後の実行から一定時間経過をチェック
+            const now = Date.now();
+            const lastRenderKey = `lastRender_${symbol}`;
+            const lastRenderTime = window[lastRenderKey] || 0;
+            const timeSinceLastRender = now - lastRenderTime;
+            
+            if (timeSinceLastRender < 2000) {
+                console.log(`⏭️ Skipping chart render for ${symbol} (last render ${Math.round(timeSinceLastRender/1000)}s ago)`);
+                return;
+            }
+            
+            // 実行時刻を記録
+            window[lastRenderKey] = now;
+            
             // 価格チャートを描画
             if (typeof displaySymbolChart === 'function') {
                 displaySymbolChart(symbol);
@@ -714,37 +728,7 @@ function isMobile() {
     return window.innerWidth <= 768;
 }
 
-// キャッシュ機能
-const CACHE_DURATION_CHART = 30 * 60 * 1000; // 30分
-
-function getCachedData(key) {
-    try {
-        const cached = localStorage.getItem(key);
-        if (cached) {
-            const data = JSON.parse(cached);
-            if (Date.now() - data.timestamp < data.duration) {
-                return data.value;
-            }
-            localStorage.removeItem(key);
-        }
-    } catch (error) {
-        console.error('キャッシュ読み込みエラー:', error);
-    }
-    return null;
-}
-
-function setCachedData(key, value, duration) {
-    try {
-        const data = {
-            value: value,
-            timestamp: Date.now(),
-            duration: duration
-        };
-        localStorage.setItem(key, JSON.stringify(data));
-    } catch (error) {
-        console.error('キャッシュ保存エラー:', error);
-    }
-}
+// キャッシュ機能はcharts.jsで統一管理
 
 // ===================================================================
 // INITIALIZATION
@@ -843,4 +827,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof clearAllData === 'function') window.clearAllData = clearAllData;
     if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
     if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
+    if (typeof toggleChartMode === 'function') window.toggleChartMode = toggleChartMode;
+    if (typeof renderAllSymbolsProfitChart === 'function') window.renderAllSymbolsProfitChart = renderAllSymbolsProfitChart;
 })();

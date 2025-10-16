@@ -155,7 +155,7 @@ function sortPortfolioData(field, direction) {
         let aVal, bVal;
 
         // フィールド値取得
-        switch(field) {
+        switch (field) {
             case 'symbol':
                 aVal = a.symbol;
                 bVal = b.symbol;
@@ -228,8 +228,8 @@ function getSortIcon(field) {
 // ソート方向表示更新
 function updateSortIndicators(activeField, direction) {
     const fields = ['symbol', 'holdingQuantity', 'averagePurchaseRate', 'totalInvestment',
-                   'currentPrice', 'currentValue', 'totalSellAmount', 'realizedProfit',
-                   'unrealizedProfit', 'realizedProfit', 'totalProfit'];
+        'currentPrice', 'currentValue', 'totalSellAmount', 'realizedProfit',
+        'unrealizedProfit', 'realizedProfit', 'totalProfit'];
 
     fields.forEach(field => {
         const indicator = document.getElementById(`sort-${field}`);
@@ -253,7 +253,7 @@ function updateSortIndicators(activeField, direction) {
 function displayDashboard(portfolioData) {
     console.log('🚀 displayDashboard called');
     console.log('📊 Portfolio data summary:', portfolioData?.summary?.length || 0, 'symbols');
-    
+
     // グローバル変数に保存
     currentPortfolioData = portfolioData;
     window.currentPortfolioData = portfolioData; // グローバルアクセス用
@@ -271,17 +271,9 @@ function displayDashboard(portfolioData) {
     const tableContainer = document.getElementById('portfolio-table-container');
     tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
 
-    // 保存済み価格データを復元（api.jsの関数が利用可能な場合）
-    if (typeof loadSavedPrices === 'function' && loadSavedPrices()) {
-        // 価格データが復元できた場合、テーブルを再描画
-        tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-        if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus();
-        }
-    } else {
-        if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus('価格データなし');
-        }
+    // 価格データは手動更新のみとし、自動復元は行わない
+    if (typeof updatePriceStatus === 'function') {
+        updatePriceStatus('価格データなし - 手動更新してください');
     }
 
     // 取引履歴テーブル表示
@@ -301,22 +293,8 @@ function displayDashboard(portfolioData) {
     setTimeout(() => {
         console.log('🔄 Setting summary tab as active...');
         switchSubtab('summary');
-        
-        // 銘柄タブが作成されている場合、最初の銘柄のチャートを事前準備
-        const firstSymbolTab = document.querySelector('.symbol-subtab');
-        if (firstSymbolTab) {
-            const firstSymbol = firstSymbolTab.textContent;
-            console.log(`🎨 Pre-loading chart data for first symbol: ${firstSymbol}`);
-            
-            // 最初の銘柄の価格履歴をバックグラウンドで取得（キャッシュ用）
-            if (typeof fetchSymbolPriceHistory === 'function') {
-                setTimeout(() => {
-                    fetchSymbolPriceHistory(firstSymbol).catch(error => {
-                        console.log(`Pre-loading ${firstSymbol} price history failed:`, error.message);
-                    });
-                }, 500);
-            }
-        }
+
+        // 事前キャッシュは全銘柄チャート描画で一括処理するため削除
     }, 50);
 
     updateDataStatus(portfolioData);
@@ -324,12 +302,30 @@ function displayDashboard(portfolioData) {
     // アップロード成功後はダッシュボードページに切り替え
     showPage('dashboard');
 
-    // 全銘柄の損益推移チャートを描画（非同期）
+    // 全銘柄の損益推移チャートを描画（DOM準備完了後）
     setTimeout(() => {
+        // 保存されたチャートモードを復元
+        const savedMode = localStorage.getItem('portfolioChartMode') || 'combined';
+        window.portfolioChartMode = savedMode;
+
+        // ボタンとタイトルの初期状態を設定
+        setTimeout(() => {
+            if (typeof window.toggleChartMode === 'function') {
+                // 一度切り替えて正しい状態にする
+                const currentMode = window.portfolioChartMode;
+                window.portfolioChartMode = currentMode === 'combined' ? 'individual' : 'combined';
+                window.toggleChartMode();
+            } else {
+                console.warn('⚠️ toggleChartMode function not available');
+            }
+        }, 100);
+
+        // チャートを描画（デスクトップ・モバイル両対応）
         if (typeof renderAllSymbolsProfitChart === 'function') {
+            console.log('🎨 Rendering all symbols profit chart after dashboard setup');
             renderAllSymbolsProfitChart();
         }
-    }, 1000);
+    }, 800); // DOM要素の準備を待つため少し短縮
 }
 
 // データ状態更新
@@ -369,34 +365,34 @@ function updateDataStatus(portfolioData) {
 // 銘柄別サブタブ生成（復活版）
 function createSymbolSubtabs(portfolioData) {
     console.log('🔄 createSymbolSubtabs called');
-    
+
     // ポートフォリオデータの詳細チェック
     if (!portfolioData) {
         console.error('❌ portfolioData is null or undefined');
         return;
     }
-    
+
     if (!portfolioData.summary) {
         console.error('❌ portfolioData.summary is missing');
         return;
     }
-    
+
     if (!Array.isArray(portfolioData.summary)) {
         console.error('❌ portfolioData.summary is not an array:', typeof portfolioData.summary);
         return;
     }
-    
+
     if (portfolioData.summary.length === 0) {
         console.error('❌ portfolioData.summary is empty');
         return;
     }
-    
+
     console.log('📊 Portfolio data valid:', {
         summaryLength: portfolioData.summary.length,
         symbols: portfolioData.summary.map(s => s.symbol),
         hasSymbolsData: !!portfolioData.symbols
     });
-    
+
     const subtabNav = document.getElementById('subtab-nav');
     const symbolContainer = document.getElementById('symbol-subtabs-container');
 
@@ -419,7 +415,7 @@ function createSymbolSubtabs(portfolioData) {
     // 銘柄別サブタブを生成
     if (portfolioData && portfolioData.summary) {
         console.log('📈 Creating subtabs for symbols:', portfolioData.summary.map(s => s.symbol));
-        
+
         // 実現損益で降順ソート
         const sortedSymbols = [...portfolioData.summary].sort((a, b) => b.realizedProfit - a.realizedProfit);
         console.log('🔢 Sorted symbols:', sortedSymbols.map(s => s.symbol));
@@ -427,13 +423,13 @@ function createSymbolSubtabs(portfolioData) {
         sortedSymbols.forEach((symbolData, index) => {
             try {
                 console.log(`🏷️ Creating subtab ${index + 1}/${sortedSymbols.length} for ${symbolData.symbol}`);
-                
+
                 // symbolDataの妥当性チェック
                 if (!symbolData || !symbolData.symbol) {
                     console.error(`❌ Invalid symbolData at index ${index}:`, symbolData);
                     return;
                 }
-                
+
                 // サブタブボタンを作成
                 const tabButton = document.createElement('button');
                 tabButton.className = 'subtab-button symbol-subtab';
@@ -441,27 +437,27 @@ function createSymbolSubtabs(portfolioData) {
                 tabButton.textContent = symbolData.symbol;
                 tabButton.onclick = () => switchSubtab(symbolData.symbol.toLowerCase());
 
-            // 損益に応じて色分け（非選択時のスタイル）
-            if (symbolData.realizedProfit > 0) {
-                tabButton.style.borderColor = '#28a745';
-                tabButton.style.color = '#28a745';
-            } else if (symbolData.realizedProfit < 0) {
-                tabButton.style.borderColor = '#dc3545';
-                tabButton.style.color = '#dc3545';
-            }
-
-            // ホバー効果とアクティブ状態のスタイルを追加
-            tabButton.addEventListener('mouseenter', function() {
-                if (!this.classList.contains('active')) {
-                    this.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+                // 損益に応じて色分け（非選択時のスタイル）
+                if (symbolData.realizedProfit > 0) {
+                    tabButton.style.borderColor = '#28a745';
+                    tabButton.style.color = '#28a745';
+                } else if (symbolData.realizedProfit < 0) {
+                    tabButton.style.borderColor = '#dc3545';
+                    tabButton.style.color = '#dc3545';
                 }
-            });
 
-            tabButton.addEventListener('mouseleave', function() {
-                if (!this.classList.contains('active')) {
-                    this.style.backgroundColor = '';
-                }
-            });
+                // ホバー効果とアクティブ状態のスタイルを追加
+                tabButton.addEventListener('mouseenter', function () {
+                    if (!this.classList.contains('active')) {
+                        this.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+                    }
+                });
+
+                tabButton.addEventListener('mouseleave', function () {
+                    if (!this.classList.contains('active')) {
+                        this.style.backgroundColor = '';
+                    }
+                });
 
                 subtabNav.appendChild(tabButton);
 
@@ -469,7 +465,7 @@ function createSymbolSubtabs(portfolioData) {
                 const tabContent = document.createElement('div');
                 tabContent.className = 'subtab-content';
                 tabContent.id = `subtab-content-${symbolData.symbol.toLowerCase()}`;
-                
+
                 // generateSymbolDetailPageの存在確認
                 if (typeof generateSymbolDetailPage === 'function') {
                     const symbolDetailData = portfolioData.symbols[symbolData.symbol];
@@ -486,24 +482,24 @@ function createSymbolSubtabs(portfolioData) {
 
                 symbolContainer.appendChild(tabContent);
                 console.log(`✅ Created subtab for ${symbolData.symbol}`);
-                
+
             } catch (error) {
                 console.error(`❌ Error creating subtab for ${symbolData?.symbol || 'unknown'}:`, error);
             }
         });
-        
+
         console.log(`🎉 Created ${sortedSymbols.length} symbol subtabs`);
-        
+
         // デバッグ: 作成されたタブの確認
         setTimeout(() => {
             const createdTabs = subtabNav.querySelectorAll('.symbol-subtab');
             const createdContents = symbolContainer.querySelectorAll('.subtab-content');
-            
+
             console.log(`🔍 Final tab count check:`);
             console.log(`  - Expected: ${sortedSymbols.length}`);
             console.log(`  - Tab buttons: ${createdTabs.length}`);
             console.log(`  - Tab contents: ${createdContents.length}`);
-            
+
             if (createdTabs.length === 0) {
                 console.error('❌ No tabs were created! Checking DOM state...');
                 console.log('DOM subtab-nav:', subtabNav);
@@ -514,7 +510,7 @@ function createSymbolSubtabs(portfolioData) {
                 createdTabs.forEach(tab => console.log(`  - ${tab.textContent} (${tab.id})`));
             }
         }, 100);
-        
+
     } else {
         console.error('❌ No portfolio data or summary available');
         console.log('Debug info:', {
@@ -524,14 +520,14 @@ function createSymbolSubtabs(portfolioData) {
             summaryLength: portfolioData?.summary?.length
         });
     }
-    
+
     // 最終確認: タブが作成されなかった場合の警告
     setTimeout(() => {
         const finalTabCount = subtabNav.querySelectorAll('.symbol-subtab').length;
         if (finalTabCount === 0 && portfolioData?.summary?.length > 0) {
             console.error('🚨 CRITICAL: No symbol tabs were created despite having portfolio data!');
             console.log('Attempting recovery...');
-            
+
             // 復旧試行
             try {
                 createSymbolSubtabs(portfolioData);
@@ -635,23 +631,23 @@ function generateMobilePortfolioCards(portfolioData) {
     html += `
         <div class="table-card" style="background: white; border: 1px solid #cbd5e1;">
             <div class="card-header">
-                📈 各銘柄の総合損益推移（過去1か月）
-                <button onclick="renderAllSymbolsProfitChart()" style="float: right; padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                    更新
-                </button>
+                <span id="mobile-chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</span>
+                <div style="float: right; display: flex; gap: 4px;">
+                    <button id="mobile-chart-mode-toggle" onclick="toggleChartMode()" style="padding: 4px 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="個別表示に切り替え">
+                        個別
+                    </button>
+                    <button onclick="renderAllSymbolsProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        更新
+                    </button>
+                </div>
             </div>
             <div style="height: 300px; padding: 10px; position: relative;">
-                <canvas id="all-symbols-profit-chart" style="max-height: 300px;"></canvas>
+                <canvas id="mobile-all-symbols-profit-chart" style="max-height: 300px;"></canvas>
             </div>
         </div>
     `;
 
-    // チャートを非同期で描画（DOM更新後）
-    setTimeout(() => {
-        if (typeof renderAllSymbolsProfitChart === 'function') {
-            renderAllSymbolsProfitChart();
-        }
-    }, 100);
+    // チャート描画は displayDashboard 関数で一元管理するため、ここでは実行しない
 
     return `<div class="mobile-card-table">${html}</div>`;
 }
@@ -715,10 +711,15 @@ function generatePortfolioTable(portfolioData) {
         <!-- 1か月の損益推移チャート -->
         <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 各銘柄の総合損益推移（過去1か月）</h3>
-                <button onclick="renderAllSymbolsProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                    チャート更新
-                </button>
+                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;" id="chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button id="chart-mode-toggle" onclick="toggleChartMode()" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;" title="各銘柄を個別に表示">
+                        個別表示
+                    </button>
+                    <button onclick="renderAllSymbolsProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                        チャート更新
+                    </button>
+                </div>
             </div>
             <div style="height: 400px; position: relative;">
                 <canvas id="all-symbols-profit-chart" style="max-height: 400px;"></canvas>
@@ -1150,7 +1151,7 @@ function renderProfitChart(portfolioData) {
                     borderColor: '#64748b',
                     borderWidth: 1,
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const value = context.parsed.y;
                             const sign = value >= 0 ? '+' : '';
                             return `損益: ${sign}¥${Math.round(value).toLocaleString()}`;
@@ -1181,7 +1182,7 @@ function renderProfitChart(portfolioData) {
                         font: {
                             size: 11
                         },
-                        callback: function(value) {
+                        callback: function (value) {
                             return value >= 0 ? '+¥' + Math.abs(value).toLocaleString() : '-¥' + Math.abs(value).toLocaleString();
                         }
                     },
