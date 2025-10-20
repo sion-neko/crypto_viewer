@@ -5,6 +5,16 @@
 // DOM Elements and Event Listeners (will be initialized in DOMContentLoaded)
 let uploadZone, fileInput, dashboardArea;
 
+// デバッグモード設定（本番環境ではfalseに設定）
+const DEBUG_MODE = false;
+
+// ログ出力ヘルパー関数
+function debugLog(...args) {
+    if (DEBUG_MODE && console.log) {
+        console.log(...args);
+    }
+}
+
 // ファイル処理（データ統合版）
 function handleFiles(files) {
     const csvFiles = Array.from(files).filter(file =>
@@ -123,9 +133,14 @@ function processCSVData(data, fileName) {
 
     // 最初の行で列名を確認（デバッグ用）
     if (data.length > 0) {
+        debugLog('CSV columns:', Object.keys(data[0]));
     }
 
     data.forEach(row => {
+        // 空行をスキップ
+        if (!row || Object.values(row).every(val => !val || val.trim() === '')) {
+            return;
+        }
         // GMOコイン形式
         if ((selectedExchange === 'GMO' || selectedExchange === 'AUTO') &&
             row['精算区分'] && row['精算区分'].includes('取引所現物取引')) {
@@ -210,14 +225,14 @@ function switchTab(tabName) {
 
 // サブタブ切り替え機能
 function switchSubtab(subtabName) {
-    console.log(`🔄 switchSubtab called for: ${subtabName}`);
-    
+    debugLog(`🔄 switchSubtab called for: ${subtabName}`);
+
     // 全サブタブボタンのアクティブ状態をリセット
     const allButtons = document.querySelectorAll('.subtab-button');
     const allContents = document.querySelectorAll('.subtab-content');
-    
-    console.log(`📊 Found ${allButtons.length} subtab buttons, ${allContents.length} subtab contents`);
-    
+
+    debugLog(`📊 Found ${allButtons.length} subtab buttons, ${allContents.length} subtab contents`);
+
     allButtons.forEach(btn => {
         btn.classList.remove('active');
         // ボタンの背景色をリセット
@@ -231,6 +246,33 @@ function switchSubtab(subtabName) {
     const targetButton = document.getElementById(`subtab-${subtabName}`);
     const targetContent = document.getElementById(`subtab-content-${subtabName}`);
 
+    // 銘柄タブが選択された場合、重複実行チェックを先に行う
+    if (subtabName !== 'summary') {
+        const symbol = subtabName.toUpperCase();
+
+        // 重複実行を防ぐため、最後の実行から一定時間経過をチェック
+        const now = Date.now();
+        const lastRenderKey = `lastRender_${symbol}`;
+        const lastRenderTime = window[lastRenderKey] || 0;
+        const timeSinceLastRender = now - lastRenderTime;
+
+        if (timeSinceLastRender < 2000) {
+            debugLog(`⏭️ Skipping chart render for ${symbol} (last render ${Math.round(timeSinceLastRender/1000)}s ago)`);
+            // UIの状態だけ更新して早期リターン
+            if (targetButton) {
+                targetButton.classList.add('active');
+                targetButton.style.backgroundColor = '';
+            }
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+            return;
+        }
+
+        // 実行時刻を記録
+        window[lastRenderKey] = now;
+    }
+
     if (targetButton) {
         targetButton.classList.add('active');
         // アクティブボタンの背景色を設定
@@ -242,33 +284,19 @@ function switchSubtab(subtabName) {
         // 銘柄タブが選択された場合、チャートを描画（summaryは除外）
         if (subtabName !== 'summary') {
             const symbol = subtabName.toUpperCase();
-            
-            // 重複実行を防ぐため、最後の実行から一定時間経過をチェック
-            const now = Date.now();
-            const lastRenderKey = `lastRender_${symbol}`;
-            const lastRenderTime = window[lastRenderKey] || 0;
-            const timeSinceLastRender = now - lastRenderTime;
-            
-            if (timeSinceLastRender < 2000) {
-                console.log(`⏭️ Skipping chart render for ${symbol} (last render ${Math.round(timeSinceLastRender/1000)}s ago)`);
-                return;
-            }
-            
-            // 実行時刻を記録
-            window[lastRenderKey] = now;
-            
+
             // 価格チャートを描画
             if (typeof displaySymbolChart === 'function') {
                 displaySymbolChart(symbol);
             }
-            
+
             // 損益推移チャートを描画
             setTimeout(() => {
                 if (typeof renderSymbolProfitChart === 'function') {
-                    console.log(`🎨 Auto-rendering profit chart for ${symbol}`);
+                    debugLog(`🎨 Auto-rendering profit chart for ${symbol}`);
                     renderSymbolProfitChart(symbol);
                 } else {
-                    console.warn('⚠️ renderSymbolProfitChart function not available');
+                    debugLog('⚠️ renderSymbolProfitChart function not available');
                 }
             }, 200); // DOM更新後に実行
         }
@@ -811,8 +839,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`🧹 起動時クリーンアップ: ${cleanedCount}件の古い価格データを削除`);
         }
         
-        // 価格データ整合性チェック（開発時のみ）
-        if (console.log) {
+        // 価格データ整合性チェック（デバッグモード時のみ）
+        if (DEBUG_MODE) {
             validatePriceDataIntegrity();
         }
     }, 2000);

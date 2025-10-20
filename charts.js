@@ -2,23 +2,38 @@
 // CHARTS.JS - Chart rendering and historical data functions
 // ===================================================================
 
-// Global variables for chart data
-let historicalData = {};
-let profitChartInstance = null;
+// Global variables for chart data (use window object to avoid conflicts)
+if (!window.appChartData) {
+    window.appChartData = {
+        historicalData: {},
+        profitChartInstance: null,
+        apiCallCount: 0,
+        lastApiCall: 0
+    };
+}
 
-// API使用状況の監視
-let apiCallCount = 0;
+// 後方互換性のためのエイリアス
+let historicalData = window.appChartData.historicalData;
+let profitChartInstance = window.appChartData.profitChartInstance;
+
+// API使用状況の監視（定数化）
 const API_CALL_LIMIT = 50; // CoinGecko無料プランの制限
-let lastApiCall = 0;
 const API_CALL_INTERVAL = 1200; // 1.2秒間隔（50回/分制限対応）
-let apiCallResetTime = Date.now() + 60000; // 1分後にリセット
+const API_RESET_INTERVAL = 60000; // 1分
 
-// API制限カウンターのリセット（1分ごと）
+// API制限カウンターのリセット（1分ごと正確にリセット）
+let lastResetTime = Date.now();
 setInterval(() => {
-    if (Date.now() > apiCallResetTime) {
-        apiCallCount = 0;
-        apiCallResetTime = Date.now() + 60000;
-        console.log('🔄 API制限カウンターをリセットしました');
+    const now = Date.now();
+    const elapsed = now - lastResetTime;
+
+    // 1分経過したらリセット
+    if (elapsed >= API_RESET_INTERVAL) {
+        window.appChartData.apiCallCount = 0;
+        lastResetTime = now;
+        if (typeof debugLog === 'function') {
+            debugLog('🔄 API制限カウンターをリセットしました');
+        }
     }
 }, 10000); // 10秒ごとにチェック
 
@@ -28,8 +43,8 @@ setInterval(() => {
 
 // 銘柄の過去1か月の価格履歴を取得（永続化強化版）
 async function fetchSymbolPriceHistory(symbol) {
-    // api.jsのSYMBOL_MAPPINGを参照
-    const SYMBOL_MAPPING = {
+    // api.jsのSYMBOL_MAPPINGを参照（グローバル変数として利用）
+    const SYMBOL_MAPPING = window.SYMBOL_MAPPING || {
         'BTC': 'bitcoin',
         'ETH': 'ethereum',
         'SOL': 'solana',
@@ -86,17 +101,19 @@ async function fetchSymbolPriceHistory(symbol) {
 
     try {
         // API制限チェック
-        if (apiCallCount >= API_CALL_LIMIT) {
+        if (window.appChartData.apiCallCount >= API_CALL_LIMIT) {
             throw new Error('API制限に達しました。しばらく時間をおいてからお試しください。');
         }
 
         // API呼び出し間隔制御
         const now = Date.now();
-        const timeSinceLastCall = now - lastApiCall;
+        const timeSinceLastCall = now - window.appChartData.lastApiCall;
         if (timeSinceLastCall < API_CALL_INTERVAL) {
             const waitTime = API_CALL_INTERVAL - timeSinceLastCall;
             const waitSeconds = Math.ceil(waitTime / 1000);
-            console.log(`⏳ API制限回避のため${waitTime}ms待機中...`);
+            if (typeof debugLog === 'function') {
+                debugLog(`⏳ API制限回避のため${waitTime}ms待機中...`);
+            }
 
             // 待機時間が1秒以上の場合はトースト表示
             if (waitSeconds >= 1) {
@@ -110,9 +127,11 @@ async function fetchSymbolPriceHistory(symbol) {
         const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30&interval=daily`;
 
         // API呼び出し記録を更新
-        apiCallCount++;
-        lastApiCall = Date.now();
-        console.log(`API呼び出し: ${apiCallCount}/${API_CALL_LIMIT} - ${symbol}価格履歴`);
+        window.appChartData.apiCallCount++;
+        window.appChartData.lastApiCall = Date.now();
+        if (typeof debugLog === 'function') {
+            debugLog(`API呼び出し: ${window.appChartData.apiCallCount}/${API_CALL_LIMIT} - ${symbol}価格履歴`);
+        }
 
         // タイムアウト付きでfetch実行
         const controller = new AbortController();
@@ -158,17 +177,19 @@ async function fetchSymbolPriceHistory(symbol) {
         // 永続キャッシュに保存（24時間有効）
         setCachedData(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
 
-        console.log(`✅ ${symbol}価格履歴を永続保存: ${priceHistory.length}日分 (24時間有効)`);
+        if (typeof debugLog === 'function') {
+            debugLog(`✅ ${symbol}価格履歴を永続保存: ${priceHistory.length}日分 (24時間有効)`);
+        }
 
         // 成功時のトースト通知
         if (priceHistory.length > 0) {
             showSuccessMessage(`${symbol}: ${priceHistory.length}日分の価格履歴をキャッシュに保存しました`);
         }
 
-        // 価格データレポート更新
-        if (console.log) {
+        // 価格データレポート更新（デバッグモード時のみ）
+        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
             const status = getPriceDataStatus();
-            console.log(`💾 価格データ保存状況: ${status.priceHistories.length}銘柄, ${Math.round(status.totalCacheSize / 1024)}KB`);
+            debugLog(`💾 価格データ保存状況: ${status.priceHistories.length}銘柄, ${Math.round(status.totalCacheSize / 1024)}KB`);
         }
 
         return priceHistory;
@@ -225,10 +246,14 @@ function getCachedData(key, duration = null) {
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
-                console.log(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                }
                 return data.value;
             } else {
-                console.log(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                }
                 localStorage.removeItem(key);
             }
         }
@@ -256,7 +281,9 @@ function getCachedDataWithMetadata(key, duration = null) {
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
-                console.log(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                }
                 return {
                     value: data.value,
                     timestamp: data.timestamp,
@@ -264,7 +291,9 @@ function getCachedDataWithMetadata(key, duration = null) {
                     key: data.key
                 };
             } else {
-                console.log(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
+                }
                 localStorage.removeItem(key);
             }
         }
@@ -296,7 +325,9 @@ function setCachedData(key, value, duration = PRICE_CACHE_CONFIG.CURRENT_PRICES_
         const serializedData = JSON.stringify(data);
         localStorage.setItem(key, serializedData);
 
-        console.log(`💾 キャッシュ保存: ${key} (${Math.round(serializedData.length / 1024)}KB, ${Math.round(duration / 1000 / 60)}分有効)`);
+        if (typeof debugLog === 'function') {
+            debugLog(`💾 キャッシュ保存: ${key} (${Math.round(serializedData.length / 1024)}KB, ${Math.round(duration / 1000 / 60)}分有効)`);
+        }
 
         // メタデータ更新
         updateCacheMetadata(key, data.size, duration);
@@ -306,15 +337,21 @@ function setCachedData(key, value, duration = PRICE_CACHE_CONFIG.CURRENT_PRICES_
 
         // ストレージ容量不足の場合、古いデータを削除して再試行
         if (error.name === 'QuotaExceededError') {
-            console.log('🧹 ストレージ容量不足のため古いキャッシュを削除中...');
+            if (typeof debugLog === 'function') {
+                debugLog('🧹 ストレージ容量不足のため古いキャッシュを削除中...');
+            }
             cleanupOldCache();
 
             try {
                 localStorage.setItem(key, JSON.stringify(data));
-                console.log(`✅ キャッシュ保存成功（再試行）: ${key}`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`✅ キャッシュ保存成功（再試行）: ${key}`);
+                }
             } catch (retryError) {
                 console.error('キャッシュ保存再試行失敗:', retryError);
-                showWarningMessage('ストレージ容量不足のため、一部のデータが保存できませんでした');
+                if (typeof showWarningMessage === 'function') {
+                    showWarningMessage('ストレージ容量不足のため、一部のデータが保存できませんでした');
+                }
             }
         }
     }
@@ -334,7 +371,9 @@ function checkStorageUsage() {
         const usageRatio = totalSize / PRICE_CACHE_CONFIG.MAX_STORAGE_SIZE;
 
         if (usageRatio > PRICE_CACHE_CONFIG.CLEANUP_THRESHOLD) {
-            console.log(`⚠️ ストレージ使用量: ${Math.round(usageRatio * 100)}% (${Math.round(totalSize / 1024 / 1024)}MB)`);
+            if (typeof debugLog === 'function') {
+                debugLog(`⚠️ ストレージ使用量: ${Math.round(usageRatio * 100)}% (${Math.round(totalSize / 1024 / 1024)}MB)`);
+            }
             cleanupOldCache();
         }
 
@@ -343,7 +382,7 @@ function checkStorageUsage() {
     }
 }
 
-// 古いキャッシュデータのクリーンアップ
+// 古いキャッシュデータのクリーンアップ（改善版）
 function cleanupOldCache() {
     try {
         const cacheKeys = [];
@@ -377,18 +416,45 @@ function cleanupOldCache() {
         // 古い順にソート
         cacheKeys.sort((a, b) => b.age - a.age);
 
-        // 古いデータから削除（上位30%）
-        const deleteCount = Math.ceil(cacheKeys.length * 0.3);
+        // 削除対象を決定: 期限切れデータを優先削除、それでも足りなければ古いものから30%削除
+        let deleteCount = 0;
         let deletedSize = 0;
+        const keysToDelete = [];
 
-        for (let i = 0; i < deleteCount && i < cacheKeys.length; i++) {
-            const item = cacheKeys[i];
-            localStorage.removeItem(item.key);
-            deletedSize += item.size;
-            console.log(`🗑️ 古いキャッシュ削除: ${item.key} (${Math.round(item.age / 1000 / 60)}分前)`);
+        // まず期限切れデータを収集
+        for (const item of cacheKeys) {
+            const duration = item.key.includes('_price_history_') ?
+                PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION :
+                PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
+
+            if (item.age > duration) {
+                keysToDelete.push(item);
+            }
         }
 
-        console.log(`✅ キャッシュクリーンアップ完了: ${deleteCount}件削除 (${Math.round(deletedSize / 1024)}KB解放)`);
+        // 期限切れだけでは不十分な場合、古いものから30%削除
+        if (keysToDelete.length < cacheKeys.length * 0.1) {
+            const additionalCount = Math.ceil(cacheKeys.length * 0.3) - keysToDelete.length;
+            for (let i = 0; i < additionalCount && i < cacheKeys.length; i++) {
+                if (!keysToDelete.includes(cacheKeys[i])) {
+                    keysToDelete.push(cacheKeys[i]);
+                }
+            }
+        }
+
+        // 削除実行
+        for (const item of keysToDelete) {
+            localStorage.removeItem(item.key);
+            deletedSize += item.size;
+            deleteCount++;
+            if (typeof debugLog === 'function') {
+                debugLog(`🗑️ 古いキャッシュ削除: ${item.key} (${Math.round(item.age / 1000 / 60)}分前)`);
+            }
+        }
+
+        if (typeof debugLog === 'function') {
+            debugLog(`✅ キャッシュクリーンアップ完了: ${deleteCount}件削除 (${Math.round(deletedSize / 1024)}KB解放)`);
+        }
 
     } catch (error) {
         console.error('キャッシュクリーンアップエラー:', error);
@@ -712,15 +778,17 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 
 // 全銘柄の総合損益推移チャートを描画
 async function renderAllSymbolsProfitChart() {
-    console.log('🔄 renderAllSymbolsProfitChart called');
-    console.log('📊 Current chart mode:', window.portfolioChartMode || 'combined');
-    
+    if (typeof debugLog === 'function') {
+        debugLog('🔄 renderAllSymbolsProfitChart called');
+        debugLog('📊 Current chart mode:', window.portfolioChartMode || 'combined');
+    }
+
     // デバッグ: Chart.jsライブラリの確認
     if (typeof Chart === 'undefined') {
         console.error('❌ Chart.js library not loaded!');
         return;
-    } else {
-        console.log('✅ Chart.js library is available');
+    } else if (typeof debugLog === 'function') {
+        debugLog('✅ Chart.js library is available');
     }
 
     const portfolioData = window.currentPortfolioData || currentPortfolioData;
@@ -728,12 +796,14 @@ async function renderAllSymbolsProfitChart() {
         console.error('❌ Portfolio data not available');
         return;
     }
-    
-    console.log('✅ Portfolio data available:', {
-        summaryCount: portfolioData.summary?.length || 0,
-        symbolsCount: Object.keys(portfolioData.symbols || {}).length,
-        hasStats: !!portfolioData.stats
-    });
+
+    if (typeof debugLog === 'function') {
+        debugLog('✅ Portfolio data available:', {
+            summaryCount: portfolioData.summary?.length || 0,
+            symbolsCount: Object.keys(portfolioData.symbols || {}).length,
+            hasStats: !!portfolioData.stats
+        });
+    }
 
     // デスクトップ版とモバイル版の両方のcanvasを確認
     const desktopCanvasId = 'all-symbols-profit-chart';
@@ -741,13 +811,15 @@ async function renderAllSymbolsProfitChart() {
     
     const desktopCanvas = document.getElementById(desktopCanvasId);
     const mobileCanvas = document.getElementById(mobileCanvasId);
-    
-    console.log('🔍 Canvas elements check:', {
-        desktopCanvas: !!desktopCanvas,
-        mobileCanvas: !!mobileCanvas,
-        desktopVisible: desktopCanvas?.offsetParent !== null,
-        mobileVisible: mobileCanvas?.offsetParent !== null
-    });
+
+    if (typeof debugLog === 'function') {
+        debugLog('🔍 Canvas elements check:', {
+            desktopCanvas: !!desktopCanvas,
+            mobileCanvas: !!mobileCanvas,
+            desktopVisible: desktopCanvas?.offsetParent !== null,
+            mobileVisible: mobileCanvas?.offsetParent !== null
+        });
+    }
     
     if (!desktopCanvas && !mobileCanvas) {
         console.error(`❌ Canvas elements not found: ${desktopCanvasId}, ${mobileCanvasId}`);
@@ -759,23 +831,31 @@ async function renderAllSymbolsProfitChart() {
     if (desktopCanvas && desktopCanvas.offsetParent !== null) {
         canvasId = desktopCanvasId;
         canvas = desktopCanvas;
-        console.log('🖥️ Using desktop canvas for chart rendering');
+        if (typeof debugLog === 'function') {
+            debugLog('🖥️ Using desktop canvas for chart rendering');
+        }
     } else if (mobileCanvas && mobileCanvas.offsetParent !== null) {
         canvasId = mobileCanvasId;
         canvas = mobileCanvas;
-        console.log('📱 Using mobile canvas for chart rendering');
+        if (typeof debugLog === 'function') {
+            debugLog('📱 Using mobile canvas for chart rendering');
+        }
     } else {
         // どちらも表示されていない場合はデスクトップを優先
         canvasId = desktopCanvasId;
         canvas = desktopCanvas;
-        console.log('🖥️ Using desktop canvas as fallback');
+        if (typeof debugLog === 'function') {
+            debugLog('🖥️ Using desktop canvas as fallback');
+        }
     }
 
     try {
         // 取引のある銘柄を取得（保有量に関係なく）
         const symbols = portfolioData.summary.map(item => item.symbol);
-        
-        console.log('📊 Symbols found:', symbols);
+
+        if (typeof debugLog === 'function') {
+            debugLog('📊 Symbols found:', symbols);
+        }
 
         if (symbols.length === 0) {
             console.error('❌ No symbols found in portfolio data');
@@ -785,7 +865,9 @@ async function renderAllSymbolsProfitChart() {
             return;
         }
 
-        console.log(`📊 Fetching price histories for ${symbols.length} symbols:`, symbols);
+        if (typeof debugLog === 'function') {
+            debugLog(`📊 Fetching price histories for ${symbols.length} symbols:`, symbols);
+        }
         showInfoMessage(`${symbols.length}銘柄の価格履歴を取得中...`);
 
         // 複数銘柄の価格履歴を並列取得
@@ -1349,9 +1431,11 @@ function showChartError(canvasId, symbol, error, suggestions = []) {
 
 // 損益チャートを描画
 function displayProfitChart(canvasId, profitData, title) {
-    console.log(`🎨 displayProfitChart called for ${canvasId}`);
-    console.log(`📊 Profit data points: ${profitData ? profitData.length : 0}`);
-    console.log(`📋 Title: ${title}`);
+    if (typeof debugLog === 'function') {
+        debugLog(`🎨 displayProfitChart called for ${canvasId}`);
+        debugLog(`📊 Profit data points: ${profitData ? profitData.length : 0}`);
+        debugLog(`📋 Title: ${title}`);
+    }
 
     try {
         const canvas = document.getElementById(canvasId);
@@ -1364,15 +1448,36 @@ function displayProfitChart(canvasId, profitData, title) {
             throw new Error(`Cannot get 2D context for canvas: ${canvasId}`);
         }
 
-        // 既存のチャートインスタンスを破棄
+        // 既存のチャートインスタンスを破棄（統一管理）
         if (window.chartInstances && window.chartInstances[canvasId]) {
-            console.log(`🗑️ Destroying existing chart instance for ${canvasId}`);
-            window.chartInstances[canvasId].destroy();
+            if (typeof debugLog === 'function') {
+                debugLog(`🗑️ Destroying existing chart instance for ${canvasId}`);
+            }
+            try {
+                window.chartInstances[canvasId].destroy();
+            } catch (destroyError) {
+                console.warn(`Chart destroy warning for ${canvasId}:`, destroyError);
+            }
+            delete window.chartInstances[canvasId];
         }
 
         // チャートインスタンス管理用のグローバルオブジェクト
         if (!window.chartInstances) {
             window.chartInstances = {};
+        }
+
+        // 古いprofitChartInstanceも破棄（後方互換性）
+        if (window.appChartData.profitChartInstance && canvasId.includes('profit')) {
+            if (typeof debugLog === 'function') {
+                debugLog('🗑️ Destroying legacy profitChartInstance');
+            }
+            try {
+                window.appChartData.profitChartInstance.destroy();
+            } catch (destroyError) {
+                console.warn('Legacy chart destroy warning:', destroyError);
+            }
+            window.appChartData.profitChartInstance = null;
+            profitChartInstance = null;
         }
 
         // データが空の場合
@@ -1391,7 +1496,9 @@ function displayProfitChart(canvasId, profitData, title) {
             throw new Error('有効なデータポイントがありません');
         }
 
-        console.log(`✅ Creating Chart.js instance with ${validDataPoints.length} valid data points for canvas: ${canvasId}`);
+        if (typeof debugLog === 'function') {
+            debugLog(`✅ Creating Chart.js instance with ${validDataPoints.length} valid data points for canvas: ${canvasId}`);
+        }
 
         // Chart.jsでチャートを作成
         window.chartInstances[canvasId] = new Chart(ctx, {
@@ -1544,7 +1651,9 @@ function displayProfitChart(canvasId, profitData, title) {
             }
         });
 
-        console.log(`✅ Chart.js instance created successfully for ${canvasId}`);
+        if (typeof debugLog === 'function') {
+            debugLog(`✅ Chart.js instance created successfully for ${canvasId}`);
+        }
 
     } catch (error) {
         console.error('❌ Chart creation failed:', error);
@@ -1558,7 +1667,9 @@ function displayProfitChart(canvasId, profitData, title) {
 
 // 複数銘柄の損益推移チャート表示
 function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
-    console.log(`🎨 displayMultiSymbolProfitChart called for ${canvasId}`);
+    if (typeof debugLog === 'function') {
+        debugLog(`🎨 displayMultiSymbolProfitChart called for ${canvasId}`);
+    }
 
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -1570,7 +1681,12 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
 
     // 既存のチャートインスタンスを破棄
     if (window.chartInstances && window.chartInstances[canvasId]) {
-        window.chartInstances[canvasId].destroy();
+        try {
+            window.chartInstances[canvasId].destroy();
+        } catch (destroyError) {
+            console.warn(`Chart destroy warning for ${canvasId}:`, destroyError);
+        }
+        delete window.chartInstances[canvasId];
     }
 
     // チャートインスタンス管理用のグローバルオブジェクト
@@ -1724,7 +1840,9 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
     // チャートを作成
     window.chartInstances[canvasId] = new Chart(ctx, config);
 
-    console.log(`✅ Multi-symbol profit chart displayed: ${canvasId} (${Object.keys(allProfitData).length} symbols)`);
+    if (typeof debugLog === 'function') {
+        debugLog(`✅ Multi-symbol profit chart displayed: ${canvasId} (${Object.keys(allProfitData).length} symbols)`);
+    }
 }
 
 // ===================================================================
@@ -1874,6 +1992,23 @@ function displaySymbolChart(symbol) {
 
 // 銘柄別履歴データ取得
 async function fetchSymbolHistoricalData(symbol) {
+    // api.jsのSYMBOL_MAPPINGを参照
+    const SYMBOL_MAPPING = {
+        'BTC': 'bitcoin',
+        'ETH': 'ethereum',
+        'SOL': 'solana',
+        'XRP': 'ripple',
+        'ADA': 'cardano',
+        'DOGE': 'dogecoin',
+        'ASTR': 'astar',
+        'XTZ': 'tezos',
+        'XLM': 'stellar',
+        'SHIB': 'shiba-inu',
+        'PEPE': 'pepe',
+        'SUI': 'sui',
+        'DAI': 'dai'
+    };
+    
     const coingeckoId = SYMBOL_MAPPING[symbol];
     if (!coingeckoId) {
         return;

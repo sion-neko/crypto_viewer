@@ -2,10 +2,19 @@
 // PORTFOLIO.JS - Portfolio analysis, calculations, and display
 // ===================================================================
 
-// Global variables for portfolio state
-let currentPortfolioData = null;
-let currentSortField = 'realizedProfit';
-let currentSortDirection = 'desc';
+// Global variables for portfolio state (use window object to avoid conflicts)
+if (!window.appPortfolioState) {
+    window.appPortfolioState = {
+        currentPortfolioData: null,
+        currentSortField: 'realizedProfit',
+        currentSortDirection: 'desc'
+    };
+}
+
+// 後方互換性のためのエイリアス
+let currentPortfolioData = window.appPortfolioState.currentPortfolioData;
+let currentSortField = window.appPortfolioState.currentSortField;
+let currentSortDirection = window.appPortfolioState.currentSortDirection;
 
 // ===================================================================
 // PORTFOLIO ANALYSIS FUNCTIONS
@@ -251,10 +260,13 @@ function updateSortIndicators(activeField, direction) {
 
 // ダッシュボード表示（タブシステム版）
 function displayDashboard(portfolioData) {
-    console.log('🚀 displayDashboard called');
-    console.log('📊 Portfolio data summary:', portfolioData?.summary?.length || 0, 'symbols');
+    if (typeof debugLog === 'function') {
+        debugLog('🚀 displayDashboard called');
+        debugLog('📊 Portfolio data summary:', portfolioData?.summary?.length || 0, 'symbols');
+    }
 
     // グローバル変数に保存
+    window.appPortfolioState.currentPortfolioData = portfolioData;
     currentPortfolioData = portfolioData;
     window.currentPortfolioData = portfolioData; // グローバルアクセス用
 
@@ -281,17 +293,23 @@ function displayDashboard(portfolioData) {
     tradingContainer.innerHTML = generateTradingHistoryTable(portfolioData);
 
     // 銘柄別サブタブ作成
-    console.log('🔄 About to create symbol subtabs...');
+    if (typeof debugLog === 'function') {
+        debugLog('🔄 About to create symbol subtabs...');
+    }
     try {
         createSymbolSubtabs(portfolioData);
-        console.log('✅ Symbol subtabs creation completed');
+        if (typeof debugLog === 'function') {
+            debugLog('✅ Symbol subtabs creation completed');
+        }
     } catch (error) {
         console.error('❌ Error in createSymbolSubtabs:', error);
     }
 
     // サマリータブを明示的にアクティブに設定
     setTimeout(() => {
-        console.log('🔄 Setting summary tab as active...');
+        if (typeof debugLog === 'function') {
+            debugLog('🔄 Setting summary tab as active...');
+        }
         switchSubtab('summary');
 
         // 事前キャッシュは全銘柄チャート描画で一括処理するため削除
@@ -322,7 +340,9 @@ function displayDashboard(portfolioData) {
 
         // チャートを描画（デスクトップ・モバイル両対応）
         if (typeof renderAllSymbolsProfitChart === 'function') {
-            console.log('🎨 Rendering all symbols profit chart after dashboard setup');
+            if (typeof debugLog === 'function') {
+                debugLog('🎨 Rendering all symbols profit chart after dashboard setup');
+            }
             renderAllSymbolsProfitChart();
         }
     }, 800); // DOM要素の準備を待つため少し短縮
@@ -364,7 +384,9 @@ function updateDataStatus(portfolioData) {
 
 // 銘柄別サブタブ生成（復活版）
 function createSymbolSubtabs(portfolioData) {
-    console.log('🔄 createSymbolSubtabs called');
+    if (typeof debugLog === 'function') {
+        debugLog('🔄 createSymbolSubtabs called');
+    }
 
     // ポートフォリオデータの詳細チェック
     if (!portfolioData) {
@@ -387,11 +409,13 @@ function createSymbolSubtabs(portfolioData) {
         return;
     }
 
-    console.log('📊 Portfolio data valid:', {
-        summaryLength: portfolioData.summary.length,
-        symbols: portfolioData.summary.map(s => s.symbol),
-        hasSymbolsData: !!portfolioData.symbols
-    });
+    if (typeof debugLog === 'function') {
+        debugLog('📊 Portfolio data valid:', {
+            summaryLength: portfolioData.summary.length,
+            symbols: portfolioData.summary.map(s => s.symbol),
+            hasSymbolsData: !!portfolioData.symbols
+        });
+    }
 
     const subtabNav = document.getElementById('subtab-nav');
     const symbolContainer = document.getElementById('symbol-subtabs-container');
@@ -406,7 +430,9 @@ function createSymbolSubtabs(portfolioData) {
         return;
     }
 
-    console.log('✅ DOM elements found');
+    if (typeof debugLog === 'function') {
+        debugLog('✅ DOM elements found');
+    }
 
     // 既存の銘柄サブタブをクリア
     subtabNav.querySelectorAll('.symbol-subtab').forEach(tab => tab.remove());
@@ -414,15 +440,21 @@ function createSymbolSubtabs(portfolioData) {
 
     // 銘柄別サブタブを生成
     if (portfolioData && portfolioData.summary) {
-        console.log('📈 Creating subtabs for symbols:', portfolioData.summary.map(s => s.symbol));
+        if (typeof debugLog === 'function') {
+            debugLog('📈 Creating subtabs for symbols:', portfolioData.summary.map(s => s.symbol));
+        }
 
         // 実現損益で降順ソート
         const sortedSymbols = [...portfolioData.summary].sort((a, b) => b.realizedProfit - a.realizedProfit);
-        console.log('🔢 Sorted symbols:', sortedSymbols.map(s => s.symbol));
+        if (typeof debugLog === 'function') {
+            debugLog('🔢 Sorted symbols:', sortedSymbols.map(s => s.symbol));
+        }
 
         sortedSymbols.forEach((symbolData, index) => {
             try {
-                console.log(`🏷️ Creating subtab ${index + 1}/${sortedSymbols.length} for ${symbolData.symbol}`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`🏷️ Creating subtab ${index + 1}/${sortedSymbols.length} for ${symbolData.symbol}`);
+                }
 
                 // symbolDataの妥当性チェック
                 if (!symbolData || !symbolData.symbol) {
@@ -481,44 +513,50 @@ function createSymbolSubtabs(portfolioData) {
                 }
 
                 symbolContainer.appendChild(tabContent);
-                console.log(`✅ Created subtab for ${symbolData.symbol}`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`✅ Created subtab for ${symbolData.symbol}`);
+                }
 
             } catch (error) {
                 console.error(`❌ Error creating subtab for ${symbolData?.symbol || 'unknown'}:`, error);
             }
         });
 
-        console.log(`🎉 Created ${sortedSymbols.length} symbol subtabs`);
+        if (typeof debugLog === 'function') {
+            debugLog(`🎉 Created ${sortedSymbols.length} symbol subtabs`);
 
-        // デバッグ: 作成されたタブの確認
-        setTimeout(() => {
-            const createdTabs = subtabNav.querySelectorAll('.symbol-subtab');
-            const createdContents = symbolContainer.querySelectorAll('.subtab-content');
+            // デバッグ: 作成されたタブの確認
+            setTimeout(() => {
+                const createdTabs = subtabNav.querySelectorAll('.symbol-subtab');
+                const createdContents = symbolContainer.querySelectorAll('.subtab-content');
 
-            console.log(`🔍 Final tab count check:`);
-            console.log(`  - Expected: ${sortedSymbols.length}`);
-            console.log(`  - Tab buttons: ${createdTabs.length}`);
-            console.log(`  - Tab contents: ${createdContents.length}`);
+                debugLog(`🔍 Final tab count check:`);
+                debugLog(`  - Expected: ${sortedSymbols.length}`);
+                debugLog(`  - Tab buttons: ${createdTabs.length}`);
+                debugLog(`  - Tab contents: ${createdContents.length}`);
 
-            if (createdTabs.length === 0) {
-                console.error('❌ No tabs were created! Checking DOM state...');
-                console.log('DOM subtab-nav:', subtabNav);
-                console.log('DOM symbol-container:', symbolContainer);
-                console.log('subtab-nav innerHTML:', subtabNav.innerHTML);
-            } else {
-                console.log('✅ Tabs created successfully:');
-                createdTabs.forEach(tab => console.log(`  - ${tab.textContent} (${tab.id})`));
-            }
-        }, 100);
+                if (createdTabs.length === 0) {
+                    console.error('❌ No tabs were created! Checking DOM state...');
+                    debugLog('DOM subtab-nav:', subtabNav);
+                    debugLog('DOM symbol-container:', symbolContainer);
+                    debugLog('subtab-nav innerHTML:', subtabNav.innerHTML);
+                } else {
+                    debugLog('✅ Tabs created successfully:');
+                    createdTabs.forEach(tab => debugLog(`  - ${tab.textContent} (${tab.id})`));
+                }
+            }, 100);
+        }
 
     } else {
         console.error('❌ No portfolio data or summary available');
-        console.log('Debug info:', {
-            portfolioData: !!portfolioData,
-            summary: portfolioData?.summary,
-            summaryType: typeof portfolioData?.summary,
-            summaryLength: portfolioData?.summary?.length
-        });
+        if (typeof debugLog === 'function') {
+            debugLog('Debug info:', {
+                portfolioData: !!portfolioData,
+                summary: portfolioData?.summary,
+                summaryType: typeof portfolioData?.summary,
+                summaryLength: portfolioData?.summary?.length
+            });
+        }
     }
 
     // 最終確認: タブが作成されなかった場合の警告
@@ -526,7 +564,9 @@ function createSymbolSubtabs(portfolioData) {
         const finalTabCount = subtabNav.querySelectorAll('.symbol-subtab').length;
         if (finalTabCount === 0 && portfolioData?.summary?.length > 0) {
             console.error('🚨 CRITICAL: No symbol tabs were created despite having portfolio data!');
-            console.log('Attempting recovery...');
+            if (typeof debugLog === 'function') {
+                debugLog('Attempting recovery...');
+            }
 
             // 復旧試行
             try {
@@ -592,7 +632,7 @@ function generateMobilePortfolioCards(portfolioData) {
                     </div>
                     <div class="card-row">
                         <span class="card-label">保有量</span>
-                        <span class="card-value">${parseFloat(row.totalHolding).toFixed(6)}</span>
+                        <span class="card-value">${parseFloat(row.holdingQuantity || 0).toFixed(6)}</span>
                     </div>
                     <div class="card-row">
                         <span class="card-label">投資額</span>
@@ -801,15 +841,15 @@ function generateMobileTradingCards(portfolioData) {
                 </div>
                 <div class="card-row">
                     <span class="card-label">数量</span>
-                    <span class="card-value">${parseFloat(tx.amount).toFixed(6)}</span>
+                    <span class="card-value">${parseFloat(tx.quantity || 0).toFixed(6)}</span>
                 </div>
                 <div class="card-row">
                     <span class="card-label">単価</span>
-                    <span class="card-value">¥${tx.price.toLocaleString()}</span>
+                    <span class="card-value">¥${(tx.rate || 0).toLocaleString()}</span>
                 </div>
                 <div class="card-row">
                     <span class="card-label">総額</span>
-                    <span class="card-value">¥${Math.abs(tx.total).toLocaleString()}</span>
+                    <span class="card-value">¥${Math.abs(tx.amount || 0).toLocaleString()}</span>
                 </div>
                 <div class="card-row">
                     <span class="card-label">手数料</span>

@@ -10,8 +10,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 主要アーキテクチャ
 
-### シングルファイル構造
-- アプリケーション全体が `index.html` に含まれています
+### モジュラー JavaScript 構造
+- **index.html**: メインHTMLファイル（UI構造とCSS含む）
+- **main.js**: ファイル処理、CSV解析、UI ナビゲーション、ユーティリティ
+- **portfolio.js**: ポートフォリオ分析、計算、表示ロジック
+- **api.js**: 価格取得とCoinGecko API統合
+- **charts.js**: チャート描画と過去データ処理
 - ビルドプロセスやパッケージ管理は不要
 - 全ての依存関係はCDNから読み込み
 
@@ -35,26 +39,36 @@ CSVファイル → parseCSVFile() → mergeTransactionData() → analyzePortfol
 
 ## 主要関数
 
-### データ処理
+### データ処理 (main.js, portfolio.js)
 - `parseCSVFile(file)`: UTF-8エンコーディングでのCSV解析処理
 - `analyzePortfolioData(transactions)`: コアポートフォリオ計算エンジン
 - `mergeTransactionData(existingData, newData)`: 重複取引の防止
+- `handleFiles(files)`: マルチCSVファイル処理と既存データとの統合
 
-### API統合
+### API統合 (api.js)
 - `fetchCurrentPrices()`: リアルタイム価格のためのCoinGecko API呼び出し
 - `updatePortfolioWithPrices()`: 含み損益計算の更新
 - `SYMBOL_MAPPING`: 取引シンボルをCoinGecko IDにマッピング
+- API制限管理: 50回/分制限と30分価格キャッシュ
 
-### UI管理
+### チャート機能 (charts.js)
+- `fetchSymbolPriceHistory(symbol)`: 過去価格データ取得（24時間キャッシュ）
+- `createProfitChart(symbol, data)`: 総合損益推移チャート生成
+- `renderChart(symbol, chartData)`: Chart.js チャート描画
+
+### UI管理 (main.js, portfolio.js)
 - `displayDashboard(portfolioData)`: メインダッシュボードレンダリング
-- `switchTab()`: タブナビゲーションシステム
-- タブ構造: ポートフォリオ（銘柄別サブタブ付き）→ 取引履歴 → 価格チャート
+- `switchTab()` / `switchSubtab()`: タブナビゲーションシステム
+- タブ構造: ポートフォリオ（銘柄別サブタブ付き）→ 取引履歴
 
 ## データ永続化
 
 全データはlocalStorageに保存されます：
 - `rawTransactions`: 重複検出のための元取引データ
 - `portfolioData`: 分析済みポートフォリオ統計とサマリー
+- `priceData_[symbol]`: 価格データ（30分キャッシュ）
+- `historyData_[symbol]`: 過去価格データ（24時間キャッシュ）
+- `loadedFileNames`: 読み込み済みCSVファイル名
 
 ## 銘柄サポート
 

@@ -2,9 +2,17 @@
 // API.JS - Price fetching and CoinGecko API related functions
 // ===================================================================
 
-// Global variables for price data
-let currentPrices = {};
-let lastPriceUpdate = null;
+// Global variables for price data (use window object to avoid conflicts)
+if (!window.appPriceData) {
+    window.appPriceData = {
+        currentPrices: {},
+        lastPriceUpdate: null
+    };
+}
+
+// 後方互換性のためのエイリアス
+let currentPrices = window.appPriceData.currentPrices;
+let lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
 // 価格データ永続化設定
 const CACHE_DURATION_PRICE = 30 * 60 * 1000; // 30分
@@ -34,7 +42,9 @@ const SYMBOL_MAPPING = {
 // 価格取得関連機能
 async function fetchCurrentPrices() {
     try {
-        console.log('🔄 fetchCurrentPrices called');
+        if (typeof debugLog === 'function') {
+            debugLog('🔄 fetchCurrentPrices called');
+        }
 
         // ポートフォリオデータの存在確認を強化
         if (!currentPortfolioData) {
@@ -55,7 +65,9 @@ async function fetchCurrentPrices() {
         const portfolioSymbols = currentPortfolioData.summary.map(item => item.symbol);
         const validSymbols = portfolioSymbols.filter(symbol => SYMBOL_MAPPING[symbol]);
 
-        console.log('📊 Valid symbols for price fetch:', validSymbols);
+        if (typeof debugLog === 'function') {
+            debugLog('📊 Valid symbols for price fetch:', validSymbols);
+        }
 
         if (validSymbols.length === 0) {
             throw new Error('対応銘柄が見つかりません');
@@ -64,9 +76,13 @@ async function fetchCurrentPrices() {
         // まず価格履歴キャッシュから現在価格を取得を試行（API効率化）
         const pricesFromHistory = await tryGetPricesFromHistory(validSymbols);
         if (pricesFromHistory && Object.keys(pricesFromHistory).length === validSymbols.length) {
-            console.log('✅ All prices obtained from history cache');
+            if (typeof debugLog === 'function') {
+                debugLog('✅ All prices obtained from history cache');
+            }
+            window.appPriceData.currentPrices = pricesFromHistory;
             currentPrices = pricesFromHistory;
-            lastPriceUpdate = new Date();
+            window.appPriceData.lastPriceUpdate = new Date();
+            lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
             updatePortfolioWithPrices(currentPortfolioData, currentPrices);
             sortPortfolioData(currentSortField, currentSortDirection);
@@ -94,8 +110,10 @@ async function fetchCurrentPrices() {
             const cacheTimestamp = cachedPricesWithMeta.timestamp;
             const cacheDate = new Date(cacheTimestamp);
 
+            window.appPriceData.currentPrices = cachedPrices;
             currentPrices = cachedPrices;
-            lastPriceUpdate = new Date(cachedPrices._metadata?.lastUpdate || cacheTimestamp);
+            window.appPriceData.lastPriceUpdate = new Date(cachedPrices._metadata?.lastUpdate || cacheTimestamp);
+            lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
             updatePortfolioWithPrices(currentPortfolioData, currentPrices);
 
@@ -127,10 +145,14 @@ async function fetchCurrentPrices() {
             // フォールバック: 従来のキャッシュ取得を試行
             const fallbackCachedPrices = getCachedData(cacheKey, CACHE_DURATION_PRICE);
             if (fallbackCachedPrices) {
-                console.log(`✅ フォールバック価格キャッシュから取得`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`✅ フォールバック価格キャッシュから取得`);
+                }
 
+                window.appPriceData.currentPrices = fallbackCachedPrices;
                 currentPrices = fallbackCachedPrices;
-                lastPriceUpdate = new Date(fallbackCachedPrices._metadata?.lastUpdate || Date.now());
+                window.appPriceData.lastPriceUpdate = new Date(fallbackCachedPrices._metadata?.lastUpdate || Date.now());
+                lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
                 updatePortfolioWithPrices(currentPortfolioData, currentPrices);
                 sortPortfolioData(currentSortField, currentSortDirection);
@@ -180,14 +202,18 @@ async function fetchCurrentPrices() {
         setCachedData(cacheKey, prices, CACHE_DURATION_PRICE);
 
         // グローバル変数に保存
+        window.appPriceData.currentPrices = prices;
         currentPrices = prices;
-        lastPriceUpdate = new Date();
+        window.appPriceData.lastPriceUpdate = new Date();
+        lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
         // 従来のlocalStorageにも保存（後方互換性）
         localStorage.setItem('currentPrices', JSON.stringify(prices));
-        localStorage.setItem('lastPriceUpdate', lastPriceUpdate.toISOString());
+        localStorage.setItem('lastPriceUpdate', window.appPriceData.lastPriceUpdate.toISOString());
 
-        console.log(`💾 価格データを永続保存: ${validSymbols.length}銘柄 (30分有効)`);
+        if (typeof debugLog === 'function') {
+            debugLog(`💾 価格データを永続保存: ${validSymbols.length}銘柄 (30分有効)`);
+        }
 
         // ポートフォリオデータを再計算（含み損益含む）
         updatePortfolioWithPrices(currentPortfolioData, prices);
@@ -207,8 +233,8 @@ async function fetchCurrentPrices() {
         showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄 (30分間保存)`);
         updatePriceStatus();
 
-        // 価格データ永続化レポート（開発時のみ）
-        if (console.log) {
+        // 価格データ永続化レポート（デバッグモード時のみ）
+        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
             setTimeout(() => showPriceDataReport(), 1000);
         }
 
@@ -237,7 +263,9 @@ async function tryGetPricesFromHistory(symbols) {
                     last_updated_at: Date.now() / 1000
                 };
                 successCount++;
-                console.log(`📈 ${symbol} price from history: ¥${latestPrice.toLocaleString()}`);
+                if (typeof debugLog === 'function') {
+                    debugLog(`📈 ${symbol} price from history: ¥${latestPrice.toLocaleString()}`);
+                }
             }
         } catch (error) {
             console.warn(`Failed to get ${symbol} price from history:`, error);
@@ -323,13 +351,15 @@ function updatePortfolioWithPrices(portfolioData, prices) {
         totalLossSymbols: portfolioData.stats.totalLossSymbols
     });
 
-    // 各銘柄の総合損益も確認
-    console.log('💰 Symbol total profits:', portfolioData.summary.map(s => ({
-        symbol: s.symbol,
-        realized: Math.round(s.realizedProfit),
-        unrealized: Math.round(s.unrealizedProfit || 0),
-        total: Math.round(s.totalProfit || s.realizedProfit)
-    })));
+    // 各銘柄の総合損益も確認（デバッグモード時のみ）
+    if (typeof debugLog === 'function') {
+        debugLog('💰 Symbol total profits:', portfolioData.summary.map(s => ({
+            symbol: s.symbol,
+            realized: Math.round(s.realizedProfit),
+            unrealized: Math.round(s.unrealizedProfit || 0),
+            total: Math.round(s.totalProfit || s.realizedProfit)
+        })));
+    }
 }
 
 // 保存済み価格データを復元
@@ -339,12 +369,14 @@ function loadSavedPrices() {
         const savedUpdate = localStorage.getItem('lastPriceUpdate');
 
         if (savedPrices && savedUpdate) {
-            currentPrices = JSON.parse(savedPrices);
-            lastPriceUpdate = new Date(savedUpdate);
+            window.appPriceData.currentPrices = JSON.parse(savedPrices);
+            currentPrices = window.appPriceData.currentPrices;
+            window.appPriceData.lastPriceUpdate = new Date(savedUpdate);
+            lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
             // 1時間以内のデータのみ使用
             const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-            if (lastPriceUpdate > oneHourAgo) {
+            if (window.appPriceData.lastPriceUpdate > oneHourAgo) {
                 updatePortfolioWithPrices(currentPortfolioData, currentPrices);
                 return true;
             }
@@ -471,10 +503,11 @@ function updatePriceStatus(message = null) {
         return;
     }
 
-    if (lastPriceUpdate) {
-        const symbols = Object.keys(currentPrices).filter(key => key !== '_metadata').length;
-        const timeStr = lastPriceUpdate.toLocaleString('ja-JP');
-        const ageMinutes = Math.round((Date.now() - lastPriceUpdate.getTime()) / 1000 / 60);
+    const lastUpdate = window.appPriceData.lastPriceUpdate || lastPriceUpdate;
+    if (lastUpdate) {
+        const symbols = Object.keys(window.appPriceData.currentPrices || currentPrices).filter(key => key !== '_metadata').length;
+        const timeStr = lastUpdate.toLocaleString('ja-JP');
+        const ageMinutes = Math.round((Date.now() - lastUpdate.getTime()) / 1000 / 60);
 
         statusElement.textContent = `${symbols}銘柄 | ${timeStr} (${ageMinutes}分前)`;
         statusElement.style.color = ageMinutes < 30 ? '#28a745' : '#ffc107';
