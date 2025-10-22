@@ -233,72 +233,51 @@ function switchSubtab(subtabName) {
 
     debugLog(`📊 Found ${allButtons.length} subtab buttons, ${allContents.length} subtab contents`);
 
+    // activeを削除
     allButtons.forEach(btn => {
         btn.classList.remove('active');
-        // ボタンの背景色をリセット
-        if (!btn.classList.contains('active')) {
-            btn.style.backgroundColor = '';
-        }
+        btn.style.backgroundColor = '';
     });
     allContents.forEach(content => content.classList.remove('active'));
 
-    // 選択されたサブタブをアクティブに
+    // 選択されたサブタブをアクティブにする
     const targetButton = document.getElementById(`subtab-${subtabName}`);
     const targetContent = document.getElementById(`subtab-content-${subtabName}`);
-
-    // 銘柄タブが選択された場合、重複実行チェックを先に行う
-    if (subtabName !== 'summary') {
-        const symbol = subtabName.toUpperCase();
-
-        // 重複実行を防ぐため、最後の実行から一定時間経過をチェック
-        const now = Date.now();
-        const lastRenderKey = `lastRender_${symbol}`;
-        const lastRenderTime = window[lastRenderKey] || 0;
-        const timeSinceLastRender = now - lastRenderTime;
-
-        if (timeSinceLastRender < 2000) {
-            debugLog(`⏭️ Skipping chart render for ${symbol} (last render ${Math.round(timeSinceLastRender/1000)}s ago)`);
-            // UIの状態だけ更新して早期リターン
-            if (targetButton) {
-                targetButton.classList.add('active');
-                targetButton.style.backgroundColor = '';
-            }
-            if (targetContent) {
-                targetContent.classList.add('active');
-            }
-            return;
-        }
-
-        // 実行時刻を記録
-        window[lastRenderKey] = now;
-    }
-
     if (targetButton) {
         targetButton.classList.add('active');
-        // アクティブボタンの背景色を設定
-        targetButton.style.backgroundColor = '';
     }
     if (targetContent) {
         targetContent.classList.add('active');
-
-        // 銘柄タブが選択された場合、チャートを描画（summaryは除外）
+        
+        // 各銘柄のチャート表示
         if (subtabName !== 'summary') {
+            // 銘柄名を取得
             const symbol = subtabName.toUpperCase();
+            // 連続実行防止(2s以内であれば再表示しない)
+            // 最後の実行から一定時間経過をチェック
+            const now = Date.now();
+            const lastRenderKey = `lastRender_${symbol}`;
+            const lastRenderTime = window[lastRenderKey] || 0;
+            const timeSinceLastRender = now - lastRenderTime;
 
-            // 価格チャートを描画
-            if (typeof displaySymbolChart === 'function') {
-                displaySymbolChart(symbol);
+            if (timeSinceLastRender < 2000) {
+                debugLog(`⏭️ Skipping chart render for ${symbol} (last render ${Math.round(timeSinceLastRender/1000)}s ago)`);            
+                return;
             }
 
-            // 損益推移チャートを描画
-            setTimeout(() => {
-                if (typeof renderSymbolProfitChart === 'function') {
+            // 実行時刻を記録
+            window[lastRenderKey] = now;
+
+            if (targetContent) {
+                // 価格チャートを描画
+                displaySymbolChart(symbol);
+
+                // 損益推移チャートを描画（DOM更新後）
+                requestAnimationFrame(() => {
                     debugLog(`🎨 Auto-rendering profit chart for ${symbol}`);
                     renderSymbolProfitChart(symbol);
-                } else {
-                    debugLog('⚠️ renderSymbolProfitChart function not available');
-                }
-            }, 200); // DOM更新後に実行
+                });
+            }
         }
     }
 }
