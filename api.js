@@ -46,9 +46,7 @@ const SYMBOL_MAPPING = window.SYMBOL_MAPPING;
 // 価格取得関連機能
 async function fetchCurrentPrices() {
     try {
-        if (typeof debugLog === 'function') {
-            debugLog('🔄 fetchCurrentPrices called');
-        }
+        debugLog('🔄 fetchCurrentPrices called');
 
         // ポートフォリオデータの存在確認を強化
         if (!currentPortfolioData) {
@@ -69,9 +67,7 @@ async function fetchCurrentPrices() {
         const portfolioSymbols = currentPortfolioData.summary.map(item => item.symbol);
         const validSymbols = portfolioSymbols.filter(symbol => SYMBOL_MAPPING[symbol]);
 
-        if (typeof debugLog === 'function') {
-            debugLog('📊 Valid symbols for price fetch:', validSymbols);
-        }
+        debugLog('📊 Valid symbols for price fetch:', validSymbols);
 
         if (validSymbols.length === 0) {
             throw new Error('対応銘柄が見つかりません');
@@ -80,9 +76,7 @@ async function fetchCurrentPrices() {
         // まず価格履歴キャッシュから現在価格を取得を試行（API効率化）
         const pricesFromHistory = await tryGetPricesFromHistory(validSymbols);
         if (pricesFromHistory && Object.keys(pricesFromHistory).length === validSymbols.length) {
-            if (typeof debugLog === 'function') {
-                debugLog('✅ All prices obtained from history cache');
-            }
+            debugLog('✅ All prices obtained from history cache');
             window.appPriceData.currentPrices = pricesFromHistory;
             currentPrices = pricesFromHistory;
             window.appPriceData.lastPriceUpdate = new Date();
@@ -149,9 +143,7 @@ async function fetchCurrentPrices() {
             // フォールバック: 従来のキャッシュ取得を試行
             const fallbackCachedPrices = getCachedData(cacheKey, CACHE_DURATION_PRICE);
             if (fallbackCachedPrices) {
-                if (typeof debugLog === 'function') {
-                    debugLog(`✅ フォールバック価格キャッシュから取得`);
-                }
+                debugLog(`✅ フォールバック価格キャッシュから取得`);
 
                 window.appPriceData.currentPrices = fallbackCachedPrices;
                 currentPrices = fallbackCachedPrices;
@@ -215,9 +207,7 @@ async function fetchCurrentPrices() {
         localStorage.setItem('currentPrices', JSON.stringify(prices));
         localStorage.setItem('lastPriceUpdate', window.appPriceData.lastPriceUpdate.toISOString());
 
-        if (typeof debugLog === 'function') {
-            debugLog(`💾 価格データを永続保存: ${validSymbols.length}銘柄 (30分有効)`);
-        }
+        debugLog(`💾 価格データを永続保存: ${validSymbols.length}銘柄 (30分有効)`);
 
         // ポートフォリオデータを再計算（含み損益含む）
         updatePortfolioWithPrices(currentPortfolioData, prices);
@@ -267,9 +257,7 @@ async function tryGetPricesFromHistory(symbols) {
                     last_updated_at: Date.now() / 1000
                 };
                 successCount++;
-                if (typeof debugLog === 'function') {
-                    debugLog(`📈 ${symbol} price from history: ¥${latestPrice.toLocaleString()}`);
-                }
+                debugLog(`📈 ${symbol} price from history: ¥${latestPrice.toLocaleString()}`);
             }
         } catch (error) {
             console.warn(`Failed to get ${symbol} price from history:`, error);
@@ -356,14 +344,12 @@ function updatePortfolioWithPrices(portfolioData, prices) {
     });
 
     // 各銘柄の総合損益も確認（デバッグモード時のみ）
-    if (typeof debugLog === 'function') {
-        debugLog('💰 Symbol total profits:', portfolioData.summary.map(s => ({
-            symbol: s.symbol,
-            realized: Math.round(s.realizedProfit),
-            unrealized: Math.round(s.unrealizedProfit || 0),
-            total: Math.round(s.totalProfit || s.realizedProfit)
-        })));
-    }
+    debugLog('💰 Symbol total profits:', portfolioData.summary.map(s => ({
+        symbol: s.symbol,
+        realized: Math.round(s.realizedProfit),
+        unrealized: Math.round(s.unrealizedProfit || 0),
+        total: Math.round(s.totalProfit || s.realizedProfit)
+    })));
 }
 
 // 保存済み価格データを復元
