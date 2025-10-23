@@ -233,7 +233,7 @@ function switchSubtab(subtabName) {
 
     debugLog(`📊 Found ${allButtons.length} subtab buttons, ${allContents.length} subtab contents`);
 
-    // activeを削除
+    // 全サブタブのactiveを削除
     allButtons.forEach(btn => {
         btn.classList.remove('active');
         btn.style.backgroundColor = '';

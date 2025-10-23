@@ -6,6 +6,7 @@
 if (!window.appChartData) {
     window.appChartData = {
         historicalData: {},
+        historicalDataTimestamps: {}, // 各銘柄の履歴データ取得タイムスタンプ
         profitChartInstance: null,
         apiCallCount: 0,
         lastApiCall: 0
@@ -233,6 +234,56 @@ const PRICE_CACHE_CONFIG = {
     MAX_STORAGE_SIZE: 50 * 1024 * 1024,           // 最大50MB
     CLEANUP_THRESHOLD: 0.8                         // 80%使用時にクリーンアップ
 };
+
+// ===================================================================
+// UTILITY FUNCTIONS
+// ===================================================================
+
+/**
+ * 銘柄別の色設定（チャート描画用）
+ * border: チャートの線の色
+ * bg: チャートの背景色（透明度0.1）
+ */
+const SYMBOL_COLORS = {
+    'BTC': { border: '#F7931A', bg: 'rgba(247, 147, 26, 0.1)' },
+    'ETH': { border: '#627EEA', bg: 'rgba(98, 126, 234, 0.1)' },
+    'SOL': { border: '#9945FF', bg: 'rgba(153, 69, 255, 0.1)' },
+    'XRP': { border: '#23292F', bg: 'rgba(35, 41, 47, 0.1)' },
+    'ADA': { border: '#0033AD', bg: 'rgba(0, 51, 173, 0.1)' },
+    'DOGE': { border: '#C2A633', bg: 'rgba(194, 166, 51, 0.1)' },
+    'ASTR': { border: '#0070F3', bg: 'rgba(0, 112, 243, 0.1)' },
+    'XTZ': { border: '#2C7DF7', bg: 'rgba(44, 125, 247, 0.1)' },
+    'XLM': { border: '#14B6E7', bg: 'rgba(20, 182, 231, 0.1)' },
+    'SHIB': { border: '#FFA409', bg: 'rgba(255, 164, 9, 0.1)' },
+    'PEPE': { border: '#00D924', bg: 'rgba(0, 217, 36, 0.1)' },
+    'SUI': { border: '#4DA2FF', bg: 'rgba(77, 162, 255, 0.1)' },
+    'DAI': { border: '#FBCC5F', bg: 'rgba(251, 204, 95, 0.1)' }
+};
+
+// デフォルトの色（未定義の銘柄用）
+const DEFAULT_SYMBOL_COLOR = { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
+
+/**
+ * 銘柄シンボルからキャンバスIDを生成
+ * @param {string} symbol - 銘柄シンボル（例: 'BTC', 'ETH'）
+ * @returns {string} キャンバス要素のID（例: 'btc-chart-canvas'）
+ */
+function getSymbolCanvasId(symbol) {
+    return `${symbol.toLowerCase()}-chart-canvas`;
+}
+
+/**
+ * 銘柄シンボルからチャートコンテナIDを生成
+ * @param {string} symbol - 銘柄シンボル（例: 'BTC', 'ETH'）
+ * @returns {string} コンテナ要素のID（例: 'btc-chart-container'）
+ */
+function getSymbolChartContainerId(symbol) {
+    return `${symbol.toLowerCase()}-chart-container`;
+}
+
+// ===================================================================
+// CACHE FUNCTIONS
+// ===================================================================
 
 // 永続化キャッシュ機能（強化版）
 function getCachedData(key, duration = null) {
@@ -1850,27 +1901,17 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
 // ===================================================================
 
 // 銘柄別チャート描画
-function displaySymbolChart(symbol) {
-    const canvas = document.getElementById(`${symbol.toLowerCase()}-chart-canvas`);
+async function displaySymbolChart(symbol) {
+    const canvas = document.getElementById(getSymbolCanvasId(symbol));
     if (!canvas) {
+        debugLog(`❌ Canvas not found: ${symbol}`);
         return;
     }
 
-    const ctx = canvas.getContext('2d');
-
-    // 既存のチャートを削除
-    const chartKey = `${symbol.toLowerCase()}TabChart`;
-    if (window[chartKey]) {
-        window[chartKey].destroy();
-    }
-
-    // データ準備 - 実データがある場合のみチャートを描画
     let chartData = [];
-    if (historicalData[symbol] && Array.isArray(historicalData[symbol]) && historicalData[symbol].length > 0) {
-        chartData = historicalData[symbol];
-    } else {
-        // 実データがない場合はローディング表示してから取得を試行
 
+    // メモリにデータがあるか
+    {
         // ローディング表示
         const container = canvas.parentElement;
         if (container && !container.querySelector('.loading-message')) {
@@ -1889,36 +1930,78 @@ function displaySymbolChart(symbol) {
             container.appendChild(loadingDiv);
         }
 
-        fetchSymbolHistoricalData(symbol);
-        return; // ここで終了し、データ取得完了後に再度この関数が呼ばれる
+        // データを取得
+        await fetchSymbolHistoricalData(symbol);
     }
 
-    // 銘柄別の色設定
-    const colors = {
-        'BTC': { border: '#F7931A', bg: 'rgba(247, 147, 26, 0.1)' },
-        'ETH': { border: '#627EEA', bg: 'rgba(98, 126, 234, 0.1)' },
-        'SOL': { border: '#9945FF', bg: 'rgba(153, 69, 255, 0.1)' },
-        'XRP': { border: '#23292F', bg: 'rgba(35, 41, 47, 0.1)' },
-        'ADA': { border: '#0033AD', bg: 'rgba(0, 51, 173, 0.1)' },
-        'DOGE': { border: '#C2A633', bg: 'rgba(194, 166, 51, 0.1)' },
-        'ASTR': { border: '#0070F3', bg: 'rgba(0, 112, 243, 0.1)' },
-        'XTZ': { border: '#2C7DF7', bg: 'rgba(44, 125, 247, 0.1)' },
-        'XLM': { border: '#14B6E7', bg: 'rgba(20, 182, 231, 0.1)' },
-        'SHIB': { border: '#FFA409', bg: 'rgba(255, 164, 9, 0.1)' },
-        'PEPE': { border: '#00D924', bg: 'rgba(0, 217, 36, 0.1)' },
-        'SUI': { border: '#4DA2FF', bg: 'rgba(77, 162, 255, 0.1)' },
-        'DAI': { border: '#FBCC5F', bg: 'rgba(251, 204, 95, 0.1)' }
-    };
+    // データ取得
+    chartData = historicalData[symbol];
 
-    const color = colors[symbol] || { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
+    // データ検証
+    if (!Array.isArray(chartData) || chartData.length === 0) {
+        if (typeof debugLog === 'function') {
+            debugLog(`❌ ${symbol}の有効なデータが取得できませんでした`);
+        }
 
-    // ローディング表示を削除
+        // ローディング表示を削除
+        const container = canvas.parentElement;
+        const loadingDiv = container?.querySelector('.loading-message');
+        if (loadingDiv) {
+            loadingDiv.remove();
+        }
+
+        // エラーメッセージをチャートエリアに表示
+        if (container && !container.querySelector('.chart-error-message')) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'chart-error-message';
+            errorDiv.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+                color: #e74c3c;
+                font-size: 16px;
+                z-index: 10;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                max-width: 80%;
+            `;
+            errorDiv.innerHTML = `
+                <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+                <div style="font-weight: bold; margin-bottom: 8px;">${symbol} 価格データを取得できませんでした</div>
+                <div style="font-size: 14px; color: #666;">ネットワーク接続を確認してください</div>
+            `;
+            container.appendChild(errorDiv);
+        }
+
+        return;
+    }
+
+    const chartKey = `${symbol.toLowerCase()}TabChart`;
+
+    // 既存のチャートを削除（新しいデータがある場合のみ）
+    if (window[chartKey]) {
+        window[chartKey].destroy();
+    }
+
+    // 既存のエラーメッセージとローディング表示を削除
     const container = canvas.parentElement;
+    const existingError = container?.querySelector('.chart-error-message');
+    if (existingError) {
+        existingError.remove();
+    }
     const loadingDiv = container?.querySelector('.loading-message');
     if (loadingDiv) {
         loadingDiv.remove();
     }
 
+    // 銘柄の色を取得
+    const color = SYMBOL_COLORS[symbol] || DEFAULT_SYMBOL_COLOR;
+
+    const ctx = canvas.getContext('2d');
     // チャート作成
     window[chartKey] = new Chart(ctx, {
         type: 'line',
@@ -1984,69 +2067,48 @@ function displaySymbolChart(symbol) {
         }
     });
 
-    // 履歴データを取得（まだない場合）
-    if (!historicalData[symbol]) {
-        fetchSymbolHistoricalData(symbol);
-    }
+    debugLog(`✅ ${symbol}チャートを描画しました`);
 }
 
 // 銘柄別履歴データ取得
 async function fetchSymbolHistoricalData(symbol) {
-    // api.jsのSYMBOL_MAPPINGを参照
-    const SYMBOL_MAPPING = {
-        'BTC': 'bitcoin',
-        'ETH': 'ethereum',
-        'SOL': 'solana',
-        'XRP': 'ripple',
-        'ADA': 'cardano',
-        'DOGE': 'dogecoin',
-        'ASTR': 'astar',
-        'XTZ': 'tezos',
-        'XLM': 'stellar',
-        'SHIB': 'shiba-inu',
-        'PEPE': 'pepe',
-        'SUI': 'sui',
-        'DAI': 'dai'
-    };
-    
-    const coingeckoId = SYMBOL_MAPPING[symbol];
-    if (!coingeckoId) {
-        return;
-    }
+    if (!historicalData[symbol]){
+        // api.jsで定義されたSYMBOL_MAPPINGを参照
+        const coingeckoId = window.SYMBOL_MAPPING?.[symbol];
 
-    // キャッシュキーを生成
-    const cacheKey = `chart_${symbol}_30days`;
+        // キャッシュキーを生成
+        const cacheKey = `chart_${symbol}_30days`;
 
-    // キャッシュチェック
-    const cachedData = getCachedData(cacheKey);
-    if (cachedData) {
-        historicalData[symbol] = cachedData;
-        displaySymbolChart(symbol);
-        return;
-    }
-
-    try {
-        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.prices) {
-            const chartData = data.prices.map(([timestamp, price]) => ({
-                x: new Date(timestamp),
-                y: price  // Math.round()を削除して元の価格を保持
-            }));
-
-            // キャッシュに保存
-            setCachedData(cacheKey, chartData, CACHE_DURATION_CHART);
-
-            historicalData[symbol] = chartData;
-
-            // チャートを再描画
-            displaySymbolChart(symbol);
+        // キャッシュチェック
+        const cachedData = getCachedData(cacheKey);
+        if (cachedData) {
+            historicalData[symbol] = cachedData;
+            return;
         }
-    } catch (error) {
-        console.error(`${symbol}履歴データ取得エラー:`, error);
+
+        try {
+            const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.prices) {
+                const chartData = data.prices.map(([timestamp, price]) => ({
+                    x: new Date(timestamp),
+                    y: price  // Math.round()を削除して元の価格を保持
+                }));
+
+                // キャッシュに保存（6時間）
+                setCachedData(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA_DURATION);
+
+                historicalData[symbol] = chartData;
+
+                // 新しいデータを取得したタイムスタンプを記録
+                window.appChartData.historicalDataTimestamps[symbol] = Date.now();
+            }
+        } catch (error) {
+            console.error(`${symbol}履歴データ取得エラー:`, error);
+        }
     }
 }
 // チャート

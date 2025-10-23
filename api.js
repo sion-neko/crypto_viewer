@@ -19,7 +19,8 @@ const CACHE_DURATION_PRICE = 30 * 60 * 1000; // 30分
 const CACHE_DURATION_HISTORY = 24 * 60 * 60 * 1000; // 24時間
 
 // 銘柄マッピング（CoinGecko API用）
-const SYMBOL_MAPPING = {
+// グローバルスコープに公開して他のファイルから参照可能にする
+window.SYMBOL_MAPPING = {
     'BTC': 'bitcoin',
     'ETH': 'ethereum',
     'SOL': 'solana',
@@ -34,6 +35,9 @@ const SYMBOL_MAPPING = {
     'SUI': 'sui',
     'DAI': 'dai'
 };
+
+// ローカル参照用のエイリアス
+const SYMBOL_MAPPING = window.SYMBOL_MAPPING;
 
 // ===================================================================
 // PRICE FETCHING FUNCTIONS

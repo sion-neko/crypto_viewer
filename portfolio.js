@@ -1069,8 +1069,8 @@ function generateSymbolDetailPage(symbolSummary, symbolData) {
         <!-- ${symbolSummary.symbol}価格チャート -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 25px;">
             <h4 style="color: #2c3e50; margin-bottom: 20px;">📈 ${symbolSummary.symbol} 価格チャート（30日間）</h4>
-            <div id="${symbolSummary.symbol.toLowerCase()}-chart-container" style="position: relative; height: 400px; background: white; border-radius: 8px;">
-                <canvas id="${symbolSummary.symbol.toLowerCase()}-chart-canvas"></canvas>
+            <div id="${getSymbolChartContainerId(symbolSummary.symbol)}" style="position: relative; height: 400px; background: white; border-radius: 8px;">
+                <canvas id="${getSymbolCanvasId(symbolSummary.symbol)}"></canvas>
             </div>
         </div>
     `;
