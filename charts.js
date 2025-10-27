@@ -32,7 +32,6 @@ setInterval(() => {
     if (elapsed >= API_RESET_INTERVAL) {
         window.appChartData.apiCallCount = 0;
         lastResetTime = now;
-        debugLog('🔄 API制限カウンターをリセットしました');
     }
 }, 10000); // 10秒ごとにチェック
 
@@ -86,15 +85,12 @@ async function fetchSymbolPriceHistory(symbol) {
                 minute: 'numeric'
             });
 
-            console.log(`✅ ${symbol}価格履歴をキャッシュから取得 (${cachedData.length}日分)`);
             showSuccessMessage(`${symbol}: キャッシュから表示\n${cacheTimeStr}保存`);
             return cachedData;
         } else {
-            console.log(`⏰ ${symbol}価格履歴が古い (${Math.round(hoursOld)}時間前) - 最新データを取得中...`);
             showInfoMessage(`${symbol}: 価格データが古いため最新データを取得中...`);
         }
     } else {
-        console.log(`📡 ${symbol}価格履歴のキャッシュなし - 新規取得中...`);
         showInfoMessage(`${symbol}: 価格履歴を新規取得中...`);
     }
 
@@ -110,7 +106,6 @@ async function fetchSymbolPriceHistory(symbol) {
         if (timeSinceLastCall < API_CALL_INTERVAL) {
             const waitTime = API_CALL_INTERVAL - timeSinceLastCall;
             const waitSeconds = Math.ceil(waitTime / 1000);
-            debugLog(`⏳ API制限回避のため${waitTime}ms待機中...`);
 
             // 待機時間が1秒以上の場合はトースト表示
             if (waitSeconds >= 1) {
@@ -126,7 +121,6 @@ async function fetchSymbolPriceHistory(symbol) {
         // API呼び出し記録を更新
         window.appChartData.apiCallCount++;
         window.appChartData.lastApiCall = Date.now();
-        debugLog(`API呼び出し: ${window.appChartData.apiCallCount}/${API_CALL_LIMIT} - ${symbol}価格履歴`);
 
         // タイムアウト付きでfetch実行
         const controller = new AbortController();
@@ -172,7 +166,6 @@ async function fetchSymbolPriceHistory(symbol) {
         // 永続キャッシュに保存（24時間有効）
         setCachedData(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
 
-        debugLog(`✅ ${symbol}価格履歴を永続保存: ${priceHistory.length}日分 (24時間有効)`);
 
         // 成功時のトースト通知
         if (priceHistory.length > 0) {
@@ -182,7 +175,6 @@ async function fetchSymbolPriceHistory(symbol) {
         // 価格データレポート更新（デバッグモード時のみ）
         if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
             const status = getPriceDataStatus();
-            debugLog(`💾 価格データ保存状況: ${status.priceHistories.length}銘柄, ${Math.round(status.totalCacheSize / 1024)}KB`);
         }
 
         return priceHistory;
@@ -254,24 +246,6 @@ const SYMBOL_COLORS = {
 
 // デフォルトの色（未定義の銘柄用）
 const DEFAULT_SYMBOL_COLOR = { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
-
-/**
- * 銘柄シンボルからキャンバスIDを生成
- * @param {string} symbol - 銘柄シンボル（例: 'BTC', 'ETH'）
- * @returns {string} キャンバス要素のID（例: 'btc-chart-canvas'）
- */
-function getSymbolCanvasId(symbol) {
-    return `${symbol.toLowerCase()}-chart-canvas`;
-}
-
-/**
- * 銘柄シンボルからチャートコンテナIDを生成
- * @param {string} symbol - 銘柄シンボル（例: 'BTC', 'ETH'）
- * @returns {string} コンテナ要素のID（例: 'btc-chart-container'）
- */
-function getSymbolChartContainerId(symbol) {
-    return `${symbol.toLowerCase()}-chart-container`;
-}
 
 // ===================================================================
 // CHART FORMATTING AND CONFIGURATION HELPERS
@@ -587,10 +561,8 @@ function getCachedData(key, duration = null) {
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
-                debugLog(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
                 return data.value;
             } else {
-                debugLog(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
                 localStorage.removeItem(key);
             }
         }
@@ -618,7 +590,6 @@ function getCachedDataWithMetadata(key, duration = null) {
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
-                debugLog(`📦 キャッシュヒット: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
                 return {
                     value: data.value,
                     timestamp: data.timestamp,
@@ -626,7 +597,6 @@ function getCachedDataWithMetadata(key, duration = null) {
                     key: data.key
                 };
             } else {
-                debugLog(`⏰ キャッシュ期限切れ: ${key} (${Math.round((Date.now() - data.timestamp) / 1000 / 60)}分前)`);
                 localStorage.removeItem(key);
             }
         }
@@ -658,7 +628,6 @@ function setCachedData(key, value, duration = PRICE_CACHE_CONFIG.CURRENT_PRICES_
         const serializedData = JSON.stringify(data);
         localStorage.setItem(key, serializedData);
 
-        debugLog(`💾 キャッシュ保存: ${key} (${Math.round(serializedData.length / 1024)}KB, ${Math.round(duration / 1000 / 60)}分有効)`);
 
         // メタデータ更新
         updateCacheMetadata(key, data.size, duration);
@@ -668,12 +637,10 @@ function setCachedData(key, value, duration = PRICE_CACHE_CONFIG.CURRENT_PRICES_
 
         // ストレージ容量不足の場合、古いデータを削除して再試行
         if (error.name === 'QuotaExceededError') {
-            debugLog('🧹 ストレージ容量不足のため古いキャッシュを削除中...');
             cleanupOldCache();
 
             try {
                 localStorage.setItem(key, JSON.stringify(data));
-                debugLog(`✅ キャッシュ保存成功（再試行）: ${key}`);
             } catch (retryError) {
                 console.error('キャッシュ保存再試行失敗:', retryError);
                 if (typeof showWarningMessage === 'function') {
@@ -698,7 +665,6 @@ function checkStorageUsage() {
         const usageRatio = totalSize / PRICE_CACHE_CONFIG.MAX_STORAGE_SIZE;
 
         if (usageRatio > PRICE_CACHE_CONFIG.CLEANUP_THRESHOLD) {
-            debugLog(`⚠️ ストレージ使用量: ${Math.round(usageRatio * 100)}% (${Math.round(totalSize / 1024 / 1024)}MB)`);
             cleanupOldCache();
         }
 
@@ -772,10 +738,8 @@ function cleanupOldCache() {
             localStorage.removeItem(item.key);
             deletedSize += item.size;
             deleteCount++;
-            debugLog(`🗑️ 古いキャッシュ削除: ${item.key} (${Math.round(item.age / 1000 / 60)}分前)`);
         }
 
-        debugLog(`✅ キャッシュクリーンアップ完了: ${deleteCount}件削除 (${Math.round(deletedSize / 1024)}KB解放)`);
 
     } catch (error) {
         console.error('キャッシュクリーンアップエラー:', error);
@@ -843,7 +807,6 @@ function getPriceDataStatus() {
                         status.newestData = { key, timestamp: data.timestamp };
                     }
                 } catch (e) {
-                    console.warn(`破損した価格履歴データ: ${key}`);
                 }
             }
         }
@@ -859,23 +822,16 @@ function getPriceDataStatus() {
 function showPriceDataReport() {
     const status = getPriceDataStatus();
 
-    console.log('📊 価格データ永続化レポート:');
-    console.log(`💾 総キャッシュサイズ: ${Math.round(status.totalCacheSize / 1024)}KB`);
 
     if (status.currentPrices) {
-        console.log(`💰 現在価格: ${status.currentPrices.symbols.length}銘柄 (${Math.round(status.currentPrices.age / 1000 / 60)}分前)`);
     } else {
-        console.log('💰 現在価格: なし');
     }
 
-    console.log(`📈 価格履歴: ${status.priceHistories.length}銘柄`);
     status.priceHistories.forEach(history => {
-        console.log(`  - ${history.symbol}: ${history.dataPoints}日分 (${Math.round(history.age / 1000 / 60 / 60)}時間前)`);
     });
 
     if (status.oldestData) {
         const oldestAge = Math.round((Date.now() - status.oldestData.timestamp) / 1000 / 60 / 60);
-        console.log(`⏰ 最古データ: ${oldestAge}時間前`);
     }
 
     return status;
@@ -900,7 +856,6 @@ function updateSymbolCurrentPrice(symbol, price) {
                     symbolSummary.totalProfit = symbolSummary.realizedProfit + symbolSummary.unrealizedProfit;
                 }
 
-                console.log(`${symbol}の現在価格を更新: ¥${price.toLocaleString()}`);
             }
         }
     } catch (error) {
@@ -920,7 +875,6 @@ async function fetchMultipleSymbolPriceHistories(symbols) {
             const priceHistory = await fetchSymbolPriceHistory(symbol);
             results[symbol] = priceHistory;
         } catch (error) {
-            console.warn(`${symbol}の価格履歴取得をスキップ:`, error.message);
             results[symbol] = null;
         }
     });
@@ -931,8 +885,6 @@ async function fetchMultipleSymbolPriceHistories(symbols) {
 
 // 価格履歴を使った日次総合損益データを生成
 function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) {
-    console.log(`🔢 Generating profit data for ${symbol}`);
-    console.log(`📊 Transactions: ${transactions.length}, Price history: ${priceHistory.length}`);
 
     // 取引を日付順にソート
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -986,19 +938,6 @@ function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) 
             const currentValue = totalQuantity * price;
             const holdingCost = totalQuantity * weightedAvgPrice;
             unrealizedProfit = currentValue - holdingCost;
-
-            // 異常に大きな含み損益をチェック（デバッグ用）
-            if (Math.abs(unrealizedProfit) > 1000000) {
-                console.warn(`⚠️ Large unrealized profit detected for ${symbol}:`, {
-                    date: targetDate.toISOString().split('T')[0],
-                    totalQuantity,
-                    price,
-                    weightedAvgPrice,
-                    currentValue,
-                    holdingCost,
-                    unrealizedProfit
-                });
-            }
         } else if (totalQuantity <= 0.00000001) {
             // 保有数量が極小の場合は含み損益を0にする
             unrealizedProfit = 0;
@@ -1019,34 +958,13 @@ function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) 
             currentPrice: price
         });
 
-        // デバッグ用：異常な値をログ出力
-        if (Math.abs(unrealizedProfit) > 100000 || Math.abs(totalProfit) > 500000) {
-            console.log(`📊 ${symbol} ${targetDate.toISOString().split('T')[0]}:`, {
-                holdingQuantity: totalQuantity.toFixed(8),
-                avgPrice: Math.round(weightedAvgPrice),
-                currentPrice: Math.round(price),
-                realizedProfit: Math.round(realizedProfit),
-                unrealizedProfit: Math.round(unrealizedProfit),
-                totalProfit: Math.round(totalProfit)
-            });
-        }
     });
-
-    console.log(`✅ Generated ${dailyProfitData.length} profit data points`);
-    if (dailyProfitData.length > 0) {
-        console.log('📅 Sample data point:', {
-            date: dailyProfitData[0].date,
-            dateType: typeof dailyProfitData[0].date,
-            isDate: dailyProfitData[0].date instanceof Date
-        });
-    }
 
     return dailyProfitData;
 }
 
 // 全銘柄の損益データを合計して統合損益推移を生成
 function generateCombinedProfitTimeSeries(allProfitData) {
-    console.log('🔢 Generating combined profit time series');
     
     // 全銘柄の日付を統合してソート
     const allDates = new Set();
@@ -1093,21 +1011,17 @@ function generateCombinedProfitTimeSeries(allProfitData) {
         };
     });
 
-    console.log(`✅ Generated combined profit data: ${combinedData.length} points`);
     return combinedData;
 }
 
 // 全銘柄の総合損益推移チャートを描画
 async function renderAllSymbolsProfitChart() {
-    debugLog('🔄 renderAllSymbolsProfitChart called');
-    debugLog('📊 Current chart mode:', window.portfolioChartMode || 'combined');
 
     // デバッグ: Chart.jsライブラリの確認
     if (typeof Chart === 'undefined') {
         console.error('❌ Chart.js library not loaded!');
         return;
     } else {
-        debugLog('✅ Chart.js library is available');
     }
 
     const portfolioData = window.currentPortfolioData || currentPortfolioData;
@@ -1116,12 +1030,6 @@ async function renderAllSymbolsProfitChart() {
         return;
     }
 
-    debugLog('✅ Portfolio data available:', {
-        summaryCount: portfolioData.summary?.length || 0,
-        symbolsCount: Object.keys(portfolioData.symbols || {}).length,
-        hasStats: !!portfolioData.stats
-    });
-
     // デスクトップ版とモバイル版の両方のcanvasを確認
     const desktopCanvasId = 'all-symbols-profit-chart';
     const mobileCanvasId = 'mobile-all-symbols-profit-chart';
@@ -1129,13 +1037,6 @@ async function renderAllSymbolsProfitChart() {
     const desktopCanvas = document.getElementById(desktopCanvasId);
     const mobileCanvas = document.getElementById(mobileCanvasId);
 
-    debugLog('🔍 Canvas elements check:', {
-        desktopCanvas: !!desktopCanvas,
-        mobileCanvas: !!mobileCanvas,
-        desktopVisible: desktopCanvas?.offsetParent !== null,
-        mobileVisible: mobileCanvas?.offsetParent !== null
-    });
-    
     if (!desktopCanvas && !mobileCanvas) {
         console.error(`❌ Canvas elements not found: ${desktopCanvasId}, ${mobileCanvasId}`);
         return;
@@ -1146,23 +1047,19 @@ async function renderAllSymbolsProfitChart() {
     if (desktopCanvas && desktopCanvas.offsetParent !== null) {
         canvasId = desktopCanvasId;
         canvas = desktopCanvas;
-        debugLog('🖥️ Using desktop canvas for chart rendering');
     } else if (mobileCanvas && mobileCanvas.offsetParent !== null) {
         canvasId = mobileCanvasId;
         canvas = mobileCanvas;
-        debugLog('📱 Using mobile canvas for chart rendering');
     } else {
         // どちらも表示されていない場合はデスクトップを優先
         canvasId = desktopCanvasId;
         canvas = desktopCanvas;
-        debugLog('🖥️ Using desktop canvas as fallback');
     }
 
     try {
         // 取引のある銘柄を取得（保有量に関係なく）
         const symbols = portfolioData.summary.map(item => item.symbol);
 
-        debugLog('📊 Symbols found:', symbols);
 
         if (symbols.length === 0) {
             console.error('❌ No symbols found in portfolio data');
@@ -1172,58 +1069,44 @@ async function renderAllSymbolsProfitChart() {
             return;
         }
 
-        debugLog(`📊 Fetching price histories for ${symbols.length} symbols:`, symbols);
         showInfoMessage(`${symbols.length}銘柄の価格履歴を取得中...`);
 
         // 複数銘柄の価格履歴を並列取得
         const priceHistories = await fetchMultipleSymbolPriceHistories(symbols);
-        
-        console.log('📈 Price histories result:', Object.keys(priceHistories).map(symbol => ({
-            symbol,
-            hasData: !!priceHistories[symbol],
-            dataLength: priceHistories[symbol]?.length || 0
-        })));
 
         // 成功した銘柄のみでチャートデータを生成
         const validSymbols = symbols.filter(symbol => priceHistories[symbol]);
         
-        console.log('✅ Valid symbols for chart:', validSymbols);
 
         if (validSymbols.length === 0) {
             console.error('❌ No valid symbols with price history');
             throw new Error('価格履歴を取得できた銘柄がありません');
         }
 
-        console.log(`✅ Price histories obtained for ${validSymbols.length}/${symbols.length} symbols`);
 
         // 各銘柄の損益推移データを生成
-        const allProfitData = {};
-        validSymbols.forEach(symbol => {
-            const symbolData = portfolioData.symbols[symbol];
-            console.log(`🔍 Processing ${symbol}:`, {
-                hasSymbolData: !!symbolData,
-                hasTransactions: !!symbolData?.allTransactions,
-                transactionCount: symbolData?.allTransactions?.length || 0
-            });
+        // const allProfitData = {};
+        // validSymbols.forEach(symbol => {
+        //     const symbolData = portfolioData.symbols[symbol];
+        //         hasSymbolData: !!symbolData,
+        //         hasTransactions: !!symbolData?.allTransactions,
+        //         transactionCount: symbolData?.allTransactions?.length || 0
+        //     });
             
-            if (symbolData && symbolData.allTransactions) {
-                const profitData = generateHistoricalProfitTimeSeries(
-                    symbol,
-                    symbolData.allTransactions,
-                    priceHistories[symbol]
-                );
-                if (profitData && profitData.length > 0) {
-                    allProfitData[symbol] = profitData;
-                    console.log(`✅ Generated profit data for ${symbol}: ${profitData.length} points`);
-                } else {
-                    console.warn(`⚠️ No profit data generated for ${symbol}`);
-                }
-            } else {
-                console.warn(`⚠️ No transaction data for ${symbol}`);
-            }
-        });
+        //     if (symbolData && symbolData.allTransactions) {
+        //         const profitData = generateHistoricalProfitTimeSeries(
+        //             symbol,
+        //             symbolData.allTransactions,
+        //             priceHistories[symbol]
+        //         );
+        //         if (profitData && profitData.length > 0) {
+        //             allProfitData[symbol] = profitData;
+        //         } else {
+        //         }
+        //     } else {
+        //     }
+        // });
         
-        console.log('📊 All profit data:', Object.keys(allProfitData));
 
         if (Object.keys(allProfitData).length === 0) {
             console.error('❌ No profit data generated for any symbol');
@@ -1233,17 +1116,13 @@ async function renderAllSymbolsProfitChart() {
         // チャート表示モードを確認
         const chartMode = window.portfolioChartMode || 'combined';
         
-        console.log(`🎨 Rendering chart in ${chartMode} mode for canvas: ${canvasId}`);
         
         if (chartMode === 'combined') {
             // 全銘柄の合計損益推移チャートを表示
-            console.log('📊 Generating combined profit data...');
             const combinedProfitData = generateCombinedProfitTimeSeries(allProfitData);
-            console.log(`✅ Combined data generated: ${combinedProfitData.length} points`);
             displayProfitChart(canvasId, combinedProfitData, 'ポートフォリオ総合損益推移（過去1か月）');
         } else {
             // 複数銘柄の個別損益推移チャートを表示
-            console.log('📊 Rendering individual symbol charts...');
             displayMultiSymbolProfitChart(canvasId, allProfitData, '全銘柄個別損益推移（過去1か月）');
         }
 
@@ -1264,12 +1143,10 @@ async function renderAllSymbolsProfitChart() {
 
 // 銘柄別損益推移チャートを描画（汎用版）
 async function renderSymbolProfitChart(symbol) {
-    console.log(`🔄 renderSymbolProfitChart called for ${symbol}`);
     
     // 重複実行を防ぐため、実行中フラグをチェック
     const renderingKey = `rendering_${symbol}`;
     if (window[renderingKey]) {
-        console.log(`⏭️ Skipping ${symbol} chart render (already in progress)`);
         return;
     }
     
@@ -1291,7 +1168,6 @@ async function renderSymbolProfitChart(symbol) {
     }
 
     const canvasId = `${symbol.toLowerCase()}-profit-chart`;
-    console.log(`📊 Canvas ID: ${canvasId}`);
 
     // Canvas要素の存在確認
     const canvas = document.getElementById(canvasId);
@@ -1305,13 +1181,10 @@ async function renderSymbolProfitChart(symbol) {
     const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
 
     if (!symbolSummary) {
-        console.log(`⚠️ ${symbol}のポートフォリオデータが見つかりません`);
     } else if (currentPrice <= 0) {
-        console.log(`⚠️ ${symbol}の現在価格が設定されていません`);
     }
 
     if (currentPrice > 0) {
-        console.log(`💡 Using current price for ${symbol}: ¥${currentPrice.toLocaleString()}`);
 
         // 現在価格での損益推移チャートを生成
         const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
@@ -1355,7 +1228,6 @@ async function renderSymbolProfitChart(symbol) {
                     for (const key of possibleKeys) {
                         cachedPricesWithMeta = getCachedDataWithMetadata(key);
                         if (cachedPricesWithMeta) {
-                            console.log(`💾 ${symbol}の価格キャッシュを発見`);
                             break;
                         }
                     }
@@ -1396,7 +1268,6 @@ async function renderSymbolProfitChart(symbol) {
 
             showSuccessMessage(priceSourceMessage);
 
-            console.log(`✅ ${symbol} profit chart rendered successfully`);
             return;
         }
     }
@@ -1410,7 +1281,6 @@ async function renderSymbolProfitChart(symbol) {
     showWarningMessage(`${symbol}: 価格データがないためチャートを表示できません`);
 
     try {
-        console.log(`📈 Checking price history cache for ${symbol}...`);
 
         // まずキャッシュをチェック
         const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
@@ -1426,16 +1296,13 @@ async function renderSymbolProfitChart(symbol) {
             if (hoursOld < 6) {
                 // キャッシュが新鮮な場合は使用
                 priceHistory = cachedData;
-                console.log(`✅ Using cached price history for ${symbol} (${cachedData.length} days, ${Math.round(hoursOld)}h old)`);
                 showSuccessMessage(`${symbol}: キャッシュから価格履歴を取得`);
             } else {
-                console.log(`⏰ Cached data is old (${Math.round(hoursOld)}h), fetching fresh data...`);
             }
         }
         
         // キャッシュがない、または古い場合のみAPI呼び出し
         if (!priceHistory) {
-            console.log(`📡 Fetching fresh price history for ${symbol}...`);
             priceHistory = await fetchSymbolPriceHistory(symbol);
         }
 
@@ -1443,19 +1310,14 @@ async function renderSymbolProfitChart(symbol) {
             throw new Error('価格履歴データを取得できませんでした');
         }
 
-        console.log(`✅ Price history fetched: ${priceHistory.length} days`);
 
         // 時系列総合損益データを生成
-        console.log(`🔢 Generating profit data...`);
         const profitData = generateHistoricalProfitTimeSeries(symbol, symbolData.allTransactions, priceHistory);
 
-        console.log(`✅ Profit data generated: ${profitData.length} points`);
 
         // チャートを描画
-        console.log(`🎨 Displaying chart...`);
         displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（過去1か月・日次）`);
 
-        console.log(`✅ ${symbol} profit chart rendered successfully`);
 
         // チャート描画成功時のトースト通知（データソース明記）
         if (profitData.length > 0) {
@@ -1546,7 +1408,6 @@ async function renderSymbolProfitChart(symbol) {
             const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
 
             if (currentPrice > 0) {
-                console.log(`🔄 Attempting fallback chart for ${symbol} with current price: ¥${currentPrice.toLocaleString()}`);
                 const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
 
                 if (profitData && profitData.length > 0) {
@@ -1572,7 +1433,6 @@ async function renderSymbolProfitChart(symbol) {
                     } catch (error) {
                         showSuccessMessage(`${symbol}: フォールバック価格でチャート表示 (保存時刻不明)`);
                     }
-                    console.log(`✅ Fallback chart displayed for ${symbol}`);
                     return; // フォールバック成功
                 }
             }
@@ -1595,7 +1455,6 @@ async function renderSymbolProfitChart(symbol) {
         // 実行中フラグをクリア
         const renderingKey = `rendering_${symbol}`;
         window[renderingKey] = false;
-        console.log(`🏁 Finished rendering chart for ${symbol}`);
     }
 }
 
@@ -1726,19 +1585,11 @@ function showChartError(canvasId, symbol, error, suggestions = []) {
         });
     }
 
-    // デバッグ情報（開発時のみ）
-    if (console.log) {
-        ctx.font = '10px Arial';
-        ctx.fillStyle = '#adb5bd';
-        ctx.fillText('詳細はブラウザのコンソール(F12)を確認してください', canvas.width / 2, canvas.height / 2 + 80);
-    }
+
 }
 
 // 損益チャートを描画
 function displayProfitChart(canvasId, profitData, title) {
-    debugLog(`🎨 displayProfitChart called for ${canvasId}`);
-    debugLog(`📊 Profit data points: ${profitData ? profitData.length : 0}`);
-    debugLog(`📋 Title: ${title}`);
 
     try {
         const canvas = document.getElementById(canvasId);
@@ -1753,11 +1604,9 @@ function displayProfitChart(canvasId, profitData, title) {
 
         // 既存のチャートインスタンスを破棄（統一管理）
         if (window.chartInstances && window.chartInstances[canvasId]) {
-            debugLog(`🗑️ Destroying existing chart instance for ${canvasId}`);
             try {
                 window.chartInstances[canvasId].destroy();
             } catch (destroyError) {
-                console.warn(`Chart destroy warning for ${canvasId}:`, destroyError);
             }
             delete window.chartInstances[canvasId];
         }
@@ -1769,11 +1618,9 @@ function displayProfitChart(canvasId, profitData, title) {
 
         // 古いprofitChartInstanceも破棄（後方互換性）
         if (window.appChartData.profitChartInstance && canvasId.includes('profit')) {
-            debugLog('🗑️ Destroying legacy profitChartInstance');
             try {
                 window.appChartData.profitChartInstance.destroy();
             } catch (destroyError) {
-                console.warn('Legacy chart destroy warning:', destroyError);
             }
             window.appChartData.profitChartInstance = null;
             profitChartInstance = null;
@@ -1781,7 +1628,6 @@ function displayProfitChart(canvasId, profitData, title) {
 
         // データが空の場合
         if (!profitData || profitData.length === 0) {
-            console.warn('⚠️ No profit data available');
             showChartError(canvasId, 'データなし', new Error('取引データがありません'), [
                 '取引履歴が存在しない可能性があります',
                 'CSVファイルに該当銘柄のデータが含まれているか確認してください'
@@ -1795,7 +1641,6 @@ function displayProfitChart(canvasId, profitData, title) {
             throw new Error('有効なデータポイントがありません');
         }
 
-        debugLog(`✅ Creating Chart.js instance with ${validDataPoints.length} valid data points for canvas: ${canvasId}`);
 
         // Chart.jsでチャートを作成
         window.chartInstances[canvasId] = new Chart(ctx, {
@@ -1840,7 +1685,6 @@ function displayProfitChart(canvasId, profitData, title) {
             options: createProfitChartOptions(title, profitData, canvasId)
         });
 
-        debugLog(`✅ Chart.js instance created successfully for ${canvasId}`);
 
     } catch (error) {
         console.error('❌ Chart creation failed:', error);
@@ -1854,7 +1698,6 @@ function displayProfitChart(canvasId, profitData, title) {
 
 // 複数銘柄の損益推移チャート表示
 function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
-    debugLog(`🎨 displayMultiSymbolProfitChart called for ${canvasId}`);
 
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -1869,7 +1712,6 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
         try {
             window.chartInstances[canvasId].destroy();
         } catch (destroyError) {
-            console.warn(`Chart destroy warning for ${canvasId}:`, destroyError);
         }
         delete window.chartInstances[canvasId];
     }
@@ -1947,7 +1789,6 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
     // チャートを作成
     window.chartInstances[canvasId] = new Chart(ctx, config);
 
-    debugLog(`✅ Multi-symbol profit chart displayed: ${canvasId} (${Object.keys(allProfitData).length} symbols)`);
 }
 
 // ===================================================================
@@ -1956,9 +1797,8 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
 
 // 銘柄別チャート描画
 async function displaySymbolChart(symbol) {
-    const canvas = document.getElementById(getSymbolCanvasId(symbol));
+    const canvas = document.getElementById(`${symbol.toLowerCase()}-chart-canvas`);
     if (!canvas) {
-        debugLog(`❌ Canvas not found: ${symbol}`);
         return;
     }
 
@@ -1993,7 +1833,6 @@ async function displaySymbolChart(symbol) {
 
     // データ検証
     if (!Array.isArray(chartData) || chartData.length === 0) {
-        debugLog(`❌ ${symbol}の有効なデータが取得できませんでした`);
 
         // ローディング表示を削除
         const container = canvas.parentElement;
@@ -2073,7 +1912,6 @@ async function displaySymbolChart(symbol) {
         options: createSymbolPriceChartOptions(symbol)
     });
 
-    debugLog(`✅ ${symbol}チャートを描画しました`);
 }
 
 // 銘柄別履歴データ取得
@@ -2173,7 +2011,6 @@ function toggleChartMode() {
         renderAllSymbolsProfitChart();
     }
     
-    console.log(`📊 Chart mode switched to: ${newMode}`);
 }
 
 // 関数を即座にグローバルに登録

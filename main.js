@@ -5,16 +5,6 @@
 // DOM Elements and Event Listeners (will be initialized in DOMContentLoaded)
 let uploadZone, fileInput, dashboardArea;
 
-// デバッグモード設定（本番環境ではfalseに設定）
-const DEBUG_MODE = false;
-
-// ログ出力ヘルパー関数
-function debugLog(...args) {
-    if (DEBUG_MODE && console.log) {
-        console.log(...args);
-    }
-}
-
 // CSVファイルアップロード処理
 function handleFiles(files) {
     const csvFiles = Array.from(files).filter(file =>
@@ -132,9 +122,9 @@ function processCSVData(data, fileName) {
     const selectedExchange = document.querySelector('input[name="exchange"]:checked').value;
 
     // 最初の行で列名を確認（デバッグ用）
-    if (data.length > 0) {
-        debugLog('CSV columns:', Object.keys(data[0]));
-    }
+    // if (data.length > 0) {
+    //     debugLog('CSV columns:', Object.keys(data[0]));
+    // }
 
     data.forEach(row => {
         // 空行をスキップ
@@ -225,13 +215,9 @@ function switchTab(tabName) {
 
 // サブタブ切り替え機能
 function switchSubtab(subtabName) {
-    debugLog(`🔄 switchSubtab called for: ${subtabName}`);
-
     // 全サブタブボタンのアクティブ状態をリセット
     const allButtons = document.querySelectorAll('.subtab-button');
     const allContents = document.querySelectorAll('.subtab-content');
-
-    debugLog(`📊 Found ${allButtons.length} subtab buttons, ${allContents.length} subtab contents`);
 
     // 全サブタブのactiveを削除
     allButtons.forEach(btn => {
@@ -261,7 +247,6 @@ function switchSubtab(subtabName) {
             const timeSinceLastRender = now - lastRenderTime;
 
             if (timeSinceLastRender < 2000) {
-                debugLog(`⏭️ Skipping chart render for ${symbol} (last render ${Math.round(timeSinceLastRender/1000)}s ago)`);            
                 return;
             }
 
@@ -274,7 +259,6 @@ function switchSubtab(subtabName) {
 
                 // 損益推移チャートを描画（DOM更新後）
                 requestAnimationFrame(() => {
-                    debugLog(`🎨 Auto-rendering profit chart for ${symbol}`);
                     renderSymbolProfitChart(symbol);
                 });
             }
@@ -524,7 +508,6 @@ function clearPriceData() {
         }
         
         showSuccessMessage(`価格データをクリアしました (${clearedCount}件)`);
-        console.log(`🧹 価格データクリア完了: ${clearedCount}件のキャッシュを削除`);
     }
 }
 
@@ -605,7 +588,6 @@ function autoCleanupOldPriceData() {
         });
         
         if (cleanedCount > 0) {
-            console.log(`🧹 古い価格データを自動クリーンアップ: ${cleanedCount}件削除`);
         }
         
         return cleanedCount;
@@ -747,7 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const cleanedCount = autoCleanupOldPriceData();
         if (cleanedCount > 0) {
-            console.log(`🧹 起動時クリーンアップ: ${cleanedCount}件の古い価格データを削除`);
         }
         
     }, 2000);
