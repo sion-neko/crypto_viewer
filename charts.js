@@ -1085,27 +1085,21 @@ async function renderAllSymbolsProfitChart() {
 
 
         // 各銘柄の損益推移データを生成
-        // const allProfitData = {};
-        // validSymbols.forEach(symbol => {
-        //     const symbolData = portfolioData.symbols[symbol];
-        //         hasSymbolData: !!symbolData,
-        //         hasTransactions: !!symbolData?.allTransactions,
-        //         transactionCount: symbolData?.allTransactions?.length || 0
-        //     });
+        const allProfitData = {};
+        validSymbols.forEach(symbol => {
+            const symbolData = portfolioData.symbols[symbol];
             
-        //     if (symbolData && symbolData.allTransactions) {
-        //         const profitData = generateHistoricalProfitTimeSeries(
-        //             symbol,
-        //             symbolData.allTransactions,
-        //             priceHistories[symbol]
-        //         );
-        //         if (profitData && profitData.length > 0) {
-        //             allProfitData[symbol] = profitData;
-        //         } else {
-        //         }
-        //     } else {
-        //     }
-        // });
+            if (symbolData && symbolData.allTransactions) {
+                const profitData = generateHistoricalProfitTimeSeries(
+                    symbol,
+                    symbolData.allTransactions,
+                    priceHistories[symbol]
+                );
+                if (profitData && profitData.length > 0) {
+                    allProfitData[symbol] = profitData;
+                }
+            } 
+        });
         
 
         if (Object.keys(allProfitData).length === 0) {
