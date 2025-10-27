@@ -15,7 +15,7 @@ function debugLog(...args) {
     }
 }
 
-// ファイル処理（データ統合版）
+// CSVファイルアップロード処理
 function handleFiles(files) {
     const csvFiles = Array.from(files).filter(file =>
         file.type === 'text/csv' || file.name.endsWith('.csv')
@@ -615,75 +615,6 @@ function autoCleanupOldPriceData() {
     }
 }
 
-// 価格データの整合性チェック
-function validatePriceDataIntegrity() {
-    let validCount = 0;
-    let invalidCount = 0;
-    const issues = [];
-    
-    try {
-        for (let key in localStorage) {
-            if (key.includes('_price_') || key.includes('prices_')) {
-                try {
-                    const data = JSON.parse(localStorage[key]);
-                    
-                    // 基本構造チェック
-                    if (!data.timestamp || !data.value) {
-                        issues.push(`${key}: 基本構造が不正`);
-                        invalidCount++;
-                        continue;
-                    }
-                    
-                    // 価格履歴データの場合
-                    if (key.includes('_price_history_')) {
-                        if (!Array.isArray(data.value) || data.value.length === 0) {
-                            issues.push(`${key}: 価格履歴データが空または不正`);
-                            invalidCount++;
-                            continue;
-                        }
-                        
-                        // サンプルデータポイントをチェック
-                        const sample = data.value[0];
-                        if (!sample.date || typeof sample.price !== 'number') {
-                            issues.push(`${key}: 価格データ形式が不正`);
-                            invalidCount++;
-                            continue;
-                        }
-                    }
-                    
-                    // 現在価格データの場合
-                    if (key.includes('prices_')) {
-                        if (!data.value._metadata || !data.value._metadata.symbols) {
-                            issues.push(`${key}: 現在価格メタデータが不正`);
-                            invalidCount++;
-                            continue;
-                        }
-                    }
-                    
-                    validCount++;
-                } catch (parseError) {
-                    issues.push(`${key}: JSON解析エラー`);
-                    invalidCount++;
-                }
-            }
-        }
-        
-        console.log(`🔍 価格データ整合性チェック結果:`);
-        console.log(`✅ 正常: ${validCount}件`);
-        console.log(`❌ 異常: ${invalidCount}件`);
-        
-        if (issues.length > 0) {
-            console.log(`⚠️ 問題のあるデータ:`);
-            issues.forEach(issue => console.log(`  - ${issue}`));
-        }
-        
-        return { valid: validCount, invalid: invalidCount, issues };
-    } catch (error) {
-        console.error('整合性チェックエラー:', error);
-        return { valid: 0, invalid: 0, issues: ['整合性チェック実行エラー'] };
-    }
-}
-
 // ===================================================================
 // KEYBOARD SHORTCUTS
 // ===================================================================
@@ -795,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 既存のデータがあるかチェック（localStorage）
+    // アップロード済みのデータがあるかチェック（localStorage）
     const savedData = localStorage.getItem('portfolioData');
     if (savedData) {
         try {
@@ -804,6 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
             displayDashboard(portfolioData);
         } catch (error) {
             console.error('データ復元エラー:', error);
+            showErrorMessage(`保存データの読み込みに失敗しました\n${error.message}`);
             localStorage.removeItem('portfolioData');
             updateDataStatus(null);
         }
@@ -818,10 +750,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`🧹 起動時クリーンアップ: ${cleanedCount}件の古い価格データを削除`);
         }
         
-        // 価格データ整合性チェック（デバッグモード時のみ）
-        if (DEBUG_MODE) {
-            validatePriceDataIntegrity();
-        }
     }, 2000);
 });
 
