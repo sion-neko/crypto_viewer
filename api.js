@@ -97,7 +97,7 @@ async function fetchCurrentPrices() {
         const cacheKey = getCurrentPricesCacheKey(validSymbols);
 
         // 永続化キャッシュチェック（30分有効）
-        const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey, CACHE_DURATION_PRICE);
+        const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey);
         if (cachedPricesWithMeta) {
             const cachedPrices = cachedPricesWithMeta.value;
             const cacheTimestamp = cachedPricesWithMeta.timestamp;
@@ -135,7 +135,7 @@ async function fetchCurrentPrices() {
             return;
         } else {
             // フォールバック: 従来のキャッシュ取得を試行
-            const fallbackCachedPrices = getCachedData(cacheKey, CACHE_DURATION_PRICE);
+            const fallbackCachedPrices = getCachedData(cacheKey);
             if (fallbackCachedPrices) {
                 window.appPriceData.currentPrices = fallbackCachedPrices;
                 currentPrices = fallbackCachedPrices;
@@ -339,14 +339,14 @@ function loadSavedPrices() {
 }
 
 // キャッシュ機能（api.js用 - charts.jsと共通）
-function getCachedData(key, duration = CACHE_DURATION_PRICE) {
+function getCachedData(key) {
     try {
         const cached = localStorage.getItem(key);
         if (cached) {
             const data = JSON.parse(cached);
 
-            // durationが指定されていない場合は、保存時のdurationを使用
-            const effectiveDuration = duration || data.duration || CACHE_DURATION_PRICE;
+            // 保存時のdurationを使用
+            const effectiveDuration = data.duration || CACHE_DURATION_PRICE;
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
@@ -367,14 +367,14 @@ function getCachedData(key, duration = CACHE_DURATION_PRICE) {
 }
 
 // メタデータ付きキャッシュ取得（保存時刻情報付き）
-function getCachedDataWithMetadata(key, duration = CACHE_DURATION_PRICE) {
+function getCachedDataWithMetadata(key) {
     try {
         const cached = localStorage.getItem(key);
         if (cached) {
             const data = JSON.parse(cached);
 
-            // durationが指定されていない場合は、保存時のdurationを使用
-            const effectiveDuration = duration || data.duration || CACHE_DURATION_PRICE;
+            // 保存時のdurationを使用
+            const effectiveDuration = data.duration || CACHE_DURATION_PRICE;
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {

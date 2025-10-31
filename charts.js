@@ -22,14 +22,16 @@ let profitChartInstance = window.appChartData.profitChartInstance;
 // 銘柄の過去1か月の価格履歴を取得
 async function fetchSymbolPriceHistory(symbol) {
     const coingeckoId = window.SYMBOL_MAPPING?.[symbol];
+    // TODO: サポートしていない銘柄を自動でサポートするようにする
     if (!coingeckoId) {
         throw new Error(`${symbol}はサポートされていません`);
     }
 
+    // キャッシュキーの取得
     const cacheKey = getPriceHistoryCacheKey(symbol, 30);
 
     // キャッシュチェック（24時間有効）
-    const cachedData = getCachedData(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
+    const cachedData = getCachedData(cacheKey);
     if (cachedData) {
         return cachedData;
     }
@@ -454,15 +456,15 @@ function createMultiSymbolProfitChartOptions(title) {
 // CACHE FUNCTIONS
 // ===================================================================
 
-// 永続化キャッシュ機能（強化版）
-function getCachedData(key, duration = null) {
+// 永続化キャッシュ機能
+function getCachedData(key) {
     try {
         const cached = localStorage.getItem(key);
         if (cached) {
             const data = JSON.parse(cached);
 
-            // durationが指定されていない場合は、保存時のdurationを使用
-            const effectiveDuration = duration || data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
+            // 保存時のdurationを使用
+            const effectiveDuration = data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
@@ -484,14 +486,14 @@ function getCachedData(key, duration = null) {
 }
 
 // メタデータ付きキャッシュ取得（保存時刻情報付き）
-function getCachedDataWithMetadata(key, duration = null) {
+function getCachedDataWithMetadata(key) {
     try {
         const cached = localStorage.getItem(key);
         if (cached) {
             const data = JSON.parse(cached);
 
-            // durationが指定されていない場合は、保存時のdurationを使用
-            const effectiveDuration = duration || data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
+            // 保存時のdurationを使用
+            const effectiveDuration = data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
 
             // データが有効期限内かチェック
             if (Date.now() - data.timestamp < effectiveDuration) {
