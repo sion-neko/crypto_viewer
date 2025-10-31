@@ -7,33 +7,13 @@ if (!window.appChartData) {
     window.appChartData = {
         historicalData: {},
         historicalDataTimestamps: {}, // 各銘柄の履歴データ取得タイムスタンプ
-        profitChartInstance: null,
-        apiCallCount: 0,
-        lastApiCall: 0
+        profitChartInstance: null
     };
 }
 
 // 後方互換性のためのエイリアス
 let historicalData = window.appChartData.historicalData;
 let profitChartInstance = window.appChartData.profitChartInstance;
-
-// API使用状況の監視（定数化）
-const API_CALL_LIMIT = 50; // CoinGecko無料プランの制限
-const API_CALL_INTERVAL = 1200; // 1.2秒間隔（50回/分制限対応）
-const API_RESET_INTERVAL = 60000; // 1分
-
-// API制限カウンターのリセット（1分ごと正確にリセット）
-let lastResetTime = Date.now();
-setInterval(() => {
-    const now = Date.now();
-    const elapsed = now - lastResetTime;
-
-    // 1分経過したらリセット
-    if (elapsed >= API_RESET_INTERVAL) {
-        window.appChartData.apiCallCount = 0;
-        lastResetTime = now;
-    }
-}, 10000); // 10秒ごとにチェック
 
 // ===================================================================
 // PRICE HISTORY FUNCTIONS
@@ -55,32 +35,8 @@ async function fetchSymbolPriceHistory(symbol) {
     }
 
     try {
-        // API制限チェック
-        if (window.appChartData.apiCallCount >= API_CALL_LIMIT) {
-            throw new Error('API制限に達しました。しばらく時間をおいてからお試しください。');
-        }
-
-        // API呼び出し間隔制御
-        const now = Date.now();
-        const timeSinceLastCall = now - window.appChartData.lastApiCall;
-        if (timeSinceLastCall < API_CALL_INTERVAL) {
-            const waitTime = API_CALL_INTERVAL - timeSinceLastCall;
-            const waitSeconds = Math.ceil(waitTime / 1000);
-
-            // 待機時間が1秒以上の場合はトースト表示
-            if (waitSeconds >= 1) {
-                showInfoMessage(`${symbol}: API制限回避のため${waitSeconds}秒待機中...`);
-            }
-
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-
         // CoinGecko APIで過去30日の価格データを取得
         const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30&interval=daily`;
-
-        // API呼び出し記録を更新
-        window.appChartData.apiCallCount++;
-        window.appChartData.lastApiCall = Date.now();
 
         // タイムアウト付きでfetch実行
         const controller = new AbortController();
