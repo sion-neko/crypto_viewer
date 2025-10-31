@@ -94,7 +94,7 @@ async function fetchCurrentPrices() {
         }
 
         // 永続化キャッシュキーを生成
-        const cacheKey = `prices_${validSymbols.sort().join('_')}`;
+        const cacheKey = getCurrentPricesCacheKey(validSymbols);
 
         // 永続化キャッシュチェック（30分有効）
         const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey, CACHE_DURATION_PRICE);
@@ -237,7 +237,7 @@ async function tryGetPricesFromHistory(symbols) {
 
     for (const symbol of symbols) {
         try {
-            const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
+            const cacheKey = getPriceHistoryCacheKey(symbol, 30);
             const cachedHistory = getCachedData(cacheKey);
 
             if (cachedHistory && cachedHistory.length > 0) {

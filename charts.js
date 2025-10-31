@@ -59,11 +59,8 @@ async function fetchSymbolPriceHistory(symbol) {
     };
 
     const coingeckoId = SYMBOL_MAPPING[symbol];
-    if (!coingeckoId) {
-        throw new Error(`${symbol}はサポートされていない銘柄です`);
-    }
 
-    const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
+    const cacheKey = getPriceHistoryCacheKey(symbol, 30);
 
     // キャッシュチェック（24時間有効、6時間以内は新鮮とみなす）
     const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
@@ -1277,7 +1274,7 @@ async function renderSymbolProfitChart(symbol) {
     try {
 
         // まずキャッシュをチェック
-        const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
+        const cacheKey = getPriceHistoryCacheKey(symbol, 30);
         const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
         
         let priceHistory = null;
@@ -1317,7 +1314,7 @@ async function renderSymbolProfitChart(symbol) {
         if (profitData.length > 0) {
             // 価格履歴キャッシュの保存時刻を取得
             try {
-                const cacheKey = `${symbol.toLowerCase()}_price_history_30d`;
+                const cacheKey = getPriceHistoryCacheKey(symbol, 30);
                 const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey);
 
                 if (cachedDataWithMeta) {
@@ -1915,7 +1912,7 @@ async function fetchSymbolHistoricalData(symbol) {
         const coingeckoId = window.SYMBOL_MAPPING?.[symbol];
 
         // キャッシュキーを生成
-        const cacheKey = `chart_${symbol}_30days`;
+        const cacheKey = getChartDataCacheKey(symbol, 30);
 
         // キャッシュチェック
         const cachedData = getCachedData(cacheKey);
