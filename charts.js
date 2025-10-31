@@ -39,56 +39,19 @@ setInterval(() => {
 // PRICE HISTORY FUNCTIONS
 // ===================================================================
 
-// 銘柄の過去1か月の価格履歴を取得（永続化強化版）
+// 銘柄の過去1か月の価格履歴を取得
 async function fetchSymbolPriceHistory(symbol) {
-    // api.jsのSYMBOL_MAPPINGを参照（グローバル変数として利用）
-    const SYMBOL_MAPPING = window.SYMBOL_MAPPING || {
-        'BTC': 'bitcoin',
-        'ETH': 'ethereum',
-        'SOL': 'solana',
-        'XRP': 'ripple',
-        'ADA': 'cardano',
-        'DOGE': 'dogecoin',
-        'ASTR': 'astar',
-        'XTZ': 'tezos',
-        'XLM': 'stellar',
-        'SHIB': 'shiba-inu',
-        'PEPE': 'pepe',
-        'SUI': 'sui',
-        'DAI': 'dai'
-    };
-
-    const coingeckoId = SYMBOL_MAPPING[symbol];
+    const coingeckoId = window.SYMBOL_MAPPING?.[symbol];
+    if (!coingeckoId) {
+        throw new Error(`${symbol}はサポートされていません`);
+    }
 
     const cacheKey = getPriceHistoryCacheKey(symbol, 30);
 
-    // キャッシュチェック（24時間有効、6時間以内は新鮮とみなす）
-    const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
-    if (cachedDataWithMeta) {
-        const cachedData = cachedDataWithMeta.value;
-        const cacheTimestamp = cachedDataWithMeta.timestamp;
-        const cacheDate = new Date(cacheTimestamp);
-
-        // キャッシュデータの最新性をチェック
-        const latestDataDate = new Date(cachedData[cachedData.length - 1].date);
-        const hoursOld = (Date.now() - latestDataDate.getTime()) / (1000 * 60 * 60);
-
-        if (hoursOld < 6) {
-            // 6時間以内のデータは新鮮とみなす
-            const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric'
-            });
-
-            showSuccessMessage(`${symbol}: キャッシュから表示\n${cacheTimeStr}保存`);
-            return cachedData;
-        } else {
-            showInfoMessage(`${symbol}: 価格データが古いため最新データを取得中...`);
-        }
-    } else {
-        showInfoMessage(`${symbol}: 価格履歴を新規取得中...`);
+    // キャッシュチェック（24時間有効）
+    const cachedData = getCachedData(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
+    if (cachedData) {
+        return cachedData;
     }
 
     try {
@@ -162,17 +125,6 @@ async function fetchSymbolPriceHistory(symbol) {
 
         // 永続キャッシュに保存（24時間有効）
         setCachedData(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
-
-
-        // 成功時のトースト通知
-        if (priceHistory.length > 0) {
-            showSuccessMessage(`${symbol}: ${priceHistory.length}日分の価格履歴をキャッシュに保存しました`);
-        }
-
-        // 価格データレポート更新（デバッグモード時のみ）
-        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
-            const status = getPriceDataStatus();
-        }
 
         return priceHistory;
 
@@ -817,21 +769,7 @@ function getPriceDataStatus() {
 
 // 価格データ永続化レポート表示
 function showPriceDataReport() {
-    const status = getPriceDataStatus();
-
-
-    if (status.currentPrices) {
-    } else {
-    }
-
-    status.priceHistories.forEach(history => {
-    });
-
-    if (status.oldestData) {
-        const oldestAge = Math.round((Date.now() - status.oldestData.timestamp) / 1000 / 60 / 60);
-    }
-
-    return status;
+    return getPriceDataStatus();
 }
 
 // 銘柄の現在価格を更新（API効率化）
@@ -1014,11 +952,10 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 // 全銘柄の総合損益推移チャートを描画
 async function renderAllSymbolsProfitChart() {
 
-    // デバッグ: Chart.jsライブラリの確認
+    // Chart.jsライブラリの確認
     if (typeof Chart === 'undefined') {
         console.error('❌ Chart.js library not loaded!');
         return;
-    } else {
     }
 
     const portfolioData = window.currentPortfolioData || currentPortfolioData;
@@ -1171,94 +1108,11 @@ async function renderSymbolProfitChart(symbol) {
     const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
     const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
 
-    if (!symbolSummary) {
-    } else if (currentPrice <= 0) {
-    }
-
     if (currentPrice > 0) {
-
         // 現在価格での損益推移チャートを生成
         const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
-
         if (profitData && profitData.length > 0) {
             displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（取引履歴ベース）`);
-
-            // 価格データの取得元を判定してメッセージを表示
-            const lastPriceUpdate = window.lastPriceUpdate;
-
-            // 現在価格キャッシュから保存時刻を取得を試行
-            let priceSourceMessage = `${symbol}: 現在価格でチャート表示`;
-
-            if (lastPriceUpdate) {
-                const ageMinutes = Math.round((Date.now() - lastPriceUpdate.getTime()) / 1000 / 60);
-                const updateTimeStr = lastPriceUpdate.toLocaleString('ja-JP', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: 'numeric'
-                });
-
-                if (ageMinutes < 30) {
-                    priceSourceMessage = `${symbol}: 最新価格でチャート表示\n${updateTimeStr}取得`;
-                } else {
-                    priceSourceMessage = `${symbol}: キャッシュ価格でチャート表示\n${updateTimeStr}取得`;
-                }
-            } else {
-                // 価格キャッシュから保存時刻を取得を試行
-                try {
-                    // 複数の可能なキャッシュキーを試行
-                    const possibleKeys = [
-                        `prices_${symbol.toLowerCase()}`,
-                        `prices_${[symbol].sort().join('_')}`,
-                        'currentPrices'
-                    ];
-
-                    let cachedPricesWithMeta = null;
-
-                    // 各キーを試行
-                    for (const key of possibleKeys) {
-                        cachedPricesWithMeta = getCachedDataWithMetadata(key);
-                        if (cachedPricesWithMeta) {
-                            break;
-                        }
-                    }
-
-                    if (cachedPricesWithMeta) {
-                        const cacheDate = new Date(cachedPricesWithMeta.timestamp);
-                        const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
-                            month: 'numeric',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: 'numeric'
-                        });
-                        priceSourceMessage = `${symbol}: キャッシュ価格でチャート表示\n${cacheTimeStr}保存`;
-                    } else {
-                        // フォールバック: 従来のlastPriceUpdateを確認
-                        const savedLastUpdate = localStorage.getItem('lastPriceUpdate');
-                        if (savedLastUpdate) {
-                            try {
-                                const updateDate = new Date(savedLastUpdate);
-                                const updateTimeStr = updateDate.toLocaleString('ja-JP', {
-                                    month: 'numeric',
-                                    day: 'numeric',
-                                    hour: 'numeric',
-                                    minute: 'numeric'
-                                });
-                                priceSourceMessage = `${symbol}: 保存済み価格でチャート表示\n${updateTimeStr}取得`;
-                            } catch (dateError) {
-                                priceSourceMessage = `${symbol}: 保存済み価格でチャート表示 (保存時刻不明)`;
-                            }
-                        } else {
-                            priceSourceMessage = `${symbol}: 保存済み価格でチャート表示 (保存時刻不明)`;
-                        }
-                    }
-                } catch (error) {
-                    priceSourceMessage = `${symbol}: 保存済み価格でチャート表示 (保存時刻不明)`;
-                }
-            }
-
-            showSuccessMessage(priceSourceMessage);
-
             return;
         }
     }
@@ -1272,30 +1126,8 @@ async function renderSymbolProfitChart(symbol) {
     showWarningMessage(`${symbol}: 価格データがないためチャートを表示できません`);
 
     try {
-
-        // まずキャッシュをチェック
-        const cacheKey = getPriceHistoryCacheKey(symbol, 30);
-        const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
-        
-        let priceHistory = null;
-        
-        if (cachedDataWithMeta) {
-            const cachedData = cachedDataWithMeta.value;
-            const latestDataDate = new Date(cachedData[cachedData.length - 1].date);
-            const hoursOld = (Date.now() - latestDataDate.getTime()) / (1000 * 60 * 60);
-            
-            if (hoursOld < 6) {
-                // キャッシュが新鮮な場合は使用
-                priceHistory = cachedData;
-                showSuccessMessage(`${symbol}: キャッシュから価格履歴を取得`);
-            } else {
-            }
-        }
-        
-        // キャッシュがない、または古い場合のみAPI呼び出し
-        if (!priceHistory) {
-            priceHistory = await fetchSymbolPriceHistory(symbol);
-        }
+        // 価格履歴を取得（キャッシュまたはAPI）
+        const priceHistory = await fetchSymbolPriceHistory(symbol);
 
         if (!priceHistory || priceHistory.length === 0) {
             throw new Error('価格履歴データを取得できませんでした');
@@ -1308,31 +1140,6 @@ async function renderSymbolProfitChart(symbol) {
 
         // チャートを描画
         displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（過去1か月・日次）`);
-
-
-        // チャート描画成功時のトースト通知（データソース明記）
-        if (profitData.length > 0) {
-            // 価格履歴キャッシュの保存時刻を取得
-            try {
-                const cacheKey = getPriceHistoryCacheKey(symbol, 30);
-                const cachedDataWithMeta = getCachedDataWithMetadata(cacheKey);
-
-                if (cachedDataWithMeta) {
-                    const cacheDate = new Date(cachedDataWithMeta.timestamp);
-                    const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
-                        month: 'numeric',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: 'numeric'
-                    });
-                    showSuccessMessage(`${symbol}: キャッシュから価格履歴チャート表示\n${cacheTimeStr}保存`);
-                } else {
-                    showSuccessMessage(`${symbol}: キャッシュから価格履歴チャート表示 (保存時刻不明)`);
-                }
-            } catch (error) {
-                showSuccessMessage(`${symbol}: キャッシュから価格履歴チャート表示 (保存時刻不明)`);
-            }
-        }
 
     } catch (error) {
         console.error(`${symbol}損益チャート描画エラー:`, error);
@@ -1400,31 +1207,9 @@ async function renderSymbolProfitChart(symbol) {
 
             if (currentPrice > 0) {
                 const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
-
                 if (profitData && profitData.length > 0) {
                     displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（現在価格ベース）`);
-                    // フォールバック時も価格キャッシュの保存時刻を取得を試行
-                    try {
-                        const validSymbols = [symbol];
-                        const cacheKey = `prices_${validSymbols.sort().join('_')}`;
-                        const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey);
-
-                        if (cachedPricesWithMeta) {
-                            const cacheDate = new Date(cachedPricesWithMeta.timestamp);
-                            const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
-                                month: 'numeric',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: 'numeric'
-                            });
-                            showSuccessMessage(`${symbol}: フォールバック価格でチャート表示\n${cacheTimeStr}保存`);
-                        } else {
-                            showSuccessMessage(`${symbol}: フォールバック価格でチャート表示 (保存時刻不明)`);
-                        }
-                    } catch (error) {
-                        showSuccessMessage(`${symbol}: フォールバック価格でチャート表示 (保存時刻不明)`);
-                    }
-                    return; // フォールバック成功
+                    return;
                 }
             }
         } catch (fallbackError) {
