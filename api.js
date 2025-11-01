@@ -20,7 +20,7 @@ const CACHE_DURATION_HISTORY = 24 * 60 * 60 * 1000; // 24時間
 
 // 銘柄マッピング（CoinGecko API用）
 // グローバルスコープに公開して他のファイルから参照可能にする
-window.SYMBOL_MAPPING = {
+window.COIN_NAME_MAPPING = {
     'BTC': 'bitcoin',
     'ETH': 'ethereum',
     'SOL': 'solana',
@@ -37,11 +37,50 @@ window.SYMBOL_MAPPING = {
 };
 
 // ローカル参照用のエイリアス
-const SYMBOL_MAPPING = window.SYMBOL_MAPPING;
+const COIN_NAME_MAPPING = window.COIN_NAME_MAPPING;
 
 // ===================================================================
 // PRICE FETCHING FUNCTIONS
 // ===================================================================
+
+// 価格履歴API実行（タイムアウト・エラーハンドリング付き）
+async function executePriceHistoryApi(coingeckoId, options = {}) {
+	const {
+		vsCurrency = 'jpy',
+		days = 30,
+		interval = 'daily',
+		timeoutMs = 10000
+	} = options;
+
+	const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
+
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+	try {
+		const response = await fetch(url, {
+			signal: controller.signal,
+			headers: { 'Accept': 'application/json' }
+		});
+
+		if (!response.ok) {
+			if (response.status === 429) {
+				throw new Error('API制限に達しました (429 Too Many Requests)');
+			} else if (response.status === 403) {
+				throw new Error('APIアクセスが拒否されました (403 Forbidden)');
+			} else {
+				throw new Error(`API Error: ${response.status}`);
+			}
+		}
+
+		return await response.json();
+	} finally {
+		clearTimeout(timeoutId);
+	}
+}
+
+// グローバル公開
+window.executePriceHistoryApi = executePriceHistoryApi;
 
 // 価格取得関連機能
 async function fetchCurrentPrices() {
@@ -62,16 +101,16 @@ async function fetchCurrentPrices() {
         }
 
         // 対応銘柄のCoinGecko IDを取得
-        const portfolioSymbols = currentPortfolioData.summary.map(item => item.symbol);
-        const validSymbols = portfolioSymbols.filter(symbol => SYMBOL_MAPPING[symbol]);
+        const portfolioCoinNames = currentPortfolioData.summary.map(item => item.coinName);
+        const validCoinNames = portfolioCoinNames.filter(coinName => COIN_NAME_MAPPING[coinName]);
 
-        if (validSymbols.length === 0) {
+        if (validCoinNames.length === 0) {
             throw new Error('対応銘柄が見つかりません');
         }
 
         // まず価格履歴キャッシュから現在価格を取得を試行（API効率化）
-        const pricesFromHistory = await tryGetPricesFromHistory(validSymbols);
-        if (pricesFromHistory && Object.keys(pricesFromHistory).length === validSymbols.length) {
+        const pricesFromHistory = await tryGetPricesFromHistory(validCoinNames);
+        if (pricesFromHistory && Object.keys(pricesFromHistory).length === validCoinNames.length) {
             window.appPriceData.currentPrices = pricesFromHistory;
             currentPrices = pricesFromHistory;
             window.appPriceData.lastPriceUpdate = new Date();
@@ -88,13 +127,13 @@ async function fetchCurrentPrices() {
             // 更新されたポートフォリオデータを保存
             localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
 
-            showSuccessMessage(`キャッシュから表示: ${validSymbols.length}銘柄\n価格履歴データより`);
+            showSuccessMessage(`キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`);
             updatePriceStatus();
             return;
         }
 
         // 永続化キャッシュキーを生成
-        const cacheKey = getCurrentPricesCacheKey(validSymbols);
+        const cacheKey = getCurrentPricesCacheKey(validCoinNames);
 
         // 永続化キャッシュチェック（30分有効）
         const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey);
@@ -130,16 +169,16 @@ async function fetchCurrentPrices() {
             });
 
 
-            showSuccessMessage(`キャッシュから表示: ${validSymbols.length}銘柄\n${cacheTimeStr}保存`);
+            showSuccessMessage(`キャッシュから表示: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`);
             updatePriceStatus();
             return;
         } else {
             // フォールバック: 従来のキャッシュ取得を試行
             const fallbackCachedPrices = getCachedData(cacheKey);
-            if (fallbackCachedPrices) {
-                window.appPriceData.currentPrices = fallbackCachedPrices;
-                currentPrices = fallbackCachedPrices;
-                window.appPriceData.lastPriceUpdate = new Date(fallbackCachedPrices._metadata?.lastUpdate || Date.now());
+            if (fallbackCachedPrices && !isCacheExpired(fallbackCachedPrices)) {
+                window.appPriceData.currentPrices = fallbackCachedPrices.value;
+                currentPrices = fallbackCachedPrices.value;
+                window.appPriceData.lastPriceUpdate = new Date(fallbackCachedPrices.value._metadata?.lastUpdate || Date.now());
                 lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
                 updatePortfolioWithPrices(currentPortfolioData, currentPrices);
@@ -149,16 +188,16 @@ async function fetchCurrentPrices() {
                 updateDataStatus(currentPortfolioData);
                 localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
 
-                showSuccessMessage(`キャッシュから表示: ${validSymbols.length}銘柄\n保存時刻不明`);
+                showSuccessMessage(`キャッシュから表示: ${validCoinNames.length}銘柄\n保存時刻不明`);
                 updatePriceStatus();
                 return;
-            }
+            } 
         }
 
         // API取得開始の通知
         showInfoMessage('価格データを取得中...');
 
-        const coingeckoIds = validSymbols.map(symbol => SYMBOL_MAPPING[symbol]).join(',');
+        const coingeckoIds = validCoinNames.map(coinName => COIN_NAME_MAPPING[coinName]).join(',');
         const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
 
         const response = await fetch(url);
@@ -170,10 +209,10 @@ async function fetchCurrentPrices() {
 
         // データを整理
         const prices = {};
-        for (const symbol of validSymbols) {
-            const coingeckoId = SYMBOL_MAPPING[symbol];
+        for (const coinName of validCoinNames) {
+            const coingeckoId = COIN_NAME_MAPPING[coinName];
             if (data[coingeckoId]) {
-                prices[symbol] = {
+                prices[coinName] = {
                     price_jpy: data[coingeckoId].jpy,
                     last_updated: data[coingeckoId].last_updated_at
                 };
@@ -183,7 +222,7 @@ async function fetchCurrentPrices() {
         // メタデータ追加
         prices._metadata = {
             lastUpdate: Date.now(),
-            symbols: validSymbols
+            coinNames: validCoinNames
         };
 
         // 永続化キャッシュに保存（30分有効）
@@ -214,7 +253,7 @@ async function fetchCurrentPrices() {
         localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
 
         // 成功通知を表示（永続化情報付き）
-        showSuccessMessage(`価格更新完了: ${validSymbols.length}銘柄 (30分間保存)`);
+        showSuccessMessage(`価格更新完了: ${validCoinNames.length}銘柄 (30分間保存)`);
         updatePriceStatus();
 
         // 価格データ永続化レポート（デバッグモード時のみ）
@@ -231,22 +270,28 @@ async function fetchCurrentPrices() {
 }
 
 // 価格履歴キャッシュから現在価格を取得（API効率化）
-async function tryGetPricesFromHistory(symbols) {
+async function tryGetPricesFromHistory(coinNames) {
     const prices = {};
     let successCount = 0;
 
-    for (const symbol of symbols) {
+    for (const coinName of coinNames) {
         try {
-            const cacheKey = getPriceHistoryCacheKey(symbol, 30);
+            const cacheKey = getPriceHistoryCacheKey(coinName, 30);
             const cachedHistory = getCachedData(cacheKey);
 
-            if (cachedHistory && cachedHistory.length > 0) {
-                const latestPrice = cachedHistory[cachedHistory.length - 1].price;
-                prices[symbol] = {
-                    price_jpy: latestPrice,
-                    last_updated_at: Date.now() / 1000
-                };
-                successCount++;
+            if (cachedHistory && isCacheWithinExpiration(cachedHistory)) {
+                const historyValue = cachedHistory.value;
+                if (historyValue && historyValue.length > 0) {
+                    const latestPrice = historyValue[historyValue.length - 1].price;
+                    prices[coinName] = {
+                        price_jpy: latestPrice,
+                        last_updated_at: Date.now() / 1000
+                    };
+                    successCount++;
+                }
+            } else if (cachedHistory) {
+                // 期限切れの場合は削除
+                localStorage.removeItem(cacheKey);
             }
         } catch (error) {
         }
@@ -255,7 +300,7 @@ async function tryGetPricesFromHistory(symbols) {
     if (successCount > 0) {
         prices._metadata = {
             lastUpdate: Date.now(),
-            symbols: Object.keys(prices).filter(key => key !== '_metadata'),
+            coinNames: Object.keys(prices).filter(key => key !== '_metadata'),
             source: 'price_history_cache'
         };
         return prices;
@@ -270,8 +315,8 @@ function updatePortfolioWithPrices(portfolioData, prices) {
 
     portfolioData.summary.forEach(item => {
         // 価格データが存在する場合
-        if (prices[item.symbol]) {
-            const currentPrice = prices[item.symbol].price_jpy;
+        if (prices[item.coinName]) {
+            const currentPrice = prices[item.coinName].price_jpy;
             item.currentPrice = currentPrice;
 
             // 保有量が正の場合のみ含み損益を計算
@@ -307,8 +352,8 @@ function updatePortfolioWithPrices(portfolioData, prices) {
     portfolioData.stats.totalProfit = portfolioData.stats.totalRealizedProfit + totalUnrealizedProfit;
 
     // 総合損益に基づく追加統計
-    portfolioData.stats.totalProfitableSymbols = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) > 0).length;
-    portfolioData.stats.totalLossSymbols = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) < 0).length;
+    portfolioData.stats.totalProfitableCoinNames = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) > 0).length;
+    portfolioData.stats.totalLossCoinNames = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) < 0).length;
     portfolioData.stats.overallTotalProfitMargin = portfolioData.stats.totalInvestment > 0 ?
         (portfolioData.stats.totalProfit / portfolioData.stats.totalInvestment) * 100 : 0;
 }
@@ -338,32 +383,24 @@ function loadSavedPrices() {
     return false;
 }
 
-// キャッシュ機能（api.js用 - charts.jsと共通）
+// キャッシュデータを取得（シンプルなgetter）
 function getCachedData(key) {
     try {
         const cached = localStorage.getItem(key);
         if (cached) {
-            const data = JSON.parse(cached);
-
-            // 保存時のdurationを使用
-            const effectiveDuration = data.duration || CACHE_DURATION_PRICE;
-
-            // データが有効期限内かチェック
-            if (Date.now() - data.timestamp < effectiveDuration) {
-                return data.value;
-            } else {
-                localStorage.removeItem(key);
-            }
+            return JSON.parse(cached);
         }
+        return null;
     } catch (error) {
         console.error('キャッシュ読み込みエラー:', error);
-        try {
-            localStorage.removeItem(key);
-        } catch (e) {
-            console.error('破損キャッシュ削除エラー:', e);
-        }
+        return null;
     }
-    return null;
+}
+
+// キャッシュの有効期限チェック
+function isCacheWithinExpiration(cachedData) {
+    if (!cachedData) return false;
+    return Date.now() - cachedData.timestamp < cachedData.duration;
 }
 
 // メタデータ付きキャッシュ取得（保存時刻情報付き）
@@ -454,11 +491,11 @@ function updatePriceStatus(message = null) {
 
     const lastUpdate = window.appPriceData.lastPriceUpdate || lastPriceUpdate;
     if (lastUpdate) {
-        const symbols = Object.keys(window.appPriceData.currentPrices || currentPrices).filter(key => key !== '_metadata').length;
+        const coinNames = Object.keys(window.appPriceData.currentPrices || currentPrices).filter(key => key !== '_metadata').length;
         const timeStr = lastUpdate.toLocaleString('ja-JP');
         const ageMinutes = Math.round((Date.now() - lastUpdate.getTime()) / 1000 / 60);
 
-        statusElement.textContent = `${symbols}銘柄 | ${timeStr} (${ageMinutes}分前)`;
+        statusElement.textContent = `${coinNames}銘柄 | ${timeStr} (${ageMinutes}分前)`;
         statusElement.style.color = ageMinutes < 30 ? '#28a745' : '#ffc107';
 
         // 30分以上古い場合は警告色

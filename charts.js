@@ -16,104 +16,6 @@ let historicalData = window.appChartData.historicalData;
 let profitChartInstance = window.appChartData.profitChartInstance;
 
 // ===================================================================
-// PRICE HISTORY FUNCTIONS
-// ===================================================================
-
-// 銘柄の過去1か月の価格履歴を取得
-async function fetchSymbolPriceHistory(symbol) {
-    const coingeckoId = window.SYMBOL_MAPPING?.[symbol];
-    // TODO: サポートしていない銘柄を自動でサポートするようにする
-    if (!coingeckoId) {
-        throw new Error(`${symbol}はサポートされていません`);
-    }
-
-    // キャッシュキーの取得
-    const cacheKey = getPriceHistoryCacheKey(symbol, 30);
-
-    // キャッシュチェック（24時間有効）
-    const cachedData = getCachedData(cacheKey);
-    if (cachedData) {
-        return cachedData;
-    }
-
-    try {
-        // CoinGecko APIで過去30日の価格データを取得
-        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30&interval=daily`;
-
-        // タイムアウト付きでfetch実行
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
-
-        const response = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-                'Accept': 'application/json',
-            }
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            if (response.status === 429) {
-                throw new Error(`API制限に達しました (429 Too Many Requests)`);
-            } else if (response.status === 403) {
-                throw new Error(`APIアクセスが拒否されました (403 Forbidden)`);
-            } else {
-                throw new Error(`API Error: ${response.status}`);
-            }
-        }
-
-        const data = await response.json();
-
-        if (!data.prices || data.prices.length === 0) {
-            throw new Error('価格データが空です');
-        }
-
-        // データを整形
-        const priceHistory = data.prices.map(([timestamp, price]) => ({
-            date: new Date(timestamp),
-            price: price
-        }));
-
-        // 最新価格を現在価格として保存（API効率化）
-        if (priceHistory.length > 0) {
-            const latestPrice = priceHistory[priceHistory.length - 1].price;
-            updateSymbolCurrentPrice(symbol, latestPrice);
-        }
-
-        // 永続キャッシュに保存（24時間有効）
-        setCachedData(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
-
-        return priceHistory;
-
-    } catch (error) {
-        console.error(`${symbol}価格履歴取得エラー:`, error);
-
-        // より詳細なエラー情報を提供
-        if (error.name === 'AbortError') {
-            throw new Error(`リクエストタイムアウト - サーバーの応答が遅すぎます`);
-        } else if (error.message.includes('API制限に達しました') || error.message.includes('429')) {
-            throw new Error(`API制限に達しました - 1分後に再度お試しください`);
-        } else if (error.message.includes('403') || error.message.includes('CORS') || error.message.includes('blocked by CORS')) {
-            throw new Error(`APIアクセスが制限されています - ブラウザの設定またはネットワーク環境を確認してください`);
-        } else if (error.message.includes('API Error: 404')) {
-            throw new Error(`${symbol}の価格データが見つかりません`);
-        } else if (error.message.includes('API Error: 500')) {
-            throw new Error(`CoinGecko APIサーバーエラー - しばらく時間をおいてお試しください`);
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            throw new Error(`ネットワーク接続エラー - インターネット接続を確認してください`);
-        } else {
-            throw new Error(`価格履歴取得エラー: ${error.message}`);
-        }
-    }
-}
-
-// ETH専用関数（後方互換性のため）
-async function fetchETHPriceHistory() {
-    return await fetchSymbolPriceHistory('ETH');
-}
-
-// ===================================================================
 // PRICE DATA PERSISTENCE FUNCTIONS
 // ===================================================================
 
@@ -135,7 +37,7 @@ const PRICE_CACHE_CONFIG = {
  * border: チャートの線の色
  * bg: チャートの背景色（透明度0.1）
  */
-const SYMBOL_COLORS = {
+const COIN_NAME_COLORS = {
     'BTC': { border: '#F7931A', bg: 'rgba(247, 147, 26, 0.1)' },
     'ETH': { border: '#627EEA', bg: 'rgba(98, 126, 234, 0.1)' },
     'SOL': { border: '#9945FF', bg: 'rgba(153, 69, 255, 0.1)' },
@@ -152,7 +54,58 @@ const SYMBOL_COLORS = {
 };
 
 // デフォルトの色（未定義の銘柄用）
-const DEFAULT_SYMBOL_COLOR = { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
+const DEFAULT_COIN_NAME_COLOR = { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
+
+// ===================================================================
+// PRICE HISTORY FUNCTIONS
+// ===================================================================
+
+// 銘柄の過去1か月の価格履歴を取得
+async function fetchCoinNamePriceHistory(coinName) {
+    const coingeckoId = window.COIN_NAME_MAPPING[coinName];
+    // TODO: サポートしていない銘柄を自動でサポートするようにする
+    if (!coingeckoId) {
+        throw new Error(`${coinName}はサポートされていません`);
+    }
+
+    // キャッシュから取得
+    const cacheKey = getPriceHistoryCacheKey(coinName);
+    const cachedData = getCachedData(cacheKey);
+
+    // キャッシュがある かつ キャッシュが期限切れでない
+    if (cachedData && !isCacheExpired(cachedData)){
+        return cachedData.value;
+    }
+
+    // CoinGecko APIで過去30日の価格データを取得（API実行は共通関数に委譲）
+    const data = await executePriceHistoryApi(coingeckoId, {
+        vsCurrency: 'jpy',
+        days: 30,
+        interval: 'daily',
+        timeoutMs: 10000
+    });
+
+    if (!data.prices || data.prices.length === 0) {
+        throw new Error('価格データが空です');
+    }
+
+    // データを整形
+    const priceHistory = data.prices.map(([timestamp, price]) => ({
+        date: new Date(timestamp),
+        price: price
+    }));
+
+    // 最新価格を現在価格として保存（API効率化）
+    if (priceHistory.length > 0) {
+        const latestPrice = priceHistory[priceHistory.length - 1].price;
+        updateCoinNameCurrentPrice(coinName, latestPrice);
+    }
+
+    // 永続キャッシュに保存
+    setCachedData(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
+
+    return priceHistory;    
+}
 
 // ===================================================================
 // CHART FORMATTING AND CONFIGURATION HELPERS
@@ -161,12 +114,12 @@ const DEFAULT_SYMBOL_COLOR = { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' 
 /**
  * 銘柄に応じた価格フォーマット関数
  * @param {number} value - フォーマット対象の価格値
- * @param {string} symbol - 銘柄シンボル（例: 'SHIB', 'PEPE'）
+ * @param {string} coinName - 銘柄シンボル（例: 'SHIB', 'PEPE'）
  * @returns {string} フォーマットされた価格文字列
  */
-function formatPriceValue(value, symbol) {
+function formatPriceValue(value, coinName) {
     // SHIBとPEPEの場合は小数点以下の表示を調整
-    if (symbol === 'SHIB' || symbol === 'PEPE') {
+    if (coinName === 'SHIB' || coinName === 'PEPE') {
         if (value < 0.001) {
             return '¥' + value.toFixed(6);
         } else if (value < 0.01) {
@@ -207,10 +160,10 @@ function formatSignedProfitValue(value) {
 
 /**
  * 銘柄別価格チャートのオプションを生成
- * @param {string} symbol - 銘柄シンボル
+ * @param {string} coinName - 銘柄シンボル
  * @returns {object} Chart.jsのオプション設定オブジェクト
  */
-function createSymbolPriceChartOptions(symbol) {
+function createCoinNamePriceChartOptions(coinName) {
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -240,7 +193,7 @@ function createSymbolPriceChartOptions(symbol) {
                 beginAtZero: false,
                 ticks: {
                     callback: function (value) {
-                        return formatPriceValue(value, symbol);
+                        return formatPriceValue(value, coinName);
                     }
                 }
             }
@@ -257,8 +210,8 @@ function createSymbolPriceChartOptions(symbol) {
  */
 function createProfitChartOptions(title, profitData, canvasId = '') {
     // 銘柄名を取得（canvasIdが提供されている場合）
-    const symbolMatch = canvasId ? canvasId.match(/^([a-z]+)-profit-chart$/) : null;
-    const symbolName = symbolMatch ? symbolMatch[1].toUpperCase() : 'SYMBOL';
+    const coinNameMatch = canvasId ? canvasId.match(/^([a-z]+)-profit-chart$/) : null;
+    const coinNameName = coinNameMatch ? coinNameMatch[1].toUpperCase() : 'COIN_NAME';
 
     return {
         responsive: true,
@@ -290,7 +243,7 @@ function createProfitChartOptions(title, profitData, canvasId = '') {
                                     `💰 総合損益: ¥${Math.round(dataPoint.totalProfit || dataPoint.profit || 0).toLocaleString()}`,
                                     `　├ 実現損益: ¥${Math.round(dataPoint.realizedProfit || dataPoint.profit || 0).toLocaleString()}`,
                                     `　└ 含み損益: ¥${Math.round(dataPoint.unrealizedProfit || 0).toLocaleString()}`,
-                                    `📊 保有量: ${dataPoint.holdingQuantity.toFixed(6)} ${symbolName}`,
+                                    `📊 保有量: ${dataPoint.holdingQuantity.toFixed(6)} ${coinName}`,
                                     `📈 平均価格: ¥${Math.round(dataPoint.avgPrice).toLocaleString()}`,
                                     `💹 その日の価格: ¥${Math.round(dataPoint.currentPrice || 0).toLocaleString()}`
                                 ];
@@ -372,7 +325,7 @@ function createProfitChartOptions(title, profitData, canvasId = '') {
  * @param {string} title - チャートタイトル
  * @returns {object} Chart.jsのオプション設定オブジェクト
  */
-function createMultiSymbolProfitChartOptions(title) {
+function createMultiCoinNameProfitChartOptions(title) {
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -456,33 +409,23 @@ function createMultiSymbolProfitChartOptions(title) {
 // CACHE FUNCTIONS
 // ===================================================================
 
-// 永続化キャッシュ機能
+// キャッシュデータを取得
 function getCachedData(key) {
     try {
         const cached = localStorage.getItem(key);
         if (cached) {
-            const data = JSON.parse(cached);
-
-            // 保存時のdurationを使用
-            const effectiveDuration = data.duration || PRICE_CACHE_CONFIG.CURRENT_PRICES_DURATION;
-
-            // データが有効期限内かチェック
-            if (Date.now() - data.timestamp < effectiveDuration) {
-                return data.value;
-            } else {
-                localStorage.removeItem(key);
-            }
+            return JSON.parse(cached);
         }
+        return null;
     } catch (error) {
         console.error('キャッシュ読み込みエラー:', error);
-        // 破損したキャッシュを削除
-        try {
-            localStorage.removeItem(key);
-        } catch (e) {
-            console.error('破損キャッシュ削除エラー:', e);
-        }
+        return null;
     }
-    return null;
+}
+
+// キャッシュの有効期限チェック
+function isCacheExpired(cachedData) {
+    return (Date.now() - cachedData.timestamp) > cachedData.duration;
 }
 
 // メタデータ付きキャッシュ取得（保存時刻情報付き）
@@ -687,7 +630,7 @@ function getPriceDataStatus() {
                 key: currentPricesKey,
                 timestamp: data.timestamp,
                 age: Date.now() - data.timestamp,
-                symbols: data.value._metadata?.symbols || []
+                coinNames: data.value._metadata?.coinNames || []
             };
         }
 
@@ -696,9 +639,9 @@ function getPriceDataStatus() {
             if (key.includes('_price_history_')) {
                 try {
                     const data = JSON.parse(localStorage[key]);
-                    const symbol = key.split('_')[0].toUpperCase();
+                    const coinName = key.split('_')[0].toUpperCase();
                     status.priceHistories.push({
-                        symbol: symbol,
+                        coinName: coinName,
                         key: key,
                         timestamp: data.timestamp,
                         age: Date.now() - data.timestamp,
@@ -731,22 +674,22 @@ function showPriceDataReport() {
 }
 
 // 銘柄の現在価格を更新（API効率化）
-function updateSymbolCurrentPrice(symbol, price) {
+function updateCoinNameCurrentPrice(coinName, price) {
     try {
         // currentPortfolioDataが利用可能な場合、現在価格を更新
         const portfolioData = window.currentPortfolioData;
         if (portfolioData && portfolioData.summary) {
-            const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
-            if (symbolSummary) {
-                symbolSummary.currentPrice = price;
+            const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
+            if (coinNameSummary) {
+                coinNameSummary.currentPrice = price;
 
                 // 含み損益も再計算
-                if (symbolSummary.holdingQuantity > 0 && symbolSummary.averagePurchaseRate > 0) {
-                    const currentValue = symbolSummary.holdingQuantity * price;
-                    const holdingCost = symbolSummary.holdingQuantity * symbolSummary.averagePurchaseRate;
-                    symbolSummary.currentValue = currentValue;
-                    symbolSummary.unrealizedProfit = currentValue - holdingCost;
-                    symbolSummary.totalProfit = symbolSummary.realizedProfit + symbolSummary.unrealizedProfit;
+                if (coinNameSummary.holdingQuantity > 0 && coinNameSummary.averagePurchaseRate > 0) {
+                    const currentValue = coinNameSummary.holdingQuantity * price;
+                    const holdingCost = coinNameSummary.holdingQuantity * coinNameSummary.averagePurchaseRate;
+                    coinNameSummary.currentValue = currentValue;
+                    coinNameSummary.unrealizedProfit = currentValue - holdingCost;
+                    coinNameSummary.totalProfit = coinNameSummary.realizedProfit + coinNameSummary.unrealizedProfit;
                 }
 
             }
@@ -761,14 +704,14 @@ function updateSymbolCurrentPrice(symbol, price) {
 // ===================================================================
 
 // 複数銘柄の価格履歴を効率的に取得
-async function fetchMultipleSymbolPriceHistories(symbols) {
+async function fetchMultipleCoinNamePriceHistories(coinNames) {
     const results = {};
-    const promises = symbols.map(async (symbol) => {
+    const promises = coinNames.map(async (coinName) => {
         try {
-            const priceHistory = await fetchSymbolPriceHistory(symbol);
-            results[symbol] = priceHistory;
+            const priceHistory = await fetchCoinNamePriceHistory(coinName);
+            results[coinName] = priceHistory;
         } catch (error) {
-            results[symbol] = null;
+            results[coinName] = null;
         }
     });
 
@@ -777,7 +720,7 @@ async function fetchMultipleSymbolPriceHistories(symbols) {
 }
 
 // 価格履歴を使った日次総合損益データを生成
-function generateHistoricalProfitTimeSeries(symbol, transactions, priceHistory) {
+function generateHistoricalProfitTimeSeries(coinName, transactions, priceHistory) {
 
     // 取引を日付順にソート
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -878,8 +821,8 @@ function generateCombinedProfitTimeSeries(allProfitData) {
         let totalHoldingQuantity = 0;
         let totalCurrentValue = 0;
 
-        Object.keys(allProfitData).forEach(symbol => {
-            const profitData = allProfitData[symbol];
+        Object.keys(allProfitData).forEach(coinName => {
+            const profitData = allProfitData[coinName];
             const point = profitData.find(p => p.date.toDateString() === dateStr);
             
             if (point) {
@@ -908,7 +851,7 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画
-async function renderAllSymbolsProfitChart() {
+async function renderAllCoinNamesProfitChart() {
 
     // Chart.jsライブラリの確認
     if (typeof Chart === 'undefined') {
@@ -923,8 +866,8 @@ async function renderAllSymbolsProfitChart() {
     }
 
     // デスクトップ版とモバイル版の両方のcanvasを確認
-    const desktopCanvasId = 'all-symbols-profit-chart';
-    const mobileCanvasId = 'mobile-all-symbols-profit-chart';
+    const desktopCanvasId = 'all-coinNames-profit-chart';
+    const mobileCanvasId = 'mobile-all-coinNames-profit-chart';
 
     const desktopCanvas = document.getElementById(desktopCanvasId);
     const mobileCanvas = document.getElementById(mobileCanvasId);
@@ -950,52 +893,52 @@ async function renderAllSymbolsProfitChart() {
 
     try {
         // 取引のある銘柄を取得（保有量に関係なく）
-        const symbols = portfolioData.summary.map(item => item.symbol);
+    const coinNames = portfolioData.summary.map(item => item.coinName);
 
 
-        if (symbols.length === 0) {
-            console.error('❌ No symbols found in portfolio data');
+        if (coinNames.length === 0) {
+            console.error('❌ No coinNames found in portfolio data');
             showChartError(canvasId, '全銘柄', new Error('保有銘柄がありません'), [
                 '現在保有している銘柄がないため、チャートを表示できません'
             ]);
             return;
         }
 
-        showInfoMessage(`${symbols.length}銘柄の価格履歴を取得中...`);
+        showInfoMessage(`${coinNames.length}銘柄の価格履歴を取得中...`);
 
         // 複数銘柄の価格履歴を並列取得
-        const priceHistories = await fetchMultipleSymbolPriceHistories(symbols);
+        const priceHistories = await fetchMultipleCoinNamePriceHistories(coinNames);
 
         // 成功した銘柄のみでチャートデータを生成
-        const validSymbols = symbols.filter(symbol => priceHistories[symbol]);
+        const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
         
 
-        if (validSymbols.length === 0) {
-            console.error('❌ No valid symbols with price history');
+        if (validCoinNames.length === 0) {
+            console.error('❌ No valid coinNames with price history');
             throw new Error('価格履歴を取得できた銘柄がありません');
         }
 
 
         // 各銘柄の損益推移データを生成
         const allProfitData = {};
-        validSymbols.forEach(symbol => {
-            const symbolData = portfolioData.symbols[symbol];
+        validCoinNames.forEach(coinName => {
+            const coinNameData = portfolioData.coins[coinName];
             
-            if (symbolData && symbolData.allTransactions) {
+            if (coinNameData && coinNameData.allTransactions) {
                 const profitData = generateHistoricalProfitTimeSeries(
-                    symbol,
-                    symbolData.allTransactions,
-                    priceHistories[symbol]
+                    coinName,
+                    coinNameData.allTransactions,
+                    priceHistories[coinName]
                 );
                 if (profitData && profitData.length > 0) {
-                    allProfitData[symbol] = profitData;
+                    allProfitData[coinName] = profitData;
                 }
             } 
         });
         
 
         if (Object.keys(allProfitData).length === 0) {
-            console.error('❌ No profit data generated for any symbol');
+            console.error('❌ No profit data generated for any coinName');
             throw new Error('損益データを生成できませんでした');
         }
 
@@ -1009,7 +952,7 @@ async function renderAllSymbolsProfitChart() {
             displayProfitChart(canvasId, combinedProfitData, 'ポートフォリオ総合損益推移（過去1か月）');
         } else {
             // 複数銘柄の個別損益推移チャートを表示
-            displayMultiSymbolProfitChart(canvasId, allProfitData, '全銘柄個別損益推移（過去1か月）');
+            displayMultiCoinNameProfitChart(canvasId, allProfitData, '全銘柄個別損益推移（過去1か月）');
         }
 
         const successCount = Object.keys(allProfitData).length;
@@ -1028,10 +971,10 @@ async function renderAllSymbolsProfitChart() {
 }
 
 // 銘柄別損益推移チャートを描画（汎用版）
-async function renderSymbolProfitChart(symbol) {
+async function renderCoinNameProfitChart(coinName) {
     
     // 重複実行を防ぐため、実行中フラグをチェック
-    const renderingKey = `rendering_${symbol}`;
+    const renderingKey = `rendering_${coinName}`;
     if (window[renderingKey]) {
         return;
     }
@@ -1047,13 +990,13 @@ async function renderSymbolProfitChart(symbol) {
     }
 
     // 指定銘柄の取引データを取得
-    const symbolData = portfolioData.symbols[symbol];
-    if (!symbolData || !symbolData.allTransactions || symbolData.allTransactions.length === 0) {
-        console.error(`❌ ${symbol} transaction data not found`);
+    const coinNameData = portfolioData.coins[coinName];
+    if (!coinNameData || !coinNameData.allTransactions || coinNameData.allTransactions.length === 0) {
+        console.error(`❌ ${coinName} transaction data not found`);
         return;
     }
 
-    const canvasId = `${symbol.toLowerCase()}-profit-chart`;
+    const canvasId = `${coinName.toLowerCase()}-profit-chart`;
 
     // Canvas要素の存在確認
     const canvas = document.getElementById(canvasId);
@@ -1063,29 +1006,29 @@ async function renderSymbolProfitChart(symbol) {
     }
 
     // 現在価格ベースでのチャート表示（CORS回避）
-    const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
-    const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
+    const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
+    const currentPrice = coinNameSummary ? coinNameSummary.currentPrice : 0;
 
     if (currentPrice > 0) {
         // 現在価格での損益推移チャートを生成
-        const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
+        const profitData = generateTotalProfitTimeSeries(coinName, coinNameData.allTransactions, currentPrice);
         if (profitData && profitData.length > 0) {
-            displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（取引履歴ベース）`);
+            displayProfitChart(canvasId, profitData, `${coinName}総合損益推移（取引履歴ベース）`);
             return;
         }
     }
 
     // 現在価格がない場合のエラー表示
-    showChartError(canvasId, symbol, new Error('現在価格データがありません'), [
+    showChartError(canvasId, coinName, new Error('現在価格データがありません'), [
         '「価格更新」ボタンをクリックして現在価格を取得してください',
         '価格データ取得後にチャートが表示されます'
     ]);
 
-    showWarningMessage(`${symbol}: 価格データがないためチャートを表示できません`);
+    showWarningMessage(`${coinName}: 価格データがないためチャートを表示できません`);
 
     try {
         // 価格履歴を取得（キャッシュまたはAPI）
-        const priceHistory = await fetchSymbolPriceHistory(symbol);
+        const priceHistory = await fetchCoinNamePriceHistory(coinName);
 
         if (!priceHistory || priceHistory.length === 0) {
             throw new Error('価格履歴データを取得できませんでした');
@@ -1093,28 +1036,28 @@ async function renderSymbolProfitChart(symbol) {
 
 
         // 時系列総合損益データを生成
-        const profitData = generateHistoricalProfitTimeSeries(symbol, symbolData.allTransactions, priceHistory);
+        const profitData = generateHistoricalProfitTimeSeries(coinName, coinNameData.allTransactions, priceHistory);
 
 
         // チャートを描画
-        displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（過去1か月・日次）`);
+        displayProfitChart(canvasId, profitData, `${coinName}総合損益推移（過去1か月・日次）`);
 
     } catch (error) {
-        console.error(`${symbol}損益チャート描画エラー:`, error);
+        console.error(`${coinName}損益チャート描画エラー:`, error);
 
         // エラーの種類に応じてトースト通知を表示
         let toastMessage = '';
         let suggestions = [];
 
         if (error.message.includes('サポートされていない銘柄')) {
-            toastMessage = `${symbol}は価格履歴チャートに対応していません`;
+            toastMessage = `${coinName}は価格履歴チャートに対応していません`;
             suggestions = [
                 '現在価格での損益は上記の統計で確認できます',
                 '対応銘柄: BTC, ETH, SOL, XRP, ADA, DOGE, ASTR, XTZ, XLM, SHIB, PEPE, SUI, DAI'
             ];
             showWarningMessage(toastMessage);
         } else if (error.message.includes('API制限') || error.message.includes('429')) {
-            toastMessage = `${symbol}: API制限に達しました - 1分後に再度お試しください`;
+            toastMessage = `${coinName}: API制限に達しました - 1分後に再度お試しください`;
             suggestions = [
                 'API制限に達しました',
                 '1分後に再度お試しください',
@@ -1122,7 +1065,7 @@ async function renderSymbolProfitChart(symbol) {
             ];
             showWarningMessage(toastMessage);
         } else if (error.message.includes('CORS') || error.message.includes('blocked')) {
-            toastMessage = `${symbol}: ブラウザのセキュリティ制限により接続できません`;
+            toastMessage = `${coinName}: ブラウザのセキュリティ制限により接続できません`;
             suggestions = [
                 'ブラウザのCORS制限により接続できません',
                 'HTTPSサイトでアクセスしてください',
@@ -1130,7 +1073,7 @@ async function renderSymbolProfitChart(symbol) {
             ];
             showWarningMessage(toastMessage);
         } else if (error.message.includes('ネットワーク') || error.message.includes('Failed to fetch')) {
-            toastMessage = `${symbol}: ネットワーク接続エラー - インターネット接続を確認してください`;
+            toastMessage = `${coinName}: ネットワーク接続エラー - インターネット接続を確認してください`;
             suggestions = [
                 'インターネット接続を確認してください',
                 'VPNやプロキシを使用している場合は無効にしてください',
@@ -1138,7 +1081,7 @@ async function renderSymbolProfitChart(symbol) {
             ];
             showErrorMessage(toastMessage);
         } else if (error.message.includes('タイムアウト')) {
-            toastMessage = `${symbol}: サーバーの応答が遅すぎます - しばらく時間をおいてお試しください`;
+            toastMessage = `${coinName}: サーバーの応答が遅すぎます - しばらく時間をおいてお試しください`;
             suggestions = [
                 'サーバーの応答が遅すぎます',
                 'しばらく時間をおいて再度お試しください',
@@ -1146,7 +1089,7 @@ async function renderSymbolProfitChart(symbol) {
             ];
             showWarningMessage(toastMessage);
         } else {
-            toastMessage = `${symbol}: チャート表示エラー - ${error.message}`;
+            toastMessage = `${coinName}: チャート表示エラー - ${error.message}`;
             suggestions = [
                 'ページを再読み込みしてお試しください',
                 'ブラウザのコンソール(F12)で詳細を確認できます',
@@ -1156,22 +1099,22 @@ async function renderSymbolProfitChart(symbol) {
         }
 
         // 詳細なエラー表示（チャートエリア内）
-        showChartError(canvasId, symbol, error, suggestions);
+        showChartError(canvasId, coinName, error, suggestions);
 
         // フォールバック: 現在価格のみでチャートを描画を試行
         try {
-            const symbolSummary = portfolioData.summary.find(item => item.symbol === symbol);
-            const currentPrice = symbolSummary ? symbolSummary.currentPrice : 0;
+            const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
+            const currentPrice = coinNameSummary ? coinNameSummary.currentPrice : 0;
 
             if (currentPrice > 0) {
-                const profitData = generateTotalProfitTimeSeries(symbol, symbolData.allTransactions, currentPrice);
+                const profitData = generateTotalProfitTimeSeries(coinName, coinNameData.allTransactions, currentPrice);
                 if (profitData && profitData.length > 0) {
-                    displayProfitChart(canvasId, profitData, `${symbol}総合損益推移（現在価格ベース）`);
+                    displayProfitChart(canvasId, profitData, `${coinName}総合損益推移（現在価格ベース）`);
                     return;
                 }
             }
         } catch (fallbackError) {
-            console.error(`${symbol}フォールバックチャート描画エラー:`, fallbackError);
+            console.error(`${coinName}フォールバックチャート描画エラー:`, fallbackError);
         }
 
         // フォールバックも失敗した場合は、価格更新を促すメッセージを追加
@@ -1187,20 +1130,20 @@ async function renderSymbolProfitChart(symbol) {
         }
     } finally {
         // 実行中フラグをクリア
-        const renderingKey = `rendering_${symbol}`;
+        const renderingKey = `rendering_${coinName}`;
         window[renderingKey] = false;
     }
 }
 
 // ETH専用関数（後方互換性のため）
 // async function renderETHProfitChart() {
-//     return await renderSymbolProfitChart('ETH');
+//     return await renderCoinNameProfitChart('ETH');
 // }
 
 
 
 // 総合損益推移の時系列データを生成（実現損益 + 含み損益）- 旧版
-function generateTotalProfitTimeSeries(symbol, transactions, currentPrice) {
+function generateTotalProfitTimeSeries(coinName, transactions, currentPrice) {
     // 取引を日付順にソート
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -1256,8 +1199,8 @@ function generateTotalProfitTimeSeries(symbol, transactions, currentPrice) {
 }
 
 // 旧関数（後方互換性のため残す）
-function generateProfitTimeSeries(symbol, transactions) {
-    return generateTotalProfitTimeSeries(symbol, transactions, 0);
+function generateProfitTimeSeries(coinName, transactions) {
+    return generateTotalProfitTimeSeries(coinName, transactions, 0);
 }
 
 // ローディング表示
@@ -1274,7 +1217,7 @@ function showLoadingMessage(canvasId, message) {
 }
 
 // チャートエラー表示（詳細版）
-function showChartError(canvasId, symbol, error, suggestions = []) {
+function showChartError(canvasId, coinName, error, suggestions = []) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
 
@@ -1308,7 +1251,7 @@ function showChartError(canvasId, symbol, error, suggestions = []) {
 
     ctx.font = '14px Arial';
     ctx.fillStyle = '#495057';
-    ctx.fillText(`${symbol}: ${error.message}`, canvas.width / 2, canvas.height / 2 - 10);
+    ctx.fillText(`${coinName}: ${error.message}`, canvas.width / 2, canvas.height / 2 - 10);
 
     // 提案の表示
     if (suggestions.length > 0) {
@@ -1431,7 +1374,7 @@ function displayProfitChart(canvasId, profitData, title) {
 }
 
 // 複数銘柄の損益推移チャート表示
-function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
+function displayMultiCoinNameProfitChart(canvasId, allProfitData, title) {
 
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -1477,8 +1420,8 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
     ];
 
     let colorIndex = 0;
-    Object.keys(allProfitData).forEach(symbol => {
-        const profitData = allProfitData[symbol];
+    Object.keys(allProfitData).forEach(coinName => {
+        const profitData = allProfitData[coinName];
         const color = colors[colorIndex % colors.length];
 
         // 日付ごとの損益データを作成
@@ -1492,7 +1435,7 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
         const borderWidth = Math.abs(finalProfit) > 10000 ? 3 : 2;
 
         datasets.push({
-            label: `${symbol}`,
+            label: `${coinName}`,
             data: data,
             borderColor: color,
             backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.1)'),
@@ -1517,7 +1460,7 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
             labels: labels,
             datasets: datasets
         },
-        options: createMultiSymbolProfitChartOptions(title)
+        options: createMultiCoinNameProfitChartOptions(title)
     };
 
     // チャートを作成
@@ -1526,12 +1469,12 @@ function displayMultiSymbolProfitChart(canvasId, allProfitData, title) {
 }
 
 // ===================================================================
-// SYMBOL CHART FUNCTIONS
+// COIN_NAME CHART FUNCTIONS
 // ===================================================================
 
 // 銘柄別チャート描画
-async function displaySymbolChart(symbol) {
-    const canvas = document.getElementById(`${symbol.toLowerCase()}-chart-canvas`);
+async function displayCoinNameChart(coinName) {
+    const canvas = document.getElementById(`${coinName.toLowerCase()}-chart-canvas`);
     if (!canvas) {
         return;
     }
@@ -1554,16 +1497,16 @@ async function displaySymbolChart(symbol) {
                 font-size: 14px;
                 z-index: 10;
             `;
-            loadingDiv.innerHTML = `📊 ${symbol}の価格データを取得中...`;
+            loadingDiv.innerHTML = `📊 ${coinName}の価格データを取得中...`;
             container.appendChild(loadingDiv);
         }
 
         // データを取得
-        await fetchSymbolHistoricalData(symbol);
+        await fetchCoinNameHistoricalData(coinName);
     }
 
     // データ取得
-    chartData = historicalData[symbol];
+    chartData = historicalData[coinName];
 
     // データ検証
     if (!Array.isArray(chartData) || chartData.length === 0) {
@@ -1596,7 +1539,7 @@ async function displaySymbolChart(symbol) {
             `;
             errorDiv.innerHTML = `
                 <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
-                <div style="font-weight: bold; margin-bottom: 8px;">${symbol} 価格データを取得できませんでした</div>
+                <div style="font-weight: bold; margin-bottom: 8px;">${coinName} 価格データを取得できませんでした</div>
                 <div style="font-size: 14px; color: #666;">ネットワーク接続を確認してください</div>
             `;
             container.appendChild(errorDiv);
@@ -1605,7 +1548,7 @@ async function displaySymbolChart(symbol) {
         return;
     }
 
-    const chartKey = `${symbol.toLowerCase()}TabChart`;
+    const chartKey = `${coinName.toLowerCase()}TabChart`;
 
     // 既存のチャートを削除（新しいデータがある場合のみ）
     if (window[chartKey]) {
@@ -1624,7 +1567,7 @@ async function displaySymbolChart(symbol) {
     }
 
     // 銘柄の色を取得
-    const color = SYMBOL_COLORS[symbol] || DEFAULT_SYMBOL_COLOR;
+    const color = COIN_NAME_COLORS[coinName] || DEFAULT_COIN_NAME_COLOR;
 
     const ctx = canvas.getContext('2d');
     // チャート作成
@@ -1632,7 +1575,7 @@ async function displaySymbolChart(symbol) {
         type: 'line',
         data: {
             datasets: [{
-                label: `${symbol} 価格 (JPY)`,
+                label: `${coinName} 価格 (JPY)`,
                 data: chartData,
                 borderColor: color.border,
                 backgroundColor: color.bg,
@@ -1643,25 +1586,28 @@ async function displaySymbolChart(symbol) {
                 pointHoverRadius: 4
             }]
         },
-        options: createSymbolPriceChartOptions(symbol)
+        options: createCoinNamePriceChartOptions(coinName)
     });
 
 }
 
 // 銘柄別履歴データ取得
-async function fetchSymbolHistoricalData(symbol) {
-    if (!historicalData[symbol]){
-        // api.jsで定義されたSYMBOL_MAPPINGを参照
-        const coingeckoId = window.SYMBOL_MAPPING?.[symbol];
+async function fetchCoinNameHistoricalData(coinName) {
+    if (!historicalData[coinName]){
+        // api.jsで定義されたCOIN_NAME_MAPPINGを参照
+        const coingeckoId = window.COIN_NAME_MAPPING?.[coinName];
 
         // キャッシュキーを生成
-        const cacheKey = getChartDataCacheKey(symbol, 30);
+        const cacheKey = getChartDataCacheKey(coinName, 30);
 
         // キャッシュチェック
         const cachedData = getCachedData(cacheKey);
-        if (cachedData) {
-            historicalData[symbol] = cachedData;
+        if (cachedData && isCacheWithinExpiration(cachedData)) {
+            historicalData[coinName] = cachedData.value;
             return;
+        } else if (cachedData) {
+            // 期限切れの場合は削除
+            localStorage.removeItem(cacheKey);
         }
 
         try {
@@ -1679,13 +1625,13 @@ async function fetchSymbolHistoricalData(symbol) {
                 // キャッシュに保存（6時間）
                 setCachedData(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA_DURATION);
 
-                historicalData[symbol] = chartData;
+                historicalData[coinName] = chartData;
 
                 // 新しいデータを取得したタイムスタンプを記録
-                window.appChartData.historicalDataTimestamps[symbol] = Date.now();
+                window.appChartData.historicalDataTimestamps[coinName] = Date.now();
             }
         } catch (error) {
-            console.error(`${symbol}履歴データ取得エラー:`, error);
+            console.error(`${coinName}履歴データ取得エラー:`, error);
         }
     }
 }
@@ -1741,12 +1687,12 @@ function toggleChartMode() {
     }
     
     // チャートを再描画
-    if (typeof renderAllSymbolsProfitChart === 'function') {
-        renderAllSymbolsProfitChart();
+    if (typeof renderAllCoinNamesProfitChart === 'function') {
+        renderAllCoinNamesProfitChart();
     }
     
 }
 
 // 関数を即座にグローバルに登録
 window.toggleChartMode = toggleChartMode;
-window.renderAllSymbolsProfitChart = renderAllSymbolsProfitChart;
+window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;

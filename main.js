@@ -81,7 +81,7 @@ function mergeTransactionData(existingData, newData) {
         // 重複チェック：日時・銘柄・取引所・数量・金額が完全一致
         const isDuplicate = existingData.some(existingTx =>
             existingTx.date === newTx.date &&
-            existingTx.symbol === newTx.symbol &&
+            existingTx.coinName === newTx.coinName &&
             existingTx.exchange === newTx.exchange &&
             Math.abs(existingTx.quantity - newTx.quantity) < 0.00000001 &&
             Math.abs(existingTx.amount - newTx.amount) < 0.01 &&
@@ -134,11 +134,11 @@ function processCSVData(data, fileName) {
         // GMOコイン形式
         if ((selectedExchange === 'GMO' || selectedExchange === 'AUTO') &&
             row['精算区分'] && row['精算区分'].includes('取引所現物取引')) {
-            const symbol = row['銘柄名'];
-            if (symbol && symbol !== 'JPY') {
+            const coinName = row['銘柄名'];
+            if (coinName && coinName !== 'JPY') {
                 const transaction = {
                     exchange: 'GMO',
-                    symbol: symbol,
+                    coinName: coinName,
                     type: row['売買区分'], // 買 or 売
                     amount: parseFloat(row['日本円受渡金額']?.replace(/,/g, '') || 0),
                     quantity: parseFloat(row['約定数量']?.replace(/,/g, '') || 0),
@@ -157,12 +157,12 @@ function processCSVData(data, fileName) {
         if ((selectedExchange === 'OKJ' || selectedExchange === 'AUTO') &&
             row['取引銘柄'] && row['売買'] && row['ステータス'] === '全部約定') {
             const pair = row['取引銘柄'];
-            const symbol = pair.replace('/JPY', '');
+            const coinName = pair.replace('/JPY', '');
 
-            if (symbol !== 'JPY' && row['売買'] === '購入') {
+            if (coinName !== 'JPY' && row['売買'] === '購入') {
                 const transaction = {
                     exchange: 'OKJ',
-                    symbol: symbol,
+                    coinName: coinName,
                     type: '買', // OKJの「購入」を「買」に統一
                     amount: parseFloat(row['約定代金']?.replace(/,/g, '') || 0),
                     quantity: parseFloat(row['約定数量']?.replace(/,/g, '') || 0),
@@ -238,11 +238,11 @@ function switchSubtab(subtabName) {
         // 各銘柄のチャート表示
         if (subtabName !== 'summary') {
             // 銘柄名を取得
-            const symbol = subtabName.toUpperCase();
+            const coinName = subtabName.toUpperCase();
             // 連続実行防止(2s以内であれば再表示しない)
             // 最後の実行から一定時間経過をチェック
             const now = Date.now();
-            const lastRenderKey = `lastRender_${symbol}`;
+            const lastRenderKey = `lastRender_${coinName}`;
             const lastRenderTime = window[lastRenderKey] || 0;
             const timeSinceLastRender = now - lastRenderTime;
 
@@ -255,11 +255,11 @@ function switchSubtab(subtabName) {
 
             if (targetContent) {
                 // 価格チャートを描画
-                displaySymbolChart(symbol);
+                displayCoinNameChart(coinName);
 
                 // 損益推移チャートを描画（DOM更新後）
                 requestAnimationFrame(() => {
-                    renderSymbolProfitChart(symbol);
+                    renderCoinNameProfitChart(coinName);
                 });
             }
         }
@@ -521,11 +521,11 @@ function showPriceDataStatus() {
             // ユーザー向けの詳細表示
             const totalSizeMB = Math.round(status.totalCacheSize / 1024 / 1024 * 100) / 100;
             const currentPricesInfo = status.currentPrices ? 
-                `${status.currentPrices.symbols.length}銘柄 (${Math.round(status.currentPrices.age / 1000 / 60)}分前)` : 
+                `${status.currentPrices.coinNames.length}銘柄 (${Math.round(status.currentPrices.age / 1000 / 60)}分前)` : 
                 'なし';
             
             const historyInfo = status.priceHistories.length > 0 ?
-                status.priceHistories.map(h => `${h.symbol}: ${h.dataPoints}日分`).join(', ') :
+                status.priceHistories.map(h => `${h.coinName}: ${h.dataPoints}日分`).join(', ') :
                 'なし';
             
             const message = `
@@ -744,5 +744,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
     if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
     if (typeof toggleChartMode === 'function') window.toggleChartMode = toggleChartMode;
-    if (typeof renderAllSymbolsProfitChart === 'function') window.renderAllSymbolsProfitChart = renderAllSymbolsProfitChart;
+    if (typeof renderAllCoinNamesProfitChart === 'function') window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;
 })();

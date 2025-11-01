@@ -22,11 +22,11 @@ let currentSortDirection = window.appPortfolioState.currentSortDirection;
 
 // ポートフォリオ分析（損益計算強化版）
 function analyzePortfolioData(transactions) {
-    const symbolData = {};
+    const coinNameData = {};
 
     transactions.forEach(tx => {
-        if (!symbolData[tx.symbol]) {
-            symbolData[tx.symbol] = {
+        if (!coinNameData[tx.coinName]) {
+            coinNameData[tx.coinName] = {
                 totalBuyAmount: 0,
                 totalSellAmount: 0,
                 totalQuantity: 0,
@@ -40,7 +40,7 @@ function analyzePortfolioData(transactions) {
             };
         }
 
-        const data = symbolData[tx.symbol];
+        const data = coinNameData[tx.coinName];
         data.allTransactions.push(tx);
 
         if (tx.type === '買') {
@@ -64,8 +64,8 @@ function analyzePortfolioData(transactions) {
     let totalRealizedProfit = 0;
     let totalFees = 0;
 
-    Object.keys(symbolData).forEach(symbol => {
-        const data = symbolData[symbol];
+    Object.keys(coinNameData).forEach(coinName => {
+        const data = coinNameData[coinName];
         const averagePurchaseRate = data.totalBuyQuantity > 0 ?
             data.weightedRateSum / data.totalBuyQuantity : 0;
 
@@ -86,7 +86,7 @@ function analyzePortfolioData(transactions) {
             (realizedProfit / data.totalBuyAmount) * 100 : 0;
 
         const summary = {
-            symbol,
+            coinName: coinName,
             holdingQuantity: data.totalQuantity,
             totalInvestment: data.totalBuyAmount,
             currentHoldingInvestment,
@@ -113,21 +113,21 @@ function analyzePortfolioData(transactions) {
         totalRealizedProfit,
         totalFees,
         overallProfitMargin: totalInvestment > 0 ? (totalRealizedProfit / totalInvestment) * 100 : 0,
-        symbolCount: portfolioSummary.length,
-        profitableSymbols: portfolioSummary.filter(s => s.realizedProfit > 0).length,
-        lossSymbols: portfolioSummary.filter(s => s.realizedProfit < 0).length,
+        coinNameCount: portfolioSummary.length,
+        profitableCoinNames: portfolioSummary.filter(s => s.realizedProfit > 0).length,
+        lossCoinNames: portfolioSummary.filter(s => s.realizedProfit < 0).length,
         // 総合損益関連の統計（価格更新後に計算される）
         totalUnrealizedProfit: 0,
         totalProfit: totalRealizedProfit,
-        totalProfitableSymbols: 0,
-        totalLossSymbols: 0,
+        totalProfitableCoinNames: 0,
+        totalLossCoinNames: 0,
         overallTotalProfitMargin: 0
     };
 
     return {
         summary: portfolioSummary,
         stats: portfolioStats,
-        symbols: symbolData,
+        coins: coinNameData,
         lastUpdated: new Date().toISOString()
     };
 }
@@ -165,9 +165,9 @@ function sortPortfolioData(field, direction) {
 
         // フィールド値取得
         switch (field) {
-            case 'symbol':
-                aVal = a.symbol;
-                bVal = b.symbol;
+            case 'coinName':
+                aVal = a.coinName;
+                bVal = b.coinName;
                 break;
             case 'averagePurchaseRate':
                 aVal = a.averagePurchaseRate;
@@ -206,7 +206,7 @@ function sortPortfolioData(field, direction) {
         }
 
         // ソート実行
-        if (field === 'symbol') {
+        if (field === 'coinName') {
             // 文字列ソート
             if (direction === 'asc') {
                 return aVal.localeCompare(bVal);
@@ -236,7 +236,7 @@ function getSortIcon(field) {
 
 // ソート方向表示更新
 function updateSortIndicators(activeField, direction) {
-    const fields = ['symbol', 'holdingQuantity', 'averagePurchaseRate', 'totalInvestment',
+    const fields = ['coinName', 'holdingQuantity', 'averagePurchaseRate', 'totalInvestment',
         'currentPrice', 'currentValue', 'totalSellAmount', 'realizedProfit',
         'unrealizedProfit', 'realizedProfit', 'totalProfit'];
 
@@ -289,9 +289,9 @@ function displayDashboard(portfolioData) {
 
     // 銘柄別サブタブ作成
     try {
-        createSymbolSubtabs(portfolioData);
+        createCoinNameSubtabs(portfolioData);
     } catch (error) {
-        console.error('❌ Error in createSymbolSubtabs:', error);
+        console.error('❌ Error in createCoinNameSubtabs:', error);
     }
 
     // サマリータブを明示的にアクティブに設定
@@ -324,8 +324,8 @@ function displayDashboard(portfolioData) {
         }, 100);
 
         // チャートを描画（デスクトップ・モバイル両対応）
-        if (typeof renderAllSymbolsProfitChart === 'function') {
-            renderAllSymbolsProfitChart();
+        if (typeof renderAllCoinNamesProfitChart === 'function') {
+            renderAllCoinNamesProfitChart();
         }
     }, 800); // DOM要素の準備を待つため少し短縮
 }
@@ -345,7 +345,7 @@ function updateDataStatus(portfolioData) {
         statusElement.innerHTML = `
             <div style="color: #27ae60; font-weight: 600;">✅ データあり</div>
             <div style="margin-top: 5px; font-size: 0.8rem;">
-                ${stats.symbolCount}銘柄<br>
+                ${stats.coinNameCount}銘柄<br>
                 投資額: ¥${stats.totalInvestment.toLocaleString()}<br>
                 <span style="color: ${profitColor}; font-weight: 600;">
                     ${profitIcon} ¥${Math.round(displayProfit).toLocaleString()}
@@ -365,7 +365,7 @@ function updateDataStatus(portfolioData) {
 // ===================================================================
 
 // 銘柄別サブタブ生成（復活版）
-function createSymbolSubtabs(portfolioData) {
+function createCoinNameSubtabs(portfolioData) {
     // ポートフォリオデータの詳細チェック
     if (!portfolioData) {
         console.error('❌ portfolioData is null or undefined');
@@ -388,43 +388,43 @@ function createSymbolSubtabs(portfolioData) {
     }
 
     const subtabNav = document.getElementById('subtab-nav');
-    const symbolContainer = document.getElementById('symbol-subtabs-container');
+    const coinNameContainer = document.getElementById('coinName-subtabs-container');
 
-    if (!subtabNav || !symbolContainer) {
+    if (!subtabNav || !coinNameContainer) {
         console.error('❌ Required DOM elements not found');
         return;
     }
 
     // 既存の銘柄サブタブをクリア
-    subtabNav.querySelectorAll('.symbol-subtab').forEach(tab => tab.remove());
-    symbolContainer.innerHTML = '';
+    subtabNav.querySelectorAll('.coinName-subtab').forEach(tab => tab.remove());
+    coinNameContainer.innerHTML = '';
 
     // 銘柄別サブタブを生成
     if (portfolioData && portfolioData.summary) {
         // 実現損益で降順ソート
-        const sortedSymbols = [...portfolioData.summary].sort((a, b) => b.realizedProfit - a.realizedProfit);
+        const sortedCoinNames = [...portfolioData.summary].sort((a, b) => b.realizedProfit - a.realizedProfit);
 
-        sortedSymbols.forEach((symbolData, index) => {
+        sortedCoinNames.forEach((coinNameData, index) => {
             try {
 
-                // symbolDataの妥当性チェック
-                if (!symbolData || !symbolData.symbol) {
-                    console.error(`❌ Invalid symbolData at index ${index}:`, symbolData);
+                // coinNameDataの妥当性チェック
+                if (!coinNameData || !coinNameData.coinName) {
+                    console.error(`❌ Invalid coinNameData at index ${index}:`, coinNameData);
                     return;
                 }
 
                 // サブタブボタンを作成
                 const tabButton = document.createElement('button');
-                tabButton.className = 'subtab-button symbol-subtab';
-                tabButton.id = `subtab-${symbolData.symbol.toLowerCase()}`;
-                tabButton.textContent = symbolData.symbol;
-                tabButton.onclick = () => switchSubtab(symbolData.symbol.toLowerCase());
+                tabButton.className = 'subtab-button coinName-subtab';
+                tabButton.id = `subtab-${coinNameData.coinName.toLowerCase()}`;
+                tabButton.textContent = coinNameData.coinName;
+                tabButton.onclick = () => switchSubtab(coinNameData.coinName.toLowerCase());
 
                 // 損益に応じて色分け（非選択時のスタイル）
-                if (symbolData.realizedProfit > 0) {
+                if (coinNameData.realizedProfit > 0) {
                     tabButton.style.borderColor = '#28a745';
                     tabButton.style.color = '#28a745';
-                } else if (symbolData.realizedProfit < 0) {
+                } else if (coinNameData.realizedProfit < 0) {
                     tabButton.style.borderColor = '#dc3545';
                     tabButton.style.color = '#dc3545';
                 }
@@ -447,25 +447,25 @@ function createSymbolSubtabs(portfolioData) {
                 // サブタブコンテンツを作成
                 const tabContent = document.createElement('div');
                 tabContent.className = 'subtab-content';
-                tabContent.id = `subtab-content-${symbolData.symbol.toLowerCase()}`;
+                tabContent.id = `subtab-content-${coinNameData.coinName.toLowerCase()}`;
 
-                // generateSymbolDetailPageの存在確認
-                if (typeof generateSymbolDetailPage === 'function') {
-                    const symbolDetailData = portfolioData.symbols[symbolData.symbol];
-                    if (symbolDetailData) {
-                        tabContent.innerHTML = generateSymbolDetailPage(symbolData, symbolDetailData);
+                // generateCoinNameDetailPageの存在確認
+                if (typeof generateCoinNameDetailPage === 'function') {
+                    const coinNameDetailData = portfolioData.coins[coinNameData.coinName];
+                    if (coinNameDetailData) {
+                        tabContent.innerHTML = generateCoinNameDetailPage(coinNameData, coinNameDetailData);
                     } else {
-                        tabContent.innerHTML = `<div>詳細データが見つかりません: ${symbolData.symbol}</div>`;
+                        tabContent.innerHTML = `<div>詳細データが見つかりません: ${coinNameData.coinName}</div>`;
                     }
                 } else {
-                    console.error('❌ generateSymbolDetailPage function not found');
+                    console.error('❌ generateCoinNameDetailPage function not found');
                     tabContent.innerHTML = `<div>詳細ページ生成関数が見つかりません</div>`;
                 }
 
-                symbolContainer.appendChild(tabContent);
+                coinNameContainer.appendChild(tabContent);
 
             } catch (error) {
-                console.error(`❌ Error creating subtab for ${symbolData?.symbol || 'unknown'}:`, error);
+                console.error(`❌ Error creating subtab for ${coinNameData?.coinName || 'unknown'}:`, error);
             }
         });
 
@@ -485,7 +485,7 @@ function generateMobilePortfolioCards(portfolioData) {
     // サマリーカード
     let html = `
         <div class="table-card" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 2px solid #3b82f6;">
-            <div class="card-header">📊 ポートフォリオサマリー（${stats.symbolCount}銘柄）</div>
+            <div class="card-header">📊 ポートフォリオサマリー（${stats.coinNameCount}銘柄）</div>
             <div class="card-row">
                 <span class="card-label">総合損益</span>
                 <span class="card-value" style="color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">
@@ -521,7 +521,7 @@ function generateMobilePortfolioCards(portfolioData) {
             html += `
                 <div class="table-card">
                     <div class="card-header" style="color: ${totalProfit >= 0 ? '#059669' : '#dc2626'};">
-                        ${row.symbol}
+                        ${row.coinName}
                         <span style="float: right; font-size: 0.9rem;">
                             ${totalProfit >= 0 ? '+' : ''}¥${Math.round(totalProfit).toLocaleString()}
                         </span>
@@ -572,13 +572,13 @@ function generateMobilePortfolioCards(portfolioData) {
                     <button id="mobile-chart-mode-toggle" onclick="toggleChartMode()" style="padding: 4px 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="個別表示に切り替え">
                         個別
                     </button>
-                    <button onclick="renderAllSymbolsProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                         更新
                     </button>
                 </div>
             </div>
             <div style="height: 300px; padding: 10px; position: relative;">
-                <canvas id="mobile-all-symbols-profit-chart" style="max-height: 300px;"></canvas>
+                <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
             </div>
         </div>
     `;
@@ -600,7 +600,7 @@ function generatePortfolioTable(portfolioData) {
         <!-- ポートフォリオサマリー -->
         <div style="margin-bottom: 25px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;">
             <div style="text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📊 ポートフォリオサマリー（${stats.symbolCount}銘柄）</h3>
+                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📊 ポートフォリオサマリー（${stats.coinNameCount}銘柄）</h3>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
@@ -633,7 +633,7 @@ function generatePortfolioTable(portfolioData) {
                 <!-- 総合損益の銘柄数 -->
                 <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #6366f1;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">損益状況</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">利益${stats.totalProfitableSymbols || 0}・損失${stats.totalLossSymbols || 0}</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">利益${stats.totalProfitableCoinNames || 0}・損失${stats.totalLossCoinNames || 0}</div>
                 </div>
 
                 <!-- 手数料 -->
@@ -652,13 +652,13 @@ function generatePortfolioTable(portfolioData) {
                     <button id="chart-mode-toggle" onclick="toggleChartMode()" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;" title="各銘柄を個別に表示">
                         個別表示
                     </button>
-                    <button onclick="renderAllSymbolsProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                    <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                         チャート更新
                     </button>
                 </div>
             </div>
             <div style="height: 400px; position: relative;">
-                <canvas id="all-symbols-profit-chart" style="max-height: 400px;"></canvas>
+                <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
             </div>
         </div>
 
@@ -666,7 +666,7 @@ function generatePortfolioTable(portfolioData) {
         <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-bottom: 30px; width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
             <thead>
                 <tr style="background-color: #e8f5e8;">
-                    <th onclick="sortTable('symbol')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">銘柄 <span id="sort-symbol">${getSortIcon('symbol')}</span></th>
+                    <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
                     <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
                     <th onclick="sortTable('averagePurchaseRate')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
                     <th onclick="sortTable('currentValue')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
@@ -686,7 +686,7 @@ function generatePortfolioTable(portfolioData) {
 
         html += `
             <tr style="transition: all 0.2s ease; ${profitBg ? `background-color: ${profitBg};` : ''}" onmouseover="this.style.backgroundColor='rgba(74, 144, 226, 0.08)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.backgroundColor='${profitBg}'; this.style.transform=''">
-                <td style="padding: 12px; font-weight: bold; color: #2196F3; border-bottom: 1px solid #f1f3f4;">${item.symbol}</td>
+                <td style="padding: 12px; font-weight: bold; color: #2196F3; border-bottom: 1px solid #f1f3f4;">${item.coinName}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">¥${item.averagePurchaseRate.toLocaleString()}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentValue > 0 ? '¥' + item.currentValue.toLocaleString() : '-'}</td>
@@ -715,8 +715,8 @@ function generatePortfolioTable(portfolioData) {
 // モバイル用取引履歴カード生成
 function generateMobileTradingCards(portfolioData) {
     const allTransactions = [];
-    Object.values(portfolioData.symbols).forEach(symbolData => {
-        allTransactions.push(...symbolData.buyTransactions, ...symbolData.sellTransactions);
+    Object.values(portfolioData.coins).forEach(coinNameData => {
+        allTransactions.push(...coinNameData.buyTransactions, ...coinNameData.sellTransactions);
     });
 
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -730,7 +730,7 @@ function generateMobileTradingCards(portfolioData) {
         html += `
             <div class="table-card">
                 <div class="card-header" style="color: ${typeColor};">
-                    ${typeIcon} ${tx.symbol} - ${tx.type}
+                    ${typeIcon} ${tx.coinName} - ${tx.type}
                     <span style="float: right; font-size: 0.8rem; color: #7f8c8d;">
                         ${date.getMonth() + 1}/${date.getDate()}
                     </span>
@@ -764,8 +764,8 @@ function generateTradingHistoryTable(portfolioData) {
         return generateMobileTradingCards(portfolioData);
     }
     const allTransactions = [];
-    Object.values(portfolioData.symbols).forEach(symbolData => {
-        allTransactions.push(...symbolData.buyTransactions, ...symbolData.sellTransactions);
+    Object.values(portfolioData.coins).forEach(coinNameData => {
+        allTransactions.push(...coinNameData.buyTransactions, ...coinNameData.sellTransactions);
     });
 
     // 日付順にソート
@@ -795,7 +795,7 @@ function generateTradingHistoryTable(portfolioData) {
         html += `
             <tr>
                 <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
-                <td style="border: 1px solid #dee2e6; padding: 12px; font-weight: bold;">${tx.symbol}</td>
+                <td style="border: 1px solid #dee2e6; padding: 12px; font-weight: bold;">${tx.coinName}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold;">${tx.type}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">${tx.quantity.toFixed(8)}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">¥${tx.rate.toLocaleString()}</td>
@@ -816,38 +816,38 @@ function generateTradingHistoryTable(portfolioData) {
 }
 
 // 個別銘柄詳細ページ生成
-function generateSymbolDetailPage(symbolSummary, symbolData) {
-    const profitColor = symbolSummary.realizedProfit >= 0 ? '#27ae60' : '#e74c3c';
-    const profitIcon = symbolSummary.realizedProfit > 0 ? '📈' : symbolSummary.realizedProfit < 0 ? '📉' : '➖';
+function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
+    const profitColor = coinNameSummary.realizedProfit >= 0 ? '#27ae60' : '#e74c3c';
+    const profitIcon = coinNameSummary.realizedProfit > 0 ? '📈' : coinNameSummary.realizedProfit < 0 ? '📉' : '➖';
 
     let html = `
         <!-- 銘柄サマリーカード -->
         <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
             <div style="text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 24px; font-weight: 700; color: #1e293b;">${symbolSummary.symbol} 詳細分析</h3>
+                <h3 style="margin: 0; font-size: 24px; font-weight: 700; color: #1e293b;">${coinNameSummary.coinName} 詳細分析</h3>
                 <p style="margin: 5px 0 0 0; font-size: 14px; color: #64748b;">個別銘柄の取引履歴・統計・損益分析</p>
             </div>
 
             <!-- 損益カード（1行目） -->
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
                 <!-- 総合損益 -->
-                <div style="text-align: center; padding: 15px; background: ${symbolSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : (symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? 'linear-gradient(135deg, #d4f1d4 0%, #a8e6a8 100%)' : 'linear-gradient(135deg, #fcd4d4 0%, #f8a8a8 100%)'}; border-radius: 8px; border: 3px solid ${symbolSummary.totalSellAmount === 0 ? '#9ca3af' : (symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'};">
+                <div style="text-align: center; padding: 15px; background: ${coinNameSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : (coinNameSummary.totalProfit || coinNameSummary.realizedProfit) >= 0 ? 'linear-gradient(135deg, #d4f1d4 0%, #a8e6a8 100%)' : 'linear-gradient(135deg, #fcd4d4 0%, #f8a8a8 100%)'}; border-radius: 8px; border: 3px solid ${coinNameSummary.totalSellAmount === 0 ? '#9ca3af' : (coinNameSummary.totalProfit || coinNameSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'};">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 700;">総合損益</div>
-                    <div style="font-size: 20px; font-weight: 900; color: ${symbolSummary.totalSellAmount === 0 ? '#6b7280' : (symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? '#047857' : '#b91c1c'};">${symbolSummary.totalSellAmount === 0 ? '⏳ ' : profitIcon + ' '}${symbolSummary.totalSellAmount === 0 ? '未確定' : ((symbolSummary.totalProfit || symbolSummary.realizedProfit) >= 0 ? '+' : '') + '¥' + Math.round(symbolSummary.totalProfit || symbolSummary.realizedProfit).toLocaleString()}</div>
+                    <div style="font-size: 20px; font-weight: 900; color: ${coinNameSummary.totalSellAmount === 0 ? '#6b7280' : (coinNameSummary.totalProfit || coinNameSummary.realizedProfit) >= 0 ? '#047857' : '#b91c1c'};">${coinNameSummary.totalSellAmount === 0 ? '⏳ ' : profitIcon + ' '}${coinNameSummary.totalSellAmount === 0 ? '未確定' : ((coinNameSummary.totalProfit || coinNameSummary.realizedProfit) >= 0 ? '+' : '') + '¥' + Math.round(coinNameSummary.totalProfit || coinNameSummary.realizedProfit).toLocaleString()}</div>
                 </div>
 
                 <!-- 実現損益 -->
-                <div style="text-align: center; padding: 15px; background: ${symbolSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : symbolSummary.realizedProfit >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${symbolSummary.totalSellAmount === 0 ? '#9ca3af' : symbolSummary.realizedProfit >= 0 ? '#10b981' : '#ef4444'};">
+                <div style="text-align: center; padding: 15px; background: ${coinNameSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : coinNameSummary.realizedProfit >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${coinNameSummary.totalSellAmount === 0 ? '#9ca3af' : coinNameSummary.realizedProfit >= 0 ? '#10b981' : '#ef4444'};">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">実現損益</div>
-                    <div style="font-size: 18px; font-weight: 800; color: ${symbolSummary.totalSellAmount === 0 ? '#6b7280' : symbolSummary.realizedProfit >= 0 ? '#059669' : '#dc2626'};">${symbolSummary.totalSellAmount === 0 ? '⏳ 未確定' : (symbolSummary.realizedProfit >= 0 ? '+' : '') + '¥' + Math.round(symbolSummary.realizedProfit).toLocaleString()}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${symbolSummary.totalSellAmount === 0 ? '' : (symbolSummary.investmentEfficiency >= 0 ? '+' : '') + symbolSummary.investmentEfficiency.toFixed(1) + '%'}</div>
+                    <div style="font-size: 18px; font-weight: 800; color: ${coinNameSummary.totalSellAmount === 0 ? '#6b7280' : coinNameSummary.realizedProfit >= 0 ? '#059669' : '#dc2626'};">${coinNameSummary.totalSellAmount === 0 ? '⏳ 未確定' : (coinNameSummary.realizedProfit >= 0 ? '+' : '') + '¥' + Math.round(coinNameSummary.realizedProfit).toLocaleString()}</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${coinNameSummary.totalSellAmount === 0 ? '' : (coinNameSummary.investmentEfficiency >= 0 ? '+' : '') + coinNameSummary.investmentEfficiency.toFixed(1) + '%'}</div>
                 </div>
 
                 <!-- 含み損益 -->
-                <div style="text-align: center; padding: 15px; background: ${(symbolSummary.unrealizedProfit || 0) >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${(symbolSummary.unrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
+                <div style="text-align: center; padding: 15px; background: ${(coinNameSummary.unrealizedProfit || 0) >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${(coinNameSummary.unrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">含み損益</div>
-                    <div style="font-size: 18px; font-weight: 800; color: ${(symbolSummary.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(symbolSummary.unrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(symbolSummary.unrealizedProfit || 0).toLocaleString()}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${symbolSummary.currentHoldingInvestment > 0 ? ((symbolSummary.unrealizedProfit || 0) >= 0 ? '+' : '') + (((symbolSummary.unrealizedProfit || 0) / symbolSummary.currentHoldingInvestment) * 100).toFixed(1) + '%' : ''}</div>
+                    <div style="font-size: 18px; font-weight: 800; color: ${(coinNameSummary.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(coinNameSummary.unrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(coinNameSummary.unrealizedProfit || 0).toLocaleString()}</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${coinNameSummary.currentHoldingInvestment > 0 ? ((coinNameSummary.unrealizedProfit || 0) >= 0 ? '+' : '') + (((coinNameSummary.unrealizedProfit || 0) / coinNameSummary.currentHoldingInvestment) * 100).toFixed(1) + '%' : ''}</div>
                 </div>
             </div>
 
@@ -856,43 +856,43 @@ function generateSymbolDetailPage(symbolSummary, symbolData) {
                 <!-- 保有数量 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">保有数量</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${parseFloat(symbolSummary.holdingQuantity.toFixed(8))}</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${parseFloat(coinNameSummary.holdingQuantity.toFixed(8))}</div>
                 </div>
 
                 <!-- 平均購入レート -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #8b5cf6;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">平均購入レート</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${symbolSummary.averagePurchaseRate.toLocaleString()}</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.averagePurchaseRate.toLocaleString()}</div>
                 </div>
 
                 <!-- 総投資額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #f59e0b;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">総投資額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${symbolSummary.totalInvestment.toLocaleString()}</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.totalInvestment.toLocaleString()}</div>
                 </div>
 
                 <!-- 売却金額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #06b6d4;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">売却金額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${symbolSummary.totalSellAmount.toLocaleString()}</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.totalSellAmount.toLocaleString()}</div>
                 </div>
 
                 <!-- 取引回数 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #84cc16;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">取引回数</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">買${symbolSummary.buyTransactionCount}回・売${symbolSummary.sellTransactionCount}回</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">買${coinNameSummary.buyTransactionCount}回・売${coinNameSummary.sellTransactionCount}回</div>
                 </div>
 
                 <!-- 現在価格 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #ec4899;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在価格</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${symbolSummary.currentPrice > 0 ? '¥' + symbolSummary.currentPrice.toLocaleString() : '取得中...'}</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinNameSummary.currentPrice > 0 ? '¥' + coinNameSummary.currentPrice.toLocaleString() : '取得中...'}</div>
                 </div>
 
                 <!-- 現在評価額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #14b8a6;">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在評価額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${symbolSummary.currentValue > 0 ? '¥' + Math.round(symbolSummary.currentValue).toLocaleString() : '計算中...'}</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinNameSummary.currentValue > 0 ? '¥' + Math.round(coinNameSummary.currentValue).toLocaleString() : '計算中...'}</div>
                 </div>
             </div>
         </div>
@@ -900,25 +900,25 @@ function generateSymbolDetailPage(symbolSummary, symbolData) {
         <!-- 総合損益推移チャート（全銘柄対応） -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h4 style="color: #2c3e50; margin: 0;">📈 ${symbolSummary.symbol} 総合損益推移チャート（過去1か月・日次）</h4>
-                <button onclick="renderSymbolProfitChart('${symbolSummary.symbol}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                <h4 style="color: #2c3e50; margin: 0;">📈 ${coinNameSummary.coinName} 総合損益推移チャート（過去1か月・日次）</h4>
+                <button onclick="renderCoinNameProfitChart('${coinNameSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                     チャート更新
                 </button>
             </div>
             <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 20px;">
-                💡 ${symbolSummary.symbol}の過去1か月の価格変動に基づく日次総合損益推移<br>
+                💡 ${coinNameSummary.coinName}の過去1か月の価格変動に基づく日次総合損益推移<br>
                 🟢 実線: 総合損益（実現+含み） | 🔵 点線: 実現損益のみ | 🟡 点線: 含み損益のみ<br>
                 📊 価格データ: CoinGecko API（日次更新・キャッシュ対応）<br>
                 ⚡ 対応銘柄: BTC, ETH, SOL, XRP, ADA, DOGE, ASTR, XTZ, XLM, SHIB, PEPE, SUI, DAI
             </p>
             <div style="height: 400px; position: relative;">
-                <canvas id="${symbolSummary.symbol.toLowerCase()}-profit-chart" style="max-height: 400px;"></canvas>
+                <canvas id="${coinNameSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 400px;"></canvas>
             </div>
         </div>
 
         <!-- 取引履歴テーブル -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${symbolSummary.symbol} 全取引履歴（${symbolData.allTransactions.length}件）</h4>
+            <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinNameSummary.coinName} 全取引履歴（${coinNameData.allTransactions.length}件）</h4>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
@@ -935,7 +935,7 @@ function generateSymbolDetailPage(symbolSummary, symbolData) {
     `;
 
     // 取引履歴を日付順に並び替え（新しい順）
-    const sortedTransactions = [...symbolData.allTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sortedTransactions = [...coinNameData.allTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
 
     sortedTransactions.forEach(tx => {
         const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
@@ -962,11 +962,11 @@ function generateSymbolDetailPage(symbolSummary, symbolData) {
 
     // 全銘柄にチャートを追加
     html += `
-        <!-- ${symbolSummary.symbol}価格チャート -->
+        <!-- ${coinNameSummary.coinName}価格チャート -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 25px;">
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">📈 ${symbolSummary.symbol} 価格チャート（30日間）</h4>
-            <div id="${symbolSummary.symbol.toLowerCase()}-chart-container" style="position: relative; height: 400px; background: white; border-radius: 8px;">
-                <canvas id="${symbolSummary.symbol.toLowerCase()}-chart-canvas"></canvas>
+            <h4 style="color: #2c3e50; margin-bottom: 20px;">📈 ${coinNameSummary.coinName} 価格チャート（30日間）</h4>
+            <div id="${coinNameSummary.coinName.toLowerCase()}-chart-container" style="position: relative; height: 400px; background: white; border-radius: 8px;">
+                <canvas id="${coinNameSummary.coinName.toLowerCase()}-chart-canvas"></canvas>
             </div>
         </div>
     `;
@@ -986,8 +986,8 @@ function calculateMonthlyProfitData(portfolioData) {
 
     // 全取引を日付順でソート
     const allTransactions = [];
-    Object.values(portfolioData.symbols).forEach(symbolData => {
-        allTransactions.push(...symbolData.allTransactions);
+    Object.values(portfolioData.coins).forEach(coinNameData => {
+        allTransactions.push(...coinNameData.allTransactions);
     });
     allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 

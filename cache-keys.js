@@ -9,31 +9,31 @@
 
 /**
  * 価格履歴データのキャッシュキーを生成
- * @param {string} symbol - 銘柄シンボル (例: 'BTC', 'ETH')
+ * @param {string} coinName - 銘柄シンボル (例: 'BTC', 'ETH')
  * @param {number} days - 日数 (例: 30)
  * @returns {string} キャッシュキー
  */
-function getPriceHistoryCacheKey(symbol, days = 30) {
-    return `${symbol.toLowerCase()}_price_history_${days}d`;
+function getPriceHistoryCacheKey(coinName, days = 30) {
+    return `${coinName.toLowerCase()}_price_history_${days}d`;
 }
 
 /**
  * 現在価格データのキャッシュキーを生成
- * @param {string[]} symbols - 銘柄シンボルの配列 (例: ['BTC', 'ETH'])
+ * @param {string[]} coinNames - 銘柄シンボルの配列 (例: ['BTC', 'ETH'])
  * @returns {string} キャッシュキー
  */
-function getCurrentPricesCacheKey(symbols) {
-    return `prices_${symbols.sort().join('_')}`;
+function getCurrentPricesCacheKey(coinNames) {
+    return `prices_${coinNames.sort().join('_')}`;
 }
 
 /**
  * チャートデータのキャッシュキーを生成
- * @param {string} symbol - 銘柄シンボル
+ * @param {string} coinName - 銘柄シンボル
  * @param {number} days - 日数 (例: 30)
  * @returns {string} キャッシュキー
  */
-function getChartDataCacheKey(symbol, days = 30) {
-    return `chart_${symbol}_${days}days`;
+function getChartDataCacheKey(coinName, days = 30) {
+    return `chart_${coinName}_${days}days`;
 }
 
 /**
