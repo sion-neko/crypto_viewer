@@ -383,101 +383,11 @@ function loadSavedPrices() {
     return false;
 }
 
-// キャッシュデータを取得（シンプルなgetter）
-function getCachedData(key) {
-    try {
-        const cached = localStorage.getItem(key);
-        if (cached) {
-            return JSON.parse(cached);
-        }
-        return null;
-    } catch (error) {
-        console.error('キャッシュ読み込みエラー:', error);
-        return null;
-    }
-}
-
-// キャッシュの有効期限チェック
-function isCacheWithinExpiration(cachedData) {
-    if (!cachedData) return false;
-    return Date.now() - cachedData.timestamp < cachedData.duration;
-}
-
-// メタデータ付きキャッシュ取得（保存時刻情報付き）
-function getCachedDataWithMetadata(key) {
-    try {
-        const cached = localStorage.getItem(key);
-        if (cached) {
-            const data = JSON.parse(cached);
-
-            // 保存時のdurationを使用
-            const effectiveDuration = data.duration || CACHE_DURATION_PRICE;
-
-            // データが有効期限内かチェック
-            if (Date.now() - data.timestamp < effectiveDuration) {
-                return {
-                    value: data.value,
-                    timestamp: data.timestamp,
-                    duration: data.duration,
-                    key: data.key
-                };
-            } else {
-                localStorage.removeItem(key);
-            }
-        }
-    } catch (error) {
-        console.error('キャッシュ読み込みエラー:', error);
-        try {
-            localStorage.removeItem(key);
-        } catch (e) {
-            console.error('破損キャッシュ削除エラー:', e);
-        }
-    }
-    return null;
-}
-
-function setCachedData(key, value, duration = CACHE_DURATION_PRICE) {
-    try {
-        const data = {
-            value: value,
-            timestamp: Date.now(),
-            duration: duration,
-            key: key
-        };
-        localStorage.setItem(key, JSON.stringify(data));
-    } catch (error) {
-        console.error('キャッシュ保存エラー:', error);
-
-        // ストレージ容量不足の場合の処理
-        if (error.name === 'QuotaExceededError') {
-            // 古いキャッシュを削除
-            const keysToDelete = [];
-            for (let storageKey in localStorage) {
-                if (storageKey.includes('_price_') || storageKey.includes('prices_')) {
-                    try {
-                        const oldData = JSON.parse(localStorage[storageKey]);
-                        if (oldData.timestamp && Date.now() - oldData.timestamp > 60 * 60 * 1000) {
-                            keysToDelete.push(storageKey);
-                        }
-                    } catch (e) {
-                        keysToDelete.push(storageKey);
-                    }
-                }
-            }
-
-            keysToDelete.forEach(keyToDelete => {
-                localStorage.removeItem(keyToDelete);
-            });
-
-            // 再試行
-            try {
-                localStorage.setItem(key, JSON.stringify(data));
-            } catch (retryError) {
-                console.error('キャッシュ保存再試行失敗:', retryError);
-            }
-        }
-    }
-}
+// ===================================================================
+// CACHE FUNCTIONS (now using storage-utils.js)
+// ===================================================================
+// getCachedData, setCachedData, isCacheWithinExpiration, getCachedDataWithMetadata
+// are now provided by storage-utils.js and available globally via window object
 
 // 価格更新ステータス表示（永続化情報付き）
 function updatePriceStatus(message = null) {
