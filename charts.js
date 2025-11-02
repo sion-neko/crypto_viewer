@@ -77,6 +77,7 @@ async function fetchCoinNamePriceHistory(coinName) {
         return cachedData.value;
     }
 
+    // キャッシュがない場合はAPIを実行してデータを取得
     // CoinGecko APIで過去30日の価格データを取得（API実行は共通関数に委譲）
     const data = await executePriceHistoryApi(coingeckoId, {
         vsCurrency: 'jpy',
