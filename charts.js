@@ -115,22 +115,19 @@ async function fetchCoinNamePriceHistory(coinName) {
 /**
  * 銘柄に応じた価格フォーマット関数
  * @param {number} value - フォーマット対象の価格値
- * @param {string} coinName - 銘柄シンボル（例: 'SHIB', 'PEPE'）
  * @returns {string} フォーマットされた価格文字列
  */
-function formatPriceValue(value, coinName) {
-    // SHIBとPEPEの場合は小数点以下の表示を調整
-    if (coinName === 'SHIB' || coinName === 'PEPE') {
-        if (value < 0.001) {
-            return '¥' + value.toFixed(6);
-        } else if (value < 0.01) {
-            return '¥' + value.toFixed(4);
-        } else if (value < 1) {
-            return '¥' + value.toFixed(3);
-        } else {
-            return '¥' + value.toFixed(2);
-        }
+function formatPriceValue(value) {
+    if (value < 0.001) {
+        return '¥' + value.toFixed(6);
+    } else if (value < 0.01) {
+        return '¥' + value.toFixed(4);
+    } else if (value < 1) {
+        return '¥' + value.toFixed(3);
+    } else {
+        return '¥' + value.toFixed(2);
     }
+    
     return '¥' + value.toLocaleString();
 }
 
@@ -161,10 +158,9 @@ function formatSignedProfitValue(value) {
 
 /**
  * 銘柄別価格チャートのオプションを生成
- * @param {string} coinName - 銘柄シンボル
  * @returns {object} Chart.jsのオプション設定オブジェクト
  */
-function createCoinNamePriceChartOptions(coinName) {
+function createCoinNamePriceChartOptions() {
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -194,7 +190,7 @@ function createCoinNamePriceChartOptions(coinName) {
                 beginAtZero: false,
                 ticks: {
                     callback: function (value) {
-                        return formatPriceValue(value, coinName);
+                        return formatPriceValue(value);
                     }
                 }
             }
@@ -415,25 +411,32 @@ function createMultiCoinNameProfitChartOptions(title) {
 // are now provided by storage-utils.js and available globally via window object
 
 // 銘柄の現在価格を更新（API効率化）
-function updateCoinNameCurrentPrice(coinName, price) {
+function updateCoinNameCurrentPrice(coinName, price, portfolioData = null) {
     try {
-        // currentPortfolioDataが利用可能な場合、現在価格を更新
-        const portfolioData = window.currentPortfolioData;
-        if (portfolioData && portfolioData.summary) {
-            const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
-            if (coinNameSummary) {
-                coinNameSummary.currentPrice = price;
+        // portfolioDataが渡されない場合はグローバルから取得（後方互換性）
+        const data = portfolioData || window.currentPortfolioData;
 
-                // 含み損益も再計算
-                if (coinNameSummary.holdingQuantity > 0 && coinNameSummary.averagePurchaseRate > 0) {
-                    const currentValue = coinNameSummary.holdingQuantity * price;
-                    const holdingCost = coinNameSummary.holdingQuantity * coinNameSummary.averagePurchaseRate;
-                    coinNameSummary.currentValue = currentValue;
-                    coinNameSummary.unrealizedProfit = currentValue - holdingCost;
-                    coinNameSummary.totalProfit = coinNameSummary.realizedProfit + coinNameSummary.unrealizedProfit;
-                }
+        if (!data || !data.summary) {
+            console.warn(`Portfolio data not available for ${coinName}`);
+            return;
+        }
 
-            }
+        const coinNameSummary = data.summary.find(item => item.coinName === coinName);
+        if (!coinNameSummary) {
+            console.warn(`Coin ${coinName} not found in portfolio`);
+            return;
+        }
+
+        // 現在価格を更新
+        coinNameSummary.currentPrice = price;
+
+        // 含み損益を再計算（保有している場合のみ）
+        if (coinNameSummary.holdingQuantity > 0 && coinNameSummary.averagePurchaseRate > 0) {
+            const currentValue = coinNameSummary.holdingQuantity * price;
+            const holdingCost = coinNameSummary.holdingQuantity * coinNameSummary.averagePurchaseRate;
+            coinNameSummary.currentValue = currentValue;
+            coinNameSummary.unrealizedProfit = currentValue - holdingCost;
+            coinNameSummary.totalProfit = coinNameSummary.realizedProfit + coinNameSummary.unrealizedProfit;
         }
     } catch (error) {
         console.error('現在価格更新エラー:', error);
@@ -592,7 +595,7 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画
-async function renderAllCoinNamesProfitChart() {
+async function renderAllCoinNamesProfitChart(portfolioData = null) {
 
     // Chart.jsライブラリの確認
     if (typeof Chart === 'undefined') {
@@ -600,11 +603,15 @@ async function renderAllCoinNamesProfitChart() {
         return;
     }
 
-    const portfolioData = window.currentPortfolioData || currentPortfolioData;
-    if (!portfolioData) {
+    // portfolioDataが渡されない場合はグローバルから取得（後方互換性）
+    const data = portfolioData || window.currentPortfolioData || currentPortfolioData;
+    if (!data) {
         console.error('❌ Portfolio data not available');
         return;
     }
+
+    // 以降はdataを使用
+    portfolioData = data;
 
     // デスクトップ版とモバイル版の両方のcanvasを確認
     const desktopCanvasId = 'all-coinNames-profit-chart';
@@ -712,23 +719,27 @@ async function renderAllCoinNamesProfitChart() {
 }
 
 // 銘柄別損益推移チャートを描画（汎用版）
-async function renderCoinNameProfitChart(coinName) {
-    
+async function renderCoinNameProfitChart(coinName, portfolioData = null) {
+
     // 重複実行を防ぐため、実行中フラグをチェック
     const renderingKey = `rendering_${coinName}`;
     if (window[renderingKey]) {
         return;
     }
-    
+
     // 実行中フラグを設定
     window[renderingKey] = true;
 
-    // portfolio.jsのcurrentPortfolioDataを参照
-    const portfolioData = window.currentPortfolioData || currentPortfolioData;
-    if (!portfolioData) {
+    // portfolioDataが渡されない場合はグローバルから取得（後方互換性）
+    const data = portfolioData || window.currentPortfolioData || currentPortfolioData;
+    if (!data) {
         console.error('❌ Portfolio data not available');
+        window[renderingKey] = false;
         return;
     }
+
+    // 以降はdataを使用
+    portfolioData = data;
 
     // 指定銘柄の取引データを取得
     const coinNameData = portfolioData.coins[coinName];
@@ -1327,7 +1338,7 @@ async function displayCoinNameChart(coinName) {
                 pointHoverRadius: 4
             }]
         },
-        options: createCoinNamePriceChartOptions(coinName)
+        options: createCoinNamePriceChartOptions()
     });
 
 }
