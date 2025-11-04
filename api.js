@@ -14,30 +14,15 @@ if (!window.appPriceData) {
 let currentPrices = window.appPriceData.currentPrices;
 let lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
-// 価格データ永続化設定
-const CACHE_DURATION_PRICE = 30 * 60 * 1000; // 30分
-const CACHE_DURATION_HISTORY = 24 * 60 * 60 * 1000; // 24時間
+// 価格データ永続化設定 (from AppConfig)
+const CACHE_DURATION_PRICE = AppConfig.cacheDurations.CURRENT_PRICES;
+const CACHE_DURATION_HISTORY = AppConfig.cacheDurations.PRICE_HISTORY;
 
-// 銘柄マッピング（CoinGecko API用）
-// グローバルスコープに公開して他のファイルから参照可能にする
-window.COIN_NAME_MAPPING = {
-    'BTC': 'bitcoin',
-    'ETH': 'ethereum',
-    'SOL': 'solana',
-    'XRP': 'ripple',
-    'ADA': 'cardano',
-    'DOGE': 'dogecoin',
-    'ASTR': 'astar',
-    'XTZ': 'tezos',
-    'XLM': 'stellar',
-    'SHIB': 'shiba-inu',
-    'PEPE': 'pepe',
-    'SUI': 'sui',
-    'DAI': 'dai'
-};
+// 銘柄マッピング（CoinGecko API用） - AppConfigから取得
+const COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 
-// ローカル参照用のエイリアス
-const COIN_NAME_MAPPING = window.COIN_NAME_MAPPING;
+// 後方互換性のため、グローバルにも公開
+window.COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 
 // ===================================================================
 // PRICE FETCHING FUNCTIONS

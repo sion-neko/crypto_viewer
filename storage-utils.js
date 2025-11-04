@@ -34,16 +34,10 @@ function getChartDataCacheKey(coinName, days = 30) {
   return `chart_${coinName}_${days}days`;
 }
 
-// キャッシュの有効期限設定（ミリ秒）
-const CACHE_DURATIONS = Object.freeze({
-    CURRENT_PRICES: 30 * 60 * 1000,      // 現在価格: 30分
-    PRICE_HISTORY: 24 * 60 * 60 * 1000,  // 価格履歴: 24時間
-    CHART_DATA: 6 * 60 * 60 * 1000,      // チャートデータ: 6時間
-    MAX_STORAGE_SIZE: 50 * 1024 * 1024,  // 最大50MB
-    CLEANUP_THRESHOLD: 0.8               // 80%使用時にクリーンアップ
-});
+// キャッシュの有効期限設定を AppConfig から取得
+const CACHE_DURATIONS = AppConfig.cacheDurations;
 
-// グローバルに公開
+// 後方互換性のため、グローバルにも公開
 window.CACHE_DURATIONS = CACHE_DURATIONS;
 
 /**

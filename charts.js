@@ -2,59 +2,21 @@
 // CHARTS.JS - Chart rendering and historical data functions
 // ===================================================================
 
-// Global variables for chart data (use window object to avoid conflicts)
-if (!window.appChartData) {
-    window.appChartData = {
-        historicalData: {},
-        historicalDataTimestamps: {}, // 各銘柄の履歴データ取得タイムスタンプ
-        profitChartInstance: null
-    };
-}
-
-// 後方互換性のためのエイリアス
-let historicalData = window.appChartData.historicalData;
-let profitChartInstance = window.appChartData.profitChartInstance;
+// Note: All cache management is handled by CacheService in storage-utils.js (window.cache)
+// Note: Chart instances are managed by window.chartInstances
 
 // ===================================================================
-// PRICE DATA PERSISTENCE FUNCTIONS
+// CONFIGURATION (from AppConfig)
 // ===================================================================
 
-// 価格データ永続化設定
-const PRICE_CACHE_CONFIG = {
-    CURRENT_PRICES_DURATION: 30 * 60 * 1000,      // 現在価格: 30分
-    PRICE_HISTORY_DURATION: 24 * 60 * 60 * 1000,  // 価格履歴: 24時間
-    CHART_DATA_DURATION: 6 * 60 * 60 * 1000,      // チャートデータ: 6時間
-    MAX_STORAGE_SIZE: 50 * 1024 * 1024,           // 最大50MB
-    CLEANUP_THRESHOLD: 0.8                         // 80%使用時にクリーンアップ
-};
+// キャッシュ設定を AppConfig から取得
+const PRICE_CACHE_CONFIG = AppConfig.cacheDurations;
 
-// ===================================================================
-// UTILITY FUNCTIONS
-// ===================================================================
+// 銘柄別の色設定を AppConfig から取得
+const COIN_NAME_COLORS = AppConfig.coinColors;
 
-/**
- * 銘柄別の色設定（チャート描画用）
- * border: チャートの線の色
- * bg: チャートの背景色（透明度0.1）
- */
-const COIN_NAME_COLORS = {
-    'BTC': { border: '#F7931A', bg: 'rgba(247, 147, 26, 0.1)' },
-    'ETH': { border: '#627EEA', bg: 'rgba(98, 126, 234, 0.1)' },
-    'SOL': { border: '#9945FF', bg: 'rgba(153, 69, 255, 0.1)' },
-    'XRP': { border: '#23292F', bg: 'rgba(35, 41, 47, 0.1)' },
-    'ADA': { border: '#0033AD', bg: 'rgba(0, 51, 173, 0.1)' },
-    'DOGE': { border: '#C2A633', bg: 'rgba(194, 166, 51, 0.1)' },
-    'ASTR': { border: '#0070F3', bg: 'rgba(0, 112, 243, 0.1)' },
-    'XTZ': { border: '#2C7DF7', bg: 'rgba(44, 125, 247, 0.1)' },
-    'XLM': { border: '#14B6E7', bg: 'rgba(20, 182, 231, 0.1)' },
-    'SHIB': { border: '#FFA409', bg: 'rgba(255, 164, 9, 0.1)' },
-    'PEPE': { border: '#00D924', bg: 'rgba(0, 217, 36, 0.1)' },
-    'SUI': { border: '#4DA2FF', bg: 'rgba(77, 162, 255, 0.1)' },
-    'DAI': { border: '#FBCC5F', bg: 'rgba(251, 204, 95, 0.1)' }
-};
-
-// デフォルトの色（未定義の銘柄用）
-const DEFAULT_COIN_NAME_COLOR = { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1)' };
+// デフォルトの色を AppConfig から取得
+const DEFAULT_COIN_NAME_COLOR = AppConfig.defaultCoinColor;
 
 // ===================================================================
 // PRICE HISTORY FUNCTIONS
@@ -62,7 +24,7 @@ const DEFAULT_COIN_NAME_COLOR = { border: '#3498db', bg: 'rgba(52, 152, 219, 0.1
 
 // 銘柄の過去1か月の価格履歴を取得
 async function fetchCoinNamePriceHistory(coinName) {
-    const coingeckoId = window.COIN_NAME_MAPPING[coinName];
+    const coingeckoId = AppConfig.coinGeckoMapping[coinName];
     // TODO: サポートしていない銘柄を自動でサポートするようにする
     if (!coingeckoId) {
         throw new Error(`${coinName}はサポートされていません`);
@@ -1013,7 +975,7 @@ function displayProfitChart(canvasId, profitData, title) {
             throw new Error(`Cannot get 2D context for canvas: ${canvasId}`);
         }
 
-        // 既存のチャートインスタンスを破棄（統一管理）
+        // 既存のチャートインスタンスを破棄
         if (window.chartInstances && window.chartInstances[canvasId]) {
             try {
                 window.chartInstances[canvasId].destroy();
@@ -1025,16 +987,6 @@ function displayProfitChart(canvasId, profitData, title) {
         // チャートインスタンス管理用のグローバルオブジェクト
         if (!window.chartInstances) {
             window.chartInstances = {};
-        }
-
-        // 古いprofitChartInstanceも破棄（後方互換性）
-        if (window.appChartData.profitChartInstance && canvasId.includes('profit')) {
-            try {
-                window.appChartData.profitChartInstance.destroy();
-            } catch (destroyError) {
-            }
-            window.appChartData.profitChartInstance = null;
-            profitChartInstance = null;
         }
 
         // データが空の場合
@@ -1213,41 +1165,32 @@ async function displayCoinNameChart(coinName) {
         return;
     }
 
-    let chartData = [];
-
-    // メモリにデータがあるか
-    {
-        // ローディング表示
-        const container = canvas.parentElement;
-        if (container && !container.querySelector('.loading-message')) {
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'loading-message';
-            loadingDiv.style.cssText = `
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                color: #666;
-                font-size: 14px;
-                z-index: 10;
-            `;
-            loadingDiv.innerHTML = `📊 ${coinName}の価格データを取得中...`;
-            container.appendChild(loadingDiv);
-        }
-
-        // データを取得
-        await fetchCoinNameHistoricalData(coinName);
+    // ローディング表示
+    const container = canvas.parentElement;
+    if (container && !container.querySelector('.loading-message')) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-message';
+        loadingDiv.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 14px;
+            z-index: 10;
+        `;
+        loadingDiv.innerHTML = `📊 ${coinName}の価格データを取得中...`;
+        container.appendChild(loadingDiv);
     }
 
-    // データ取得
-    chartData = historicalData[coinName];
+    // データを取得
+    const chartData = await fetchCoinNameHistoricalData(coinName);
 
     // データ検証
     if (!Array.isArray(chartData) || chartData.length === 0) {
 
         // ローディング表示を削除
-        const container = canvas.parentElement;
-        const loadingDiv = container?.querySelector('.loading-message');
+        let loadingDiv = container?.querySelector('.loading-message');
         if (loadingDiv) {
             loadingDiv.remove();
         }
@@ -1290,7 +1233,6 @@ async function displayCoinNameChart(coinName) {
     }
 
     // 既存のエラーメッセージとローディング表示を削除
-    const container = canvas.parentElement;
     const existingError = container?.querySelector('.chart-error-message');
     if (existingError) {
         existingError.remove();
@@ -1325,45 +1267,46 @@ async function displayCoinNameChart(coinName) {
 
 }
 
-// 銘柄別履歴データ取得
+// 銘柄別履歴データ取得 (using CacheService)
 async function fetchCoinNameHistoricalData(coinName) {
-    if (!historicalData[coinName]){
-        // api.jsで定義されたCOIN_NAME_MAPPINGを参照
-        const coingeckoId = window.COIN_NAME_MAPPING?.[coinName];
+    // AppConfig から銘柄マッピングを取得
+    const coingeckoId = AppConfig.coinGeckoMapping[coinName];
 
-        // キャッシュキーを生成
-        const cacheKey = cacheKeys.chartData(coinName, 30);
+    if (!coingeckoId) {
+        throw new Error(`${coinName}はサポートされていません`);
+    }
 
-        // キャッシュチェック
-        const cachedData = cache.get(cacheKey);
-        if (cachedData) {
-            historicalData[coinName] = cachedData;
-            return;
+    // キャッシュキーを生成
+    const cacheKey = cacheKeys.chartData(coinName, 30);
+
+    // キャッシュチェック
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+        return cachedData;
+    }
+
+    try {
+        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.prices) {
+            const chartData = data.prices.map(([timestamp, price]) => ({
+                x: new Date(timestamp),
+                y: price
+            }));
+
+            // キャッシュに保存（6時間）
+            cache.set(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA_DURATION);
+
+            return chartData;
         }
 
-        try {
-            const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
-
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data.prices) {
-                const chartData = data.prices.map(([timestamp, price]) => ({
-                    x: new Date(timestamp),
-                    y: price  // Math.round()を削除して元の価格を保持
-                }));
-
-                // キャッシュに保存（6時間）
-                cache.set(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA_DURATION);
-
-                historicalData[coinName] = chartData;
-
-                // 新しいデータを取得したタイムスタンプを記録
-                window.appChartData.historicalDataTimestamps[coinName] = Date.now();
-            }
-        } catch (error) {
-            console.error(`${coinName}履歴データ取得エラー:`, error);
-        }
+        return [];
+    } catch (error) {
+        console.error(`${coinName}履歴データ取得エラー:`, error);
+        return [];
     }
 }
 // チャート
