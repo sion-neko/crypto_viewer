@@ -259,7 +259,7 @@ function switchSubtab(subtabName) {
 
                 // 損益推移チャートを描画（DOM更新後）
                 requestAnimationFrame(() => {
-                    renderCoinNameProfitChart(coinName);
+                    renderCoinProfitChart(coinName);
                 });
             }
         }

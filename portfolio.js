@@ -901,7 +901,7 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h4 style="color: #2c3e50; margin: 0;">📈 ${coinNameSummary.coinName} 総合損益推移チャート（過去1か月・日次）</h4>
-                <button onclick="renderCoinNameProfitChart('${coinNameSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                <button onclick="renderCoinProfitChart('${coinNameSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                     チャート更新
                 </button>
             </div>

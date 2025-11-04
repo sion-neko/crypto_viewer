@@ -133,13 +133,12 @@ async function fetchCurrentPrices() {
         }
 
         // 永続化キャッシュキーを生成
-        const cacheKey = getCurrentPricesCacheKey(validCoinNames);
+        const cacheKey = cacheKeys.currentPrices(validCoinNames);
 
         // 永続化キャッシュチェック（30分有効）
-        const cachedPricesWithMeta = getCachedDataWithMetadata(cacheKey);
-        if (cachedPricesWithMeta) {
-            const cachedPrices = cachedPricesWithMeta.value;
-            const cacheTimestamp = cachedPricesWithMeta.timestamp;
+        const cachedPrices = cache.get(cacheKey);
+        if (cachedPrices) {
+            const cacheTimestamp = Date.now(); // 現在時刻を使用
             const cacheDate = new Date(cacheTimestamp);
 
             window.appPriceData.currentPrices = cachedPrices;
@@ -172,26 +171,6 @@ async function fetchCurrentPrices() {
             showSuccessMessage(`キャッシュから表示: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`);
             updatePriceStatus();
             return;
-        } else {
-            // フォールバック: 従来のキャッシュ取得を試行
-            const fallbackCachedPrices = getCachedData(cacheKey);
-            if (fallbackCachedPrices && !isCacheExpired(fallbackCachedPrices)) {
-                window.appPriceData.currentPrices = fallbackCachedPrices.value;
-                currentPrices = fallbackCachedPrices.value;
-                window.appPriceData.lastPriceUpdate = new Date(fallbackCachedPrices.value._metadata?.lastUpdate || Date.now());
-                lastPriceUpdate = window.appPriceData.lastPriceUpdate;
-
-                updatePortfolioWithPrices(currentPortfolioData, currentPrices);
-                sortPortfolioData(currentSortField, currentSortDirection);
-                const tableContainer = document.getElementById('portfolio-table-container');
-                tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-                updateDataStatus(currentPortfolioData);
-                localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
-
-                showSuccessMessage(`キャッシュから表示: ${validCoinNames.length}銘柄\n保存時刻不明`);
-                updatePriceStatus();
-                return;
-            } 
         }
 
         // API取得開始の通知
@@ -226,7 +205,7 @@ async function fetchCurrentPrices() {
         };
 
         // 永続化キャッシュに保存（30分有効）
-        setCachedData(cacheKey, prices, CACHE_DURATION_PRICE);
+        cache.set(cacheKey, prices, CACHE_DURATION_PRICE);
 
         // グローバル変数に保存
         window.appPriceData.currentPrices = prices;
@@ -276,22 +255,16 @@ async function tryGetPricesFromHistory(coinNames) {
 
     for (const coinName of coinNames) {
         try {
-            const cacheKey = getPriceHistoryCacheKey(coinName, 30);
-            const cachedHistory = getCachedData(cacheKey);
+            const cacheKey = cacheKeys.priceHistory(coinName, 30);
+            const historyValue = cache.get(cacheKey);
 
-            if (cachedHistory && isCacheWithinExpiration(cachedHistory)) {
-                const historyValue = cachedHistory.value;
-                if (historyValue && historyValue.length > 0) {
-                    const latestPrice = historyValue[historyValue.length - 1].price;
-                    prices[coinName] = {
-                        price_jpy: latestPrice,
-                        last_updated_at: Date.now() / 1000
-                    };
-                    successCount++;
-                }
-            } else if (cachedHistory) {
-                // 期限切れの場合は削除
-                localStorage.removeItem(cacheKey);
+            if (historyValue && historyValue.length > 0) {
+                const latestPrice = historyValue[historyValue.length - 1].price;
+                prices[coinName] = {
+                    price_jpy: latestPrice,
+                    last_updated_at: Date.now() / 1000
+                };
+                successCount++;
             }
         } catch (error) {
         }
@@ -383,11 +356,7 @@ function loadSavedPrices() {
     return false;
 }
 
-// ===================================================================
-// CACHE FUNCTIONS (now using storage-utils.js)
-// ===================================================================
-// getCachedData, setCachedData, isCacheWithinExpiration, getCachedDataWithMetadata
-// are now provided by storage-utils.js and available globally via window object
+
 
 // 価格更新ステータス表示（永続化情報付き）
 function updatePriceStatus(message = null) {

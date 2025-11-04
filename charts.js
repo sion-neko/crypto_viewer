@@ -69,12 +69,12 @@ async function fetchCoinNamePriceHistory(coinName) {
     }
 
     // キャッシュから取得
-    const cacheKey = getPriceHistoryCacheKey(coinName);
-    const cachedData = getCachedData(cacheKey);
+    const cacheKey = cacheKeys.priceHistory(coinName);
+    const cachedData = cache.get(cacheKey);
 
-    // キャッシュがある かつ キャッシュが期限切れでない
-    if (cachedData && !isCacheExpired(cachedData)){
-        return cachedData.value;
+    // キャッシュがあれば返す
+    if (cachedData) {
+        return cachedData;
     }
 
     // キャッシュがない場合はAPIを実行してデータを取得
@@ -103,7 +103,7 @@ async function fetchCoinNamePriceHistory(coinName) {
     }
 
     // 永続キャッシュに保存
-    setCachedData(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
+    cache.set(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
 
     return priceHistory;    
 }
@@ -403,25 +403,14 @@ function createMultiCoinNameProfitChartOptions(title) {
 }
 
 // ===================================================================
-// CACHE FUNCTIONS (now using storage-utils.js)
+// CACHE FUNCTIONS (using storage-utils.js CacheService)
 // ===================================================================
-// getCachedData, setCachedData, isCacheExpired, isCacheWithinExpiration,
-// getCachedDataWithMetadata, checkStorageUsage, cleanupOldCache,
-// updateCacheMetadata, getPriceDataStatus, showPriceDataReport
-// are now provided by storage-utils.js and available globally via window object
+
 
 // 銘柄の現在価格を更新（API効率化）
-function updateCoinNameCurrentPrice(coinName, price, portfolioData = null) {
+function updateCoinNameCurrentPrice(coinName, price, portfolioData) {
     try {
-        // portfolioDataが渡されない場合はグローバルから取得（後方互換性）
-        const data = portfolioData || window.currentPortfolioData;
-
-        if (!data || !data.summary) {
-            console.warn(`Portfolio data not available for ${coinName}`);
-            return;
-        }
-
-        const coinNameSummary = data.summary.find(item => item.coinName === coinName);
+        const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
         if (!coinNameSummary) {
             console.warn(`Coin ${coinName} not found in portfolio`);
             return;
@@ -719,7 +708,7 @@ async function renderAllCoinNamesProfitChart(portfolioData = null) {
 }
 
 // 銘柄別損益推移チャートを描画（汎用版）
-async function renderCoinNameProfitChart(coinName, portfolioData = null) {
+async function renderCoinProfitChart(coinName, portfolioData = null) {
 
     // 重複実行を防ぐため、実行中フラグをチェック
     const renderingKey = `rendering_${coinName}`;
@@ -886,13 +875,6 @@ async function renderCoinNameProfitChart(coinName, portfolioData = null) {
         window[renderingKey] = false;
     }
 }
-
-// ETH専用関数（後方互換性のため）
-// async function renderETHProfitChart() {
-//     return await renderCoinNameProfitChart('ETH');
-// }
-
-
 
 // 総合損益推移の時系列データを生成（実現損益 + 含み損益）- 旧版
 function generateTotalProfitTimeSeries(coinName, transactions, currentPrice) {
@@ -1350,16 +1332,13 @@ async function fetchCoinNameHistoricalData(coinName) {
         const coingeckoId = window.COIN_NAME_MAPPING?.[coinName];
 
         // キャッシュキーを生成
-        const cacheKey = getChartDataCacheKey(coinName, 30);
+        const cacheKey = cacheKeys.chartData(coinName, 30);
 
         // キャッシュチェック
-        const cachedData = getCachedData(cacheKey);
-        if (cachedData && isCacheWithinExpiration(cachedData)) {
-            historicalData[coinName] = cachedData.value;
+        const cachedData = cache.get(cacheKey);
+        if (cachedData) {
+            historicalData[coinName] = cachedData;
             return;
-        } else if (cachedData) {
-            // 期限切れの場合は削除
-            localStorage.removeItem(cacheKey);
         }
 
         try {
@@ -1375,7 +1354,7 @@ async function fetchCoinNameHistoricalData(coinName) {
                 }));
 
                 // キャッシュに保存（6時間）
-                setCachedData(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA_DURATION);
+                cache.set(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA_DURATION);
 
                 historicalData[coinName] = chartData;
 
