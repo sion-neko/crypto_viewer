@@ -40,6 +40,14 @@ const CACHE_DURATIONS = AppConfig.cacheDurations;
 // 後方互換性のため、グローバルにも公開
 window.CACHE_DURATIONS = CACHE_DURATIONS;
 
+// キャッシュキー生成関数をオブジェクトにまとめてグローバルに公開
+window.cacheKeys = {
+    priceHistory: getPriceHistoryCacheKey,
+    currentPrices: getCurrentPricesCacheKey,
+    chartData: getChartDataCacheKey
+};
+
+
 /**
  * キャッシュ管理サービスクラス
  * localStorageを使用してキャッシュデータを管理

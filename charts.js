@@ -27,6 +27,7 @@ async function fetchCoinNamePriceHistory(coinName) {
     const coingeckoId = AppConfig.coinGeckoMapping[coinName];
     // TODO: サポートしていない銘柄を自動でサポートするようにする
     if (!coingeckoId) {
+        showWarningMessage(`${coinName}はサポートされていない銘柄です`);
         throw new Error(`${coinName}はサポートされていません`);
     }
 
@@ -49,6 +50,7 @@ async function fetchCoinNamePriceHistory(coinName) {
     });
 
     if (!data.prices || data.prices.length === 0) {
+        showErrorMessage(`${coinName}の価格データを取得できませんでした`);
         throw new Error('価格データが空です');
     }
 
@@ -57,12 +59,6 @@ async function fetchCoinNamePriceHistory(coinName) {
         date: new Date(timestamp),
         price: price
     }));
-
-    // 最新価格を現在価格として保存（API効率化）
-    if (priceHistory.length > 0) {
-        const latestPrice = priceHistory[priceHistory.length - 1].price;
-        updateCoinNameCurrentPrice(coinName, latestPrice);
-    }
 
     // 永続キャッシュに保存
     cache.set(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
@@ -365,40 +361,10 @@ function createMultiCoinNameProfitChartOptions(title) {
 }
 
 // ===================================================================
-// CACHE FUNCTIONS (using storage-utils.js CacheService)
-// ===================================================================
-
-
-// 銘柄の現在価格を更新（API効率化）
-function updateCoinNameCurrentPrice(coinName, price, portfolioData) {
-    try {
-        const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
-        if (!coinNameSummary) {
-            console.warn(`Coin ${coinName} not found in portfolio`);
-            return;
-        }
-
-        // 現在価格を更新
-        coinNameSummary.currentPrice = price;
-
-        // 含み損益を再計算（保有している場合のみ）
-        if (coinNameSummary.holdingQuantity > 0 && coinNameSummary.averagePurchaseRate > 0) {
-            const currentValue = coinNameSummary.holdingQuantity * price;
-            const holdingCost = coinNameSummary.holdingQuantity * coinNameSummary.averagePurchaseRate;
-            coinNameSummary.currentValue = currentValue;
-            coinNameSummary.unrealizedProfit = currentValue - holdingCost;
-            coinNameSummary.totalProfit = coinNameSummary.realizedProfit + coinNameSummary.unrealizedProfit;
-        }
-    } catch (error) {
-        console.error('現在価格更新エラー:', error);
-    }
-}
-
-// ===================================================================
 // PROFIT CHART FUNCTIONS
 // ===================================================================
 
-// 複数銘柄の価格履歴を効率的に取得
+// 複数銘柄の価格履歴を並列取得
 async function fetchMultipleCoinNamePriceHistories(coinNames) {
     const results = {};
     const promises = coinNames.map(async (coinName) => {
