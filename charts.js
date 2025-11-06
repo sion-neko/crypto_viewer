@@ -512,26 +512,9 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画
-async function renderAllCoinNamesProfitChart(portfolioData) {
-
-    // portfolioDataが渡されない場合はグローバルから取得（後方互換性）
-    const data = portfolioData
-    if (!data) {
-        console.error('❌ Portfolio data not available');
-        return;
-    }
-
-    // 以降はdataを使用
-    portfolioData = data;
-
+async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combined') {
     // デバイスに応じてcanvasを選択
     const canvasId = isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
-    const canvas = document.getElementById(canvasId);
-
-    if (!canvas) {
-        console.error(`❌ Canvas element not found: ${canvasId}`);
-        return;
-    }
 
     try {
         // 取引のある銘柄を取得（保有量に関係なく）
@@ -553,7 +536,7 @@ async function renderAllCoinNamesProfitChart(portfolioData) {
 
         // 成功した銘柄のみでチャートデータを生成
         const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
-        
+
 
         if (validCoinNames.length === 0) {
             console.error('❌ No valid coinNames with price history');
@@ -565,27 +548,23 @@ async function renderAllCoinNamesProfitChart(portfolioData) {
         const allProfitData = {};
         validCoinNames.forEach(coinName => {
             const coinNameData = portfolioData.coins[coinName];
-            
+
             if (coinNameData && coinNameData.allTransactions) {
                 const profitData = generateHistoricalProfitTimeSeries(
-                    coinName,
                     coinNameData.allTransactions,
                     priceHistories[coinName]
                 );
                 if (profitData && profitData.length > 0) {
                     allProfitData[coinName] = profitData;
                 }
-            } 
+            }
         });
-        
+
 
         if (Object.keys(allProfitData).length === 0) {
             console.error('❌ No profit data generated for any coinName');
             throw new Error('損益データを生成できませんでした');
         }
-
-        // チャート表示モードを確認
-        const chartMode = window.portfolioChartMode || 'combined';
         
         
         if (chartMode === 'combined') {
@@ -1255,20 +1234,30 @@ async function fetchCoinNameHistoricalData(coinName) {
 // チャート
 // 表示モードを切り替える（デスクトップ/モバイル統合版）
 function toggleChartMode() {
-    const currentMode = window.portfolioChartMode || 'combined';
-    const newMode = currentMode === 'combined' ? 'individual' : 'combined';
-    
-    window.portfolioChartMode = newMode;
-    localStorage.setItem('portfolioChartMode', newMode);
-    
-    // デスクトップ版のボタンとタイトルを更新
+    // ボタンから現在のモードを取得
     const desktopToggleButton = document.getElementById('chart-mode-toggle');
-    const desktopChartTitle = document.getElementById('chart-title');
-    
-    // モバイル版のボタンとタイトルを更新
     const mobileToggleButton = document.getElementById('mobile-chart-mode-toggle');
+    const button = desktopToggleButton || mobileToggleButton;
+
+    if (!button) {
+        console.error('❌ Chart mode toggle button not found');
+        return;
+    }
+
+    const currentMode = button.dataset.mode || 'combined';
+    const newMode = currentMode === 'combined' ? 'individual' : 'combined';
+
+    // 両方のボタンの状態を更新
+    [desktopToggleButton, mobileToggleButton].forEach(btn => {
+        if (btn) btn.dataset.mode = newMode;
+    });
+
+    // デスクトップ版のボタンとタイトルを更新
+    const desktopChartTitle = document.getElementById('chart-title');
+
+    // モバイル版のタイトルを更新
     const mobileChartTitle = document.getElementById('mobile-chart-title');
-    
+
     if (newMode === 'combined') {
         // 合計表示モード
         if (desktopToggleButton) {
@@ -1302,12 +1291,13 @@ function toggleChartMode() {
             mobileChartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
         }
     }
-    
-    // チャートを再描画
-    if (typeof renderAllCoinNamesProfitChart === 'function') {
-        renderAllCoinNamesProfitChart();
+
+    // チャートを再描画（モードを引数で渡す）
+    const portfolioData = window.currentPortfolioData;
+    if (portfolioData && typeof renderAllCoinNamesProfitChart === 'function') {
+        renderAllCoinNamesProfitChart(portfolioData, newMode);
     }
-    
+
 }
 
 // 関数を即座にグローバルに登録
