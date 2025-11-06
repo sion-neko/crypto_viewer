@@ -381,7 +381,7 @@ async function fetchMultipleCoinNamePriceHistories(coinNames) {
 }
 
 // 価格履歴を使った日次総合損益データを生成
-function generateHistoricalProfitTimeSeries(coinName, transactions, priceHistory) {
+function generateHistoricalProfitTimeSeries(transactions, priceHistory) {
 
     // 取引を日付順にソート
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -512,16 +512,10 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画
-async function renderAllCoinNamesProfitChart(portfolioData = null) {
-
-    // Chart.jsライブラリの確認
-    if (typeof Chart === 'undefined') {
-        console.error('❌ Chart.js library not loaded!');
-        return;
-    }
+async function renderAllCoinNamesProfitChart(portfolioData) {
 
     // portfolioDataが渡されない場合はグローバルから取得（後方互換性）
-    const data = portfolioData || window.currentPortfolioData || currentPortfolioData;
+    const data = portfolioData
     if (!data) {
         console.error('❌ Portfolio data not available');
         return;
@@ -530,30 +524,13 @@ async function renderAllCoinNamesProfitChart(portfolioData = null) {
     // 以降はdataを使用
     portfolioData = data;
 
-    // デスクトップ版とモバイル版の両方のcanvasを確認
-    const desktopCanvasId = 'all-coinNames-profit-chart';
-    const mobileCanvasId = 'mobile-all-coinNames-profit-chart';
+    // デバイスに応じてcanvasを選択
+    const canvasId = isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
+    const canvas = document.getElementById(canvasId);
 
-    const desktopCanvas = document.getElementById(desktopCanvasId);
-    const mobileCanvas = document.getElementById(mobileCanvasId);
-
-    if (!desktopCanvas && !mobileCanvas) {
-        console.error(`❌ Canvas elements not found: ${desktopCanvasId}, ${mobileCanvasId}`);
+    if (!canvas) {
+        console.error(`❌ Canvas element not found: ${canvasId}`);
         return;
-    }
-    
-    // 表示されているcanvasを特定（デスクトップ優先）
-    let canvasId, canvas;
-    if (desktopCanvas && desktopCanvas.offsetParent !== null) {
-        canvasId = desktopCanvasId;
-        canvas = desktopCanvas;
-    } else if (mobileCanvas && mobileCanvas.offsetParent !== null) {
-        canvasId = mobileCanvasId;
-        canvas = mobileCanvas;
-    } else {
-        // どちらも表示されていない場合はデスクトップを優先
-        canvasId = desktopCanvasId;
-        canvas = desktopCanvas;
     }
 
     try {
