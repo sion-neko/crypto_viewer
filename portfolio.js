@@ -31,6 +31,12 @@ function refreshPortfolioDisplay(message = null) {
     const tableContainer = document.getElementById('portfolio-table-container');
     if (tableContainer) {
         tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+
+        // チャートも再描画（Canvas要素が新しく生成されたため）
+        setTimeout(() => {
+            const chartMode = window.portfolioChartMode || 'combined';
+            renderAllCoinNamesProfitChart(currentPortfolioData, chartMode);
+        }, 100);
     }
 
     // サマリー部分も更新（総合損益反映のため）
@@ -188,6 +194,12 @@ function sortTable(field) {
     // テーブル再描画
     const tableContainer = document.getElementById('portfolio-table-container');
     tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+
+    // チャートも再描画（Canvas要素が新しく生成されたため）
+    setTimeout(() => {
+        const chartMode = window.portfolioChartMode || 'combined';
+        renderAllCoinNamesProfitChart(currentPortfolioData, chartMode);
+    }, 100);
 }
 
 // ポートフォリオデータソート
