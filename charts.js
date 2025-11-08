@@ -957,9 +957,10 @@ async function fetchCoinNameHistoricalData(coinName) {
 }
 // チャート
 // 表示モードを切り替える（デスクトップ/モバイル統合版）
-function toggleChartMode() {
-    const currentMode = window.portfolioChartMode || 'combined';
-    const newMode = currentMode === 'combined' ? 'individual' : 'combined';
+function toggleChartMode(currentMode = null) {
+    // 引数が渡されない場合のみグローバル変数から取得（後方互換性のため）
+    const mode = currentMode !== null ? currentMode : (window.portfolioChartMode || 'combined');
+    const newMode = mode === 'combined' ? 'individual' : 'combined';
     
     window.portfolioChartMode = newMode;
     localStorage.setItem('portfolioChartMode', newMode);

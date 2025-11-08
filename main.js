@@ -696,9 +696,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof clearAllData === 'function') window.clearAllData = clearAllData;
     if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
     if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
-    if (typeof toggleChartMode === 'function') window.toggleChartMode = toggleChartMode;
-    if (typeof renderAllCoinNamesProfitChart === 'function') window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;
-
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
     if (typeof showSuccessMessage === 'function') window.showSuccessMessage = showSuccessMessage;
     if (typeof showErrorMessage === 'function') window.showErrorMessage = showErrorMessage;

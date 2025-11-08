@@ -8,11 +8,10 @@
 /**
  * 価格履歴データのキャッシュキーを生成
  * @param {string} coinName - 銘柄シンボル (例: 'BTC', 'ETH')
- * @param {number} days - 日数 (例: 30)
  * @returns {string} キャッシュキー
  */
-function getPriceHistoryCacheKey(coinName, days = 30) {
-  return `${coinName.toLowerCase()}_price_history_${days}d`;
+function getPriceHistoryCacheKey(coinName) {
+  return `${coinName.toLowerCase()}_price_history_30d`;
 }
 
 /**
