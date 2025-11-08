@@ -155,6 +155,22 @@ class CacheService {
         const toRemove = items.slice(0, Math.floor(items.length / 2));
         toRemove.forEach(({ key }) => this.storage.removeItem(key));
     }
+
+    /**
+     * 現在のポートフォリオデータを取得
+     * @returns {object|null} ポートフォリオデータまたはnull
+     */
+    getPortfolioData() {
+        return safeGetJSON('portfolioData', null);
+    }
+
+    /**
+     * 現在のチャート表示モードを取得
+     * @returns {string} チャート表示モード ('combined' または 'individual')
+     */
+    getChartMode() {
+        return this.storage.getItem('portfolioChartMode') || 'combined';
+    }
 }
 
 // ===================================================================

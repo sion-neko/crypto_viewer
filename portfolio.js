@@ -343,7 +343,10 @@ function displayDashboard(portfolioData) {
     // 全銘柄の損益推移チャートを描画（DOM準備完了後）
     setTimeout(() => {
         // チャートを描画（デスクトップ・モバイル両対応）
-        renderAllCoinNamesProfitChart(portfolioData);
+        renderAllCoinNamesProfitChart(
+            window.cache.getPortfolioData(),
+            window.cache.getChartMode()
+        );
     }, 800); // DOM要素の準備を待つため少し短縮
 }
 
@@ -589,7 +592,7 @@ function generateMobilePortfolioCards(portfolioData) {
                     <button id="mobile-chart-mode-toggle" data-mode="combined" onclick="toggleChartMode(window.portfolioChartMode || 'combined')" style="padding: 4px 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="個別表示に切り替え">
                         個別
                     </button>
-                    <button onclick="renderAllCoinNamesProfitChart(window.currentPortfolioData)" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), window.cache.getChartMode())" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                         更新
                     </button>
                 </div>
@@ -669,7 +672,7 @@ function generatePortfolioTable(portfolioData) {
                     <button id="chart-mode-toggle" data-mode="combined" onclick="toggleChartMode(window.portfolioChartMode || 'combined')" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;" title="各銘柄を個別に表示">
                         個別表示
                     </button>
-                    <button onclick="renderAllCoinNamesProfitChart(window.currentPortfolioData)" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                    <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), window.cache.getChartMode())" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                         チャート更新
                     </button>
                 </div>

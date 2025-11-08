@@ -506,7 +506,8 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画
-async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combined') {
+async function renderAllCoinNamesProfitChart(portfolioData, chartMode) {
+
     // デバイスに応じてcanvasを選択
     const canvasId = isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
 
@@ -957,58 +958,32 @@ async function fetchCoinNameHistoricalData(coinName) {
 }
 // チャート
 // 表示モードを切り替える（デスクトップ/モバイル統合版）
-function toggleChartMode(currentMode = null) {
-    // 引数が渡されない場合のみグローバル変数から取得（後方互換性のため）
-    const mode = currentMode !== null ? currentMode : (window.portfolioChartMode || 'combined');
-    const newMode = mode === 'combined' ? 'individual' : 'combined';
-    
-    window.portfolioChartMode = newMode;
-    localStorage.setItem('portfolioChartMode', newMode);
-    
-    // デスクトップ版のボタンとタイトルを更新
-    const desktopToggleButton = document.getElementById('chart-mode-toggle');
-    const desktopChartTitle = document.getElementById('chart-title');
-    
-    // モバイル版のボタンとタイトルを更新
-    const mobileToggleButton = document.getElementById('mobile-chart-mode-toggle');
-    const mobileChartTitle = document.getElementById('mobile-chart-title');
-    
+function toggleChartMode(currentMode = 'combined') {
+    const newMode = (currentMode === 'combined') ? 'individual' : 'combined';
+
+    // デバイスに応じて適切な要素のみ更新
+    const toggleButtonId = isMobile() ? 'mobile-chart-mode-toggle' : 'chart-mode-toggle';
+    const chartTitleId = isMobile() ? 'mobile-chart-title' : 'chart-title';
+
+    const toggleButton = document.getElementById(toggleButtonId);
+    const chartTitle = document.getElementById(chartTitleId);
+
     if (newMode === 'combined') {
-        // 合計表示モード
-        if (desktopToggleButton) {
-            desktopToggleButton.textContent = '個別表示';
-            desktopToggleButton.title = '各銘柄を個別に表示';
-        }
-        if (mobileToggleButton) {
-            mobileToggleButton.textContent = '個別';
-            mobileToggleButton.title = '個別表示に切り替え';
-        }
-        if (desktopChartTitle) {
-            desktopChartTitle.textContent = '📈 ポートフォリオ総合損益推移（過去1か月）';
-        }
-        if (mobileChartTitle) {
-            mobileChartTitle.textContent = '📈 ポートフォリオ総合損益推移（過去1か月）';
-        }
+        toggleButton.textContent = '個別表示';
+        toggleButton.title = '各銘柄を個別に表示';
+        chartTitle.textContent = '📈 ポートフォリオ総合損益推移（過去1か月）';
     } else {
-        // 個別表示モード
-        if (desktopToggleButton) {
-            desktopToggleButton.textContent = '合計表示';
-            desktopToggleButton.title = 'ポートフォリオ全体の合計を表示';
-        }
-        if (mobileToggleButton) {
-            mobileToggleButton.textContent = '合計';
-            mobileToggleButton.title = '合計表示に切り替え';
-        }
-        if (desktopChartTitle) {
-            desktopChartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
-        }
-        if (mobileChartTitle) {
-            mobileChartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
-        }
+        toggleButton.textContent = '合計表示';
+        toggleButton.title = 'ポートフォリオ全体の合計を表示';        
+        chartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
     }
+
     // チャートを再描画
-    renderAllCoinNamesProfitChart();
-    
+    renderAllCoinNamesProfitChart(
+        window.cache.getPortfolioData(),
+        newMode
+    );
+
 }
 
 // 関数を即座にグローバルに登録
