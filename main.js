@@ -63,13 +63,7 @@ function handleFiles(files) {
 
 // 既存取引データ取得
 function getExistingTransactions() {
-    try {
-        const rawData = localStorage.getItem('rawTransactions');
-        return rawData ? JSON.parse(rawData) : [];
-    } catch (error) {
-        console.error('既存データ読み込みエラー:', error);
-        return [];
-    }
+    return safeGetJSON('rawTransactions', []);
 }
 
 // 取引データ統合（重複除外）
@@ -375,13 +369,12 @@ function showSimpleToast(message, type = 'success') {
 
 // ファイル名を保存
 function saveLoadedFileNames(fileNames) {
-    localStorage.setItem('loadedFileNames', JSON.stringify(fileNames));
+    safeSetJSON('loadedFileNames', fileNames);
 }
 
 // 保存されたファイル名を取得
 function getLoadedFileNames() {
-    const stored = localStorage.getItem('loadedFileNames');
-    return stored ? JSON.parse(stored) : [];
+    return safeGetJSON('loadedFileNames', []);
 }
 
 // 読み込み済みファイル情報を表示（アップロードタブのみ）
@@ -677,18 +670,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // アップロード済みのデータがあるかチェック（localStorage）
-    const savedData = localStorage.getItem('portfolioData');
-    if (savedData) {
-        try {
-            const portfolioData = JSON.parse(savedData);
-            // データがある場合はタブシステムで表示
-            displayDashboard(portfolioData);
-        } catch (error) {
-            console.error('データ復元エラー:', error);
-            showErrorMessage(`保存データの読み込みに失敗しました\n${error.message}`);
-            localStorage.removeItem('portfolioData');
-            updateDataStatus(null);
-        }
+    const portfolioData = safeGetJSON('portfolioData');
+    if (portfolioData) {
+        // データがある場合はタブシステムで表示
+        displayDashboard(portfolioData);
     } else {
         updateDataStatus(null);
     }

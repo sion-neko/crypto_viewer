@@ -17,6 +17,40 @@ let currentSortField = window.appPortfolioState.currentSortField;
 let currentSortDirection = window.appPortfolioState.currentSortDirection;
 
 // ===================================================================
+// PORTFOLIO UPDATE HELPER
+// ===================================================================
+
+/**
+ * ポートフォリオ表示を更新（共通処理）
+ * @param {string} message - 成功メッセージ（省略可）
+ */
+function refreshPortfolioDisplay(message = null) {
+    // 現在のソート順を維持してテーブル再描画
+    sortPortfolioData(currentSortField, currentSortDirection);
+
+    const tableContainer = document.getElementById('portfolio-table-container');
+    if (tableContainer) {
+        tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+    }
+
+    // サマリー部分も更新（総合損益反映のため）
+    updateDataStatus(currentPortfolioData);
+
+    // 更新されたポートフォリオデータを保存
+    safeSetJSON('portfolioData', currentPortfolioData);
+
+    // 成功メッセージ表示
+    if (message && typeof showSuccessMessage === 'function') {
+        showSuccessMessage(message);
+    }
+
+    // 価格ステータス更新
+    if (typeof updatePriceStatus === 'function') {
+        updatePriceStatus();
+    }
+}
+
+// ===================================================================
 // PORTFOLIO ANALYSIS FUNCTIONS
 // ===================================================================
 
@@ -930,154 +964,4 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
 // ===================================================================
 // PROFIT CHART FUNCTIONS
 // ===================================================================
-
-// 直近1か月の損益推移データを計算
-function calculateMonthlyProfitData(portfolioData) {
-    const today = new Date();
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(today.getMonth() - 1);
-
-    // 全取引を日付順でソート
-    const allTransactions = [];
-    Object.values(portfolioData.coins).forEach(coinNameData => {
-        allTransactions.push(...coinNameData.allTransactions);
-    });
-    allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    // 日別の損益を計算
-    const dailyData = {};
-    let cumulativeProfit = 0;
-
-    // 1か月前から今日まで、1日ずつ処理
-    for (let d = new Date(oneMonthAgo); d <= today; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-
-        // その日の取引を処理
-        const dayTransactions = allTransactions.filter(tx => {
-            const txDate = new Date(tx.date).toISOString().split('T')[0];
-            return txDate === dateStr;
-        });
-
-        let dayProfit = 0;
-        dayTransactions.forEach(tx => {
-            if (tx.type === '売') {
-                // 売却時の損益（簡易計算）
-                const avgRate = tx.averagePurchaseRate || 0;
-                if (avgRate > 0) {
-                    dayProfit += (tx.rate - avgRate) * tx.quantity;
-                }
-            }
-        });
-
-        cumulativeProfit += dayProfit;
-        dailyData[dateStr] = cumulativeProfit;
-    }
-
-    return dailyData;
-}
-
-// 損益チャートを描画
-function renderProfitChart(portfolioData) {
-    const canvas = document.getElementById('profitChart');
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-
-    // 既存のチャートを破棄
-    if (window.profitChartInstance) {
-        window.profitChartInstance.destroy();
-    }
-
-    const dailyData = calculateMonthlyProfitData(portfolioData);
-    const dates = Object.keys(dailyData).sort();
-    const profits = dates.map(date => dailyData[date]);
-
-    // 現在の総合損益も追加（最新の点として）
-    const currentTotalProfit = portfolioData.stats.totalProfit || portfolioData.stats.totalRealizedProfit || 0;
-    const today = new Date().toISOString().split('T')[0];
-    if (!dailyData[today]) {
-        dates.push(today);
-        profits.push(currentTotalProfit);
-    }
-
-    window.profitChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: dates.map(date => {
-                const d = new Date(date);
-                return `${d.getMonth() + 1}/${d.getDate()}`;
-            }),
-            datasets: [{
-                label: '総合損益 (¥)',
-                data: profits,
-                borderColor: profits[profits.length - 1] >= 0 ? '#10b981' : '#ef4444',
-                backgroundColor: profits[profits.length - 1] >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: profits.map(p => p >= 0 ? '#10b981' : '#ef4444'),
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#64748b',
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function (context) {
-                            const value = context.parsed.y;
-                            const sign = value >= 0 ? '+' : '';
-                            return `損益: ${sign}¥${Math.round(value).toLocaleString()}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: {
-                            size: 11
-                        }
-                    }
-                },
-                y: {
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: {
-                            size: 11
-                        },
-                        callback: function (value) {
-                            return value >= 0 ? '+¥' + Math.abs(value).toLocaleString() : '-¥' + Math.abs(value).toLocaleString();
-                        }
-                    },
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
+// (未使用のチャート関数を削除しました)
