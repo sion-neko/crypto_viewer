@@ -414,6 +414,31 @@ async function fetchMultipleCoinNamePriceHistories(coinNames) {
     return results;
 }
 
+/**
+ * ポートフォリオの全銘柄の価格履歴を取得
+ * @param {object} portfolioData - ポートフォリオデータ
+ * @returns {Promise<{priceHistories: object, validCoinNames: string[]}>}
+ * @throws {Error} 保有銘柄がない、または価格履歴を取得できた銘柄がない場合
+ */
+async function fetchPriceHistoriesForPortfolio(portfolioData) {
+    const coinNames = portfolioData.summary.map(item => item.coinName);
+
+    if (coinNames.length === 0) {
+        throw new Error('保有銘柄がありません');
+    }
+
+    showInfoMessage(`${coinNames.length}銘柄の価格履歴を取得中...`);
+
+    const priceHistories = await fetchMultipleCoinNamePriceHistories(coinNames);
+    const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
+
+    if (validCoinNames.length === 0) {
+        throw new Error('価格履歴を取得できた銘柄がありません');
+    }
+
+    return { priceHistories, validCoinNames };
+}
+
 // 価格履歴を使った日次総合損益データを生成
 function generateHistoricalProfitTimeSeries(transactions, priceHistory) {
 
@@ -545,30 +570,8 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode) {
     const canvasId = ChartElementIds.getCanvas();
 
     try {
-        // 取引のある銘柄を取得（保有量に関係なく）
-        const coinNames = portfolioData.summary.map(item => item.coinName);
-
-        if (coinNames.length === 0) {
-            console.error('❌ No coinNames found in portfolio data');
-            showChartError(canvasId, '全銘柄', new Error('保有銘柄がありません'), [
-                '現在保有している銘柄がないため、チャートを表示できません'
-            ]);
-            return;
-        }
-
-        showInfoMessage(`${coinNames.length}銘柄の価格履歴を取得中...`);
-
-        // 複数銘柄の価格履歴を並列取得
-        const priceHistories = await fetchMultipleCoinNamePriceHistories(coinNames);
-
-        // 成功した銘柄のみでチャートデータを生成
-        const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
-        
-
-        if (validCoinNames.length === 0) {
-            console.error('❌ No valid coinNames with price history');
-            throw new Error('価格履歴を取得できた銘柄がありません');
-        }
+        // ポートフォリオの価格履歴を取得（エラーハンドリング含む）
+        const { priceHistories, validCoinNames } = await fetchPriceHistoriesForPortfolio(portfolioData);
 
         // 各銘柄の損益推移データを生成
         const allProfitData = {};
