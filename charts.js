@@ -119,8 +119,6 @@ function formatPriceValue(value) {
     } else {
         return '¥' + value.toFixed(2);
     }
-    
-    return '¥' + value.toLocaleString();
 }
 
 /**
@@ -200,7 +198,7 @@ function createCoinNamePriceChartOptions() {
 function createProfitChartOptions(title, profitData, canvasId = '') {
     // 銘柄名を取得（canvasIdが提供されている場合）
     const coinNameMatch = canvasId ? canvasId.match(/^([a-z]+)-profit-chart$/) : null;
-    const coinNameName = coinNameMatch ? coinNameMatch[1].toUpperCase() : 'COIN_NAME';
+    const coinName = coinNameMatch ? coinNameMatch[1].toUpperCase() : 'COIN_NAME';
 
     return {
         responsive: true,
@@ -906,12 +904,10 @@ async function displayCoinNameChart(coinName) {
         return;
     }
 
-    const chartKey = `${coinName.toLowerCase()}TabChart`;
+    const chartKey = `${coinName.toLowerCase()}-chart-canvas`;
 
     // 既存のチャートを削除（新しいデータがある場合のみ）
-    if (window[chartKey]) {
-        window[chartKey].destroy();
-    }
+    destroyChartSafely(chartKey);
 
     // 既存のエラーメッセージとローディング表示を削除
     const existingError = container?.querySelector('.chart-error-message');
@@ -928,7 +924,7 @@ async function displayCoinNameChart(coinName) {
 
     const ctx = canvas.getContext('2d');
     // チャート作成
-    window[chartKey] = new Chart(ctx, {
+    window.chartInstances[chartKey] = new Chart(ctx, {
         type: 'line',
         data: {
             datasets: [{
@@ -999,21 +995,27 @@ function toggleChartMode(currentMode = 'combined') {
     const toggleButton = document.getElementById(ChartElementIds.getToggleButton());
     const chartTitle = document.getElementById(ChartElementIds.getTitle());
 
+    window.portfolioChartMode = newMode;
+    safeSetJSON('portfolioChartMode', newMode);
+
     if (newMode === 'combined') {
         toggleButton.textContent = '個別表示';
         toggleButton.title = '各銘柄を個別に表示';
         chartTitle.textContent = '📈 ポートフォリオ総合損益推移（過去1か月）';
     } else {
         toggleButton.textContent = '合計表示';
-        toggleButton.title = 'ポートフォリオ全体の合計を表示';        
+        toggleButton.title = 'ポートフォリオ全体の合計を表示';
         chartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
     }
 
     // チャートを再描画
-    renderAllCoinNamesProfitChart(
-        window.cache.getPortfolioData(),
-        newMode
-    );
+    const portfolioData = window.cache.getPortfolioData();
+    if (portfolioData) {
+        renderAllCoinNamesProfitChart(portfolioData, newMode);
+    } else {
+        console.error('Portfolio data not available for chart rendering');
+        showErrorMessage('チャート表示エラー: ポートフォリオデータが利用できません');
+    }
 
 }
 
