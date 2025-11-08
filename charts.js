@@ -518,7 +518,7 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combine
 
     try {
         // 取引のある銘柄を取得（保有量に関係なく）
-    const coinNames = portfolioData.summary.map(item => item.coinName);
+        const coinNames = portfolioData.summary.map(item => item.coinName);
 
 
         if (coinNames.length === 0) {
@@ -536,7 +536,7 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combine
 
         // 成功した銘柄のみでチャートデータを生成
         const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
-
+        
 
         if (validCoinNames.length === 0) {
             console.error('❌ No valid coinNames with price history');
@@ -548,7 +548,7 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combine
         const allProfitData = {};
         validCoinNames.forEach(coinName => {
             const coinNameData = portfolioData.coins[coinName];
-
+            
             if (coinNameData && coinNameData.allTransactions) {
                 const profitData = generateHistoricalProfitTimeSeries(
                     coinNameData.allTransactions,
@@ -557,14 +557,8 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combine
                 if (profitData && profitData.length > 0) {
                     allProfitData[coinName] = profitData;
                 }
-            }
+            } 
         });
-
-
-        if (Object.keys(allProfitData).length === 0) {
-            console.error('❌ No profit data generated for any coinName');
-            throw new Error('損益データを生成できませんでした');
-        }
         
         
         if (chartMode === 'combined') {
@@ -591,176 +585,7 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combine
     }
 }
 
-// 銘柄別損益推移チャートを描画（汎用版）
-async function renderCoinProfitChart(coinName, portfolioData = null) {
-
-    // 重複実行を防ぐため、実行中フラグをチェック
-    const renderingKey = `rendering_${coinName}`;
-    if (window[renderingKey]) {
-        return;
-    }
-
-    // 実行中フラグを設定
-    window[renderingKey] = true;
-
-    // portfolioDataが渡されない場合はグローバルから取得（後方互換性）
-    const data = portfolioData || window.currentPortfolioData || currentPortfolioData;
-    if (!data) {
-        console.error('❌ Portfolio data not available');
-        window[renderingKey] = false;
-        return;
-    }
-
-    // 以降はdataを使用
-    portfolioData = data;
-
-    // 指定銘柄の取引データを取得
-    const coinNameData = portfolioData.coins[coinName];
-    if (!coinNameData || !coinNameData.allTransactions || coinNameData.allTransactions.length === 0) {
-        console.error(`❌ ${coinName} transaction data not found`);
-        return;
-    }
-
-    const canvasId = `${coinName.toLowerCase()}-profit-chart`;
-
-    // Canvas要素の存在確認
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) {
-        console.error(`❌ Canvas element not found: ${canvasId}`);
-        return;
-    }
-
-    // 現在価格ベースでのチャート表示（CORS回避）
-    const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
-    const currentPrice = coinNameSummary ? coinNameSummary.currentPrice : 0;
-
-    if (currentPrice > 0) {
-        // 現在価格での損益推移チャートを生成
-        const profitData = generateTotalProfitTimeSeries(coinName, coinNameData.allTransactions, currentPrice);
-        if (profitData && profitData.length > 0) {
-            displayProfitChart(canvasId, profitData, `${coinName}総合損益推移（取引履歴ベース）`);
-            return;
-        }
-    }
-
-    // 現在価格がない場合のエラー表示
-    showChartError(canvasId, coinName, new Error('現在価格データがありません'), [
-        '「価格更新」ボタンをクリックして現在価格を取得してください',
-        '価格データ取得後にチャートが表示されます'
-    ]);
-
-    showWarningMessage(`${coinName}: 価格データがないためチャートを表示できません`);
-
-    try {
-        // 価格履歴を取得（キャッシュまたはAPI）
-        const priceHistory = await fetchCoinNamePriceHistory(coinName);
-
-        if (!priceHistory || priceHistory.length === 0) {
-            throw new Error('価格履歴データを取得できませんでした');
-        }
-
-
-        // 時系列総合損益データを生成
-        const profitData = generateHistoricalProfitTimeSeries(coinName, coinNameData.allTransactions, priceHistory);
-
-
-        // チャートを描画
-        displayProfitChart(canvasId, profitData, `${coinName}総合損益推移（過去1か月・日次）`);
-
-    } catch (error) {
-        console.error(`${coinName}損益チャート描画エラー:`, error);
-
-        // エラーの種類に応じてトースト通知を表示
-        let toastMessage = '';
-        let suggestions = [];
-
-        if (error.message.includes('サポートされていない銘柄')) {
-            toastMessage = `${coinName}は価格履歴チャートに対応していません`;
-            suggestions = [
-                '現在価格での損益は上記の統計で確認できます',
-                '対応銘柄: BTC, ETH, SOL, XRP, ADA, DOGE, ASTR, XTZ, XLM, SHIB, PEPE, SUI, DAI'
-            ];
-            showWarningMessage(toastMessage);
-        } else if (error.message.includes('API制限') || error.message.includes('429')) {
-            toastMessage = `${coinName}: API制限に達しました - 1分後に再度お試しください`;
-            suggestions = [
-                'API制限に達しました',
-                '1分後に再度お試しください',
-                'キャッシュされたデータがあれば使用されます'
-            ];
-            showWarningMessage(toastMessage);
-        } else if (error.message.includes('CORS') || error.message.includes('blocked')) {
-            toastMessage = `${coinName}: ブラウザのセキュリティ制限により接続できません`;
-            suggestions = [
-                'ブラウザのCORS制限により接続できません',
-                'HTTPSサイトでアクセスしてください',
-                '現在価格での損益チャートを表示します'
-            ];
-            showWarningMessage(toastMessage);
-        } else if (error.message.includes('ネットワーク') || error.message.includes('Failed to fetch')) {
-            toastMessage = `${coinName}: ネットワーク接続エラー - インターネット接続を確認してください`;
-            suggestions = [
-                'インターネット接続を確認してください',
-                'VPNやプロキシを使用している場合は無効にしてください',
-                '現在価格での損益チャートを表示します'
-            ];
-            showErrorMessage(toastMessage);
-        } else if (error.message.includes('タイムアウト')) {
-            toastMessage = `${coinName}: サーバーの応答が遅すぎます - しばらく時間をおいてお試しください`;
-            suggestions = [
-                'サーバーの応答が遅すぎます',
-                'しばらく時間をおいて再度お試しください',
-                '現在価格での損益チャートを表示します'
-            ];
-            showWarningMessage(toastMessage);
-        } else {
-            toastMessage = `${coinName}: チャート表示エラー - ${error.message}`;
-            suggestions = [
-                'ページを再読み込みしてお試しください',
-                'ブラウザのコンソール(F12)で詳細を確認できます',
-                '現在価格での損益チャートを表示します'
-            ];
-            showErrorMessage(toastMessage);
-        }
-
-        // 詳細なエラー表示（チャートエリア内）
-        showChartError(canvasId, coinName, error, suggestions);
-
-        // フォールバック: 現在価格のみでチャートを描画を試行
-        try {
-            const coinNameSummary = portfolioData.summary.find(item => item.coinName === coinName);
-            const currentPrice = coinNameSummary ? coinNameSummary.currentPrice : 0;
-
-            if (currentPrice > 0) {
-                const profitData = generateTotalProfitTimeSeries(coinName, coinNameData.allTransactions, currentPrice);
-                if (profitData && profitData.length > 0) {
-                    displayProfitChart(canvasId, profitData, `${coinName}総合損益推移（現在価格ベース）`);
-                    return;
-                }
-            }
-        } catch (fallbackError) {
-            console.error(`${coinName}フォールバックチャート描画エラー:`, fallbackError);
-        }
-
-        // フォールバックも失敗した場合は、価格更新を促すメッセージを追加
-        if (!error.message.includes('サポートされていない銘柄')) {
-            const canvas = document.getElementById(canvasId);
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx.font = '12px Arial';
-                ctx.fillStyle = '#28a745';
-                ctx.textAlign = 'center';
-                ctx.fillText('💡 「価格更新」ボタンをクリックして現在価格を取得してください', canvas.width / 2, canvas.height / 2 + 100);
-            }
-        }
-    } finally {
-        // 実行中フラグをクリア
-        const renderingKey = `rendering_${coinName}`;
-        window[renderingKey] = false;
-    }
-}
-
-// 総合損益推移の時系列データを生成（実現損益 + 含み損益）- 旧版
+// 総合損益推移の時系列データを生成（実現損益 + 含み損益）- 旧版（後方互換性のため残す）
 function generateTotalProfitTimeSeries(coinName, transactions, currentPrice) {
     // 取引を日付順にソート
     const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1216,30 +1041,20 @@ async function fetchCoinNameHistoricalData(coinName) {
 // チャート
 // 表示モードを切り替える（デスクトップ/モバイル統合版）
 function toggleChartMode() {
-    // ボタンから現在のモードを取得
-    const desktopToggleButton = document.getElementById('chart-mode-toggle');
-    const mobileToggleButton = document.getElementById('mobile-chart-mode-toggle');
-    const button = desktopToggleButton || mobileToggleButton;
-
-    if (!button) {
-        console.error('❌ Chart mode toggle button not found');
-        return;
-    }
-
-    const currentMode = button.dataset.mode || 'combined';
+    const currentMode = window.portfolioChartMode || 'combined';
     const newMode = currentMode === 'combined' ? 'individual' : 'combined';
-
-    // 両方のボタンの状態を更新
-    [desktopToggleButton, mobileToggleButton].forEach(btn => {
-        if (btn) btn.dataset.mode = newMode;
-    });
-
+    
+    window.portfolioChartMode = newMode;
+    localStorage.setItem('portfolioChartMode', newMode);
+    
     // デスクトップ版のボタンとタイトルを更新
+    const desktopToggleButton = document.getElementById('chart-mode-toggle');
     const desktopChartTitle = document.getElementById('chart-title');
-
-    // モバイル版のタイトルを更新
+    
+    // モバイル版のボタンとタイトルを更新
+    const mobileToggleButton = document.getElementById('mobile-chart-mode-toggle');
     const mobileChartTitle = document.getElementById('mobile-chart-title');
-
+    
     if (newMode === 'combined') {
         // 合計表示モード
         if (desktopToggleButton) {
@@ -1273,13 +1088,9 @@ function toggleChartMode() {
             mobileChartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
         }
     }
-
-    // チャートを再描画（モードを引数で渡す）
-    const portfolioData = window.currentPortfolioData;
-    if (portfolioData && typeof renderAllCoinNamesProfitChart === 'function') {
-        renderAllCoinNamesProfitChart(portfolioData, newMode);
-    }
-
+    // チャートを再描画
+    renderAllCoinNamesProfitChart();
+    
 }
 
 // 関数を即座にグローバルに登録

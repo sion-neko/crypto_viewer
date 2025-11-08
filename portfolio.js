@@ -309,9 +309,7 @@ function displayDashboard(portfolioData) {
     // 全銘柄の損益推移チャートを描画（DOM準備完了後）
     setTimeout(() => {
         // チャートを描画（デスクトップ・モバイル両対応）
-        if (typeof renderAllCoinNamesProfitChart === 'function') {
-            renderAllCoinNamesProfitChart(portfolioData);
-        }
+        renderAllCoinNamesProfitChart(portfolioData);
     }, 800); // DOM要素の準備を待つため少し短縮
 }
 
@@ -879,25 +877,6 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在評価額</div>
                     <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinNameSummary.currentValue > 0 ? '¥' + Math.round(coinNameSummary.currentValue).toLocaleString() : '計算中...'}</div>
                 </div>
-            </div>
-        </div>
-
-        <!-- 総合損益推移チャート（全銘柄対応） -->
-        <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h4 style="color: #2c3e50; margin: 0;">📈 ${coinNameSummary.coinName} 総合損益推移チャート（過去1か月・日次）</h4>
-                <button onclick="renderCoinProfitChart('${coinNameSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                    チャート更新
-                </button>
-            </div>
-            <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 20px;">
-                💡 ${coinNameSummary.coinName}の過去1か月の価格変動に基づく日次総合損益推移<br>
-                🟢 実線: 総合損益（実現+含み） | 🔵 点線: 実現損益のみ | 🟡 点線: 含み損益のみ<br>
-                📊 価格データ: CoinGecko API（日次更新・キャッシュ対応）<br>
-                ⚡ 対応銘柄: BTC, ETH, SOL, XRP, ADA, DOGE, ASTR, XTZ, XLM, SHIB, PEPE, SUI, DAI
-            </p>
-            <div style="height: 400px; position: relative;">
-                <canvas id="${coinNameSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 400px;"></canvas>
             </div>
         </div>
 

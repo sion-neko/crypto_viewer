@@ -229,34 +229,14 @@ function switchSubtab(subtabName) {
     }
     if (targetContent) {
         targetContent.classList.add('active');
-        
+
         // 各銘柄のチャート表示
         if (subtabName !== 'summary') {
             // 銘柄名を取得
             const coinName = subtabName.toUpperCase();
-            // 連続実行防止(2s以内であれば再表示しない)
-            // 最後の実行から一定時間経過をチェック
-            const now = Date.now();
-            const lastRenderKey = `lastRender_${coinName}`;
-            const lastRenderTime = window[lastRenderKey] || 0;
-            const timeSinceLastRender = now - lastRenderTime;
 
-            if (timeSinceLastRender < 2000) {
-                return;
-            }
-
-            // 実行時刻を記録
-            window[lastRenderKey] = now;
-
-            if (targetContent) {
-                // 価格チャートを描画
-                displayCoinNameChart(coinName);
-
-                // 損益推移チャートを描画（DOM更新後）
-                requestAnimationFrame(() => {
-                    renderCoinProfitChart(coinName);
-                });
-            }
+            // 価格チャートを描画
+            displayCoinNameChart(coinName);
         }
     }
 }
