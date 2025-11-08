@@ -439,12 +439,6 @@ function clearPriceData() {
         // CacheServiceを使用して価格キャッシュをクリア
         const clearedCount = window.cache.clearPriceCache();
 
-        // グローバル変数もクリア
-        if (typeof window.appPriceData !== 'undefined') {
-            window.appPriceData.currentPrices = {};
-            window.appPriceData.lastPriceUpdate = null;
-        }
-
         // 価格ステータス更新
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus('価格データクリア済み');
