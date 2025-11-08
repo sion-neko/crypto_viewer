@@ -167,4 +167,148 @@ window.cache = new CacheService();
 
 // 後方互換性のためのエイリアス
 window.CacheService = CacheService;
+
+// ===================================================================
+// LOCALSTORAGE UTILITY FUNCTIONS
+// ===================================================================
+
+/**
+ * JSONデータをlocalStorageから安全に読み込む
+ * @param {string} key - localStorageキー
+ * @param {*} defaultValue - 読み込み失敗時のデフォルト値
+ * @returns {*} パース済みのデータまたはデフォルト値
+ */
+function safeGetJSON(key, defaultValue = null) {
+    try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : defaultValue;
+    } catch (error) {
+        console.error(`localStorage読み込みエラー (${key}):`, error);
+        return defaultValue;
+    }
+}
+
+/**
+ * JSONデータをlocalStorageに安全に保存する
+ * @param {string} key - localStorageキー
+ * @param {*} value - 保存する値（自動的にJSON文字列化される）
+ * @returns {boolean} 保存成功時true、失敗時false
+ */
+function safeSetJSON(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (error) {
+        console.error(`localStorage保存エラー (${key}):`, error);
+        return false;
+    }
+}
+
+/**
+ * localStorageからキーを安全に削除する
+ * @param {string} key - localStorageキー
+ * @returns {boolean} 削除成功時true、失敗時false
+ */
+function safeRemoveItem(key) {
+    try {
+        localStorage.removeItem(key);
+        return true;
+    } catch (error) {
+        console.error(`localStorage削除エラー (${key}):`, error);
+        return false;
+    }
+}
+
+/**
+ * 日付フォーマットユーティリティ
+ */
+const DateFormat = {
+    /**
+     * 日本語フルフォーマット (例: "2025/11/08 15:30:45")
+     */
+    jpFull: (date) => new Date(date).toLocaleString('ja-JP'),
+
+    /**
+     * 日本語日付フォーマット (例: "2025/11/08")
+     */
+    jpDate: (date) => new Date(date).toLocaleDateString('ja-JP'),
+
+    /**
+     * 短縮日付フォーマット (例: "11/8")
+     */
+    shortDate: (date) => {
+        const d = new Date(date);
+        return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+};
+
+// ===================================================================
+// PROFIT CALCULATION UTILITIES
+// ===================================================================
+
+/**
+ * 加重平均価格を計算
+ * @param {number} currentQty - 現在の保有数量
+ * @param {number} currentAvgPrice - 現在の加重平均価格
+ * @param {number} newQty - 新規購入数量
+ * @param {number} newPrice - 新規購入価格
+ * @returns {object} { totalQty, weightedAvgPrice }
+ */
+function calculateWeightedAverage(currentQty, currentAvgPrice, newQty, newPrice) {
+    const newTotalValue = (currentQty * currentAvgPrice) + (newQty * newPrice);
+    const totalQty = currentQty + newQty;
+    const weightedAvgPrice = totalQty > 0 ? newTotalValue / totalQty : 0;
+
+    return {
+        totalQty,
+        weightedAvgPrice
+    };
+}
+
+/**
+ * 実現損益を計算（売却時）
+ * @param {number} sellAmount - 売却金額
+ * @param {number} sellQty - 売却数量
+ * @param {number} avgPurchaseRate - 平均購入単価
+ * @returns {number} 実現損益
+ */
+function calculateRealizedProfit(sellAmount, sellQty, avgPurchaseRate) {
+    return sellAmount - (sellQty * avgPurchaseRate);
+}
+
+/**
+ * 含み損益を計算
+ * @param {number} holdingQty - 保有数量
+ * @param {number} currentPrice - 現在価格
+ * @param {number} avgPurchaseRate - 平均購入単価
+ * @returns {number} 含み損益
+ */
+function calculateUnrealizedProfit(holdingQty, currentPrice, avgPurchaseRate) {
+    if (holdingQty <= 0 || avgPurchaseRate <= 0 || currentPrice <= 0) {
+        return 0;
+    }
+    const currentValue = holdingQty * currentPrice;
+    const holdingCost = holdingQty * avgPurchaseRate;
+    return currentValue - holdingCost;
+}
+
+/**
+ * Chart.jsインスタンスを安全に破棄
+ * @param {string} canvasId - Canvas要素のID
+ */
+function destroyChartSafely(canvasId) {
+    if (!window.chartInstances) {
+        window.chartInstances = {};
+    }
+
+    const chart = window.chartInstances[canvasId];
+    if (chart) {
+        try {
+            chart.destroy();
+        } catch (error) {
+            console.warn(`チャート破棄エラー (${canvasId}):`, error);
+        }
+        delete window.chartInstances[canvasId];
+    }
+}
   

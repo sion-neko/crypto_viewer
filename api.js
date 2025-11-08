@@ -102,18 +102,7 @@ async function fetchCurrentPrices() {
             lastPriceUpdate = window.appPriceData.lastPriceUpdate;
 
             updatePortfolioWithPrices(currentPortfolioData, currentPrices);
-            sortPortfolioData(currentSortField, currentSortDirection);
-            const tableContainer = document.getElementById('portfolio-table-container');
-            tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-
-            // サマリー部分も更新（総合損益反映のため）
-            updateDataStatus(currentPortfolioData);
-
-            // 更新されたポートフォリオデータを保存
-            localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
-
-            showSuccessMessage(`キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`);
-            updatePriceStatus();
+            refreshPortfolioDisplay(`キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`);
             return;
         }
 
@@ -133,17 +122,6 @@ async function fetchCurrentPrices() {
 
             updatePortfolioWithPrices(currentPortfolioData, currentPrices);
 
-            // 現在のソート順を維持してテーブル再描画
-            sortPortfolioData(currentSortField, currentSortDirection);
-            const tableContainer = document.getElementById('portfolio-table-container');
-            tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-
-            // サマリー部分も更新（総合損益反映のため）
-            updateDataStatus(currentPortfolioData);
-
-            // 更新されたポートフォリオデータを保存
-            localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
-
             // 永続キャッシュから取得した場合の通知（保存時刻付き）
             const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
                 month: 'numeric',
@@ -152,9 +130,7 @@ async function fetchCurrentPrices() {
                 minute: 'numeric'
             });
 
-
-            showSuccessMessage(`キャッシュから表示: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`);
-            updatePriceStatus();
+            refreshPortfolioDisplay(`キャッシュから表示: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`);
             return;
         }
 
@@ -205,20 +181,8 @@ async function fetchCurrentPrices() {
         // ポートフォリオデータを再計算（含み損益含む）
         updatePortfolioWithPrices(currentPortfolioData, prices);
 
-        // 現在のソート順を維持してテーブル再描画
-        sortPortfolioData(currentSortField, currentSortDirection);
-        const tableContainer = document.getElementById('portfolio-table-container');
-        tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-
-        // サマリー部分も更新（総合損益反映のため）
-        updateDataStatus(currentPortfolioData);
-
-        // 更新されたポートフォリオデータを保存
-        localStorage.setItem('portfolioData', JSON.stringify(currentPortfolioData));
-
-        // 成功通知を表示（永続化情報付き）
-        showSuccessMessage(`価格更新完了: ${validCoinNames.length}銘柄 (30分間保存)`);
-        updatePriceStatus();
+        // 成功通知を表示して再描画（永続化情報付き）
+        refreshPortfolioDisplay(`価格更新完了: ${validCoinNames.length}銘柄 (30分間保存)`);
 
         // 価格データ永続化レポート（デバッグモード時のみ）
         if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
@@ -278,17 +242,17 @@ function updatePortfolioWithPrices(portfolioData, prices) {
             item.currentPrice = currentPrice;
 
             // 保有量が正の場合のみ含み損益を計算
-            if (item.holdingQuantity > 0 && item.averagePurchaseRate > 0) {
-                const currentValue = item.holdingQuantity * currentPrice;
-                // 現在保有分の投資額 = 保有数量 × 平均購入レート
-                const currentHoldingCost = item.holdingQuantity * item.averagePurchaseRate;
-                const unrealizedProfit = currentValue - currentHoldingCost;
+            const unrealizedProfit = calculateUnrealizedProfit(
+                item.holdingQuantity,
+                currentPrice,
+                item.averagePurchaseRate
+            );
 
+            if (unrealizedProfit !== 0) {
                 // 含み損益を追加
-                item.currentValue = currentValue;
+                item.currentValue = item.holdingQuantity * currentPrice;
                 item.unrealizedProfit = unrealizedProfit;
                 item.totalProfit = item.realizedProfit + unrealizedProfit;
-
                 totalUnrealizedProfit += unrealizedProfit;
             } else {
                 // 保有量が0以下の場合（完全売却済み）

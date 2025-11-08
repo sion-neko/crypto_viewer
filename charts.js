@@ -407,13 +407,13 @@ function generateHistoricalProfitTimeSeries(transactions, priceHistory) {
             if (txDate <= targetDate) {
                 if (tx.type === '買') {
                     // 加重平均価格を更新
-                    const newTotalValue = (totalQuantity * weightedAvgPrice) + (tx.quantity * tx.rate);
-                    totalQuantity += tx.quantity;
-                    weightedAvgPrice = totalQuantity > 0 ? newTotalValue / totalQuantity : 0;
+                    const result = calculateWeightedAverage(totalQuantity, weightedAvgPrice, tx.quantity, tx.rate);
+                    totalQuantity = result.totalQty;
+                    weightedAvgPrice = result.weightedAvgPrice;
                     totalBought += tx.amount;
                 } else if (tx.type === '売') {
                     // 売却時の実現損益を計算（売却前の加重平均価格を使用）
-                    const sellProfit = tx.amount - (tx.quantity * weightedAvgPrice);
+                    const sellProfit = calculateRealizedProfit(tx.amount, tx.quantity, weightedAvgPrice);
                     realizedProfit += sellProfit;
 
                     // 保有数量を減らす（加重平均価格は変更しない）
@@ -430,15 +430,9 @@ function generateHistoricalProfitTimeSeries(transactions, priceHistory) {
         });
 
         // 含み損益を計算
-        let unrealizedProfit = 0;
-        if (price > 0 && totalQuantity > 0.00000001 && weightedAvgPrice > 0) {
-            const currentValue = totalQuantity * price;
-            const holdingCost = totalQuantity * weightedAvgPrice;
-            unrealizedProfit = currentValue - holdingCost;
-        } else if (totalQuantity <= 0.00000001) {
-            // 保有数量が極小の場合は含み損益を0にする
-            unrealizedProfit = 0;
-        }
+        const unrealizedProfit = totalQuantity > 0.00000001
+            ? calculateUnrealizedProfit(totalQuantity, price, weightedAvgPrice)
+            : 0;
 
         // 総合損益 = 実現損益 + 含み損益
         const totalProfit = realizedProfit + unrealizedProfit;
@@ -585,61 +579,6 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode = 'combine
     }
 }
 
-// 総合損益推移の時系列データを生成（実現損益 + 含み損益）- 旧版（後方互換性のため残す）
-function generateTotalProfitTimeSeries(coinName, transactions, currentPrice) {
-    // 取引を日付順にソート
-    const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    const profitData = [];
-    let realizedProfit = 0; // 実現損益
-    let totalBought = 0;
-    let totalSold = 0;
-    let weightedAvgPrice = 0;
-    let totalQuantity = 0;
-
-    sortedTransactions.forEach(tx => {
-        const date = new Date(tx.date);
-
-        if (tx.type === '買') {
-            // 加重平均価格を更新
-            const newTotalValue = (totalQuantity * weightedAvgPrice) + (tx.quantity * tx.rate);
-            totalQuantity += tx.quantity;
-            weightedAvgPrice = totalQuantity > 0 ? newTotalValue / totalQuantity : 0;
-            totalBought += tx.amount;
-        } else if (tx.type === '売') {
-            // 売却時の実現損益を計算
-            const sellProfit = tx.amount - (tx.quantity * weightedAvgPrice);
-            realizedProfit += sellProfit;
-            totalQuantity -= tx.quantity;
-            totalSold += tx.amount;
-        }
-
-        // 含み損益を計算（現在価格が利用可能な場合）
-        let unrealizedProfit = 0;
-        if (currentPrice > 0 && totalQuantity > 0 && weightedAvgPrice > 0) {
-            const currentValue = totalQuantity * currentPrice;
-            const holdingCost = totalQuantity * weightedAvgPrice;
-            unrealizedProfit = currentValue - holdingCost;
-        }
-
-        // 総合損益 = 実現損益 + 含み損益
-        const totalProfit = realizedProfit + unrealizedProfit;
-
-        profitData.push({
-            date: date,
-            realizedProfit: realizedProfit,
-            unrealizedProfit: unrealizedProfit,
-            totalProfit: totalProfit,
-            totalBought: totalBought,
-            totalSold: totalSold,
-            holdingQuantity: totalQuantity,
-            avgPrice: weightedAvgPrice,
-            currentPrice: currentPrice
-        });
-    });
-
-    return profitData;
-}
 
 // チャートエラー表示（詳細版）
 function showChartError(canvasId, coinName, error, suggestions = []) {
@@ -705,18 +644,7 @@ function displayProfitChart(canvasId, profitData, title) {
         }
 
         // 既存のチャートインスタンスを破棄
-        if (window.chartInstances && window.chartInstances[canvasId]) {
-            try {
-                window.chartInstances[canvasId].destroy();
-            } catch (destroyError) {
-            }
-            delete window.chartInstances[canvasId];
-        }
-
-        // チャートインスタンス管理用のグローバルオブジェクト
-        if (!window.chartInstances) {
-            window.chartInstances = {};
-        }
+        destroyChartSafely(canvasId);
 
         // データが空の場合
         if (!profitData || profitData.length === 0) {
@@ -800,18 +728,7 @@ function displayMultiCoinNameProfitChart(canvasId, allProfitData, title) {
     const ctx = canvas.getContext('2d');
 
     // 既存のチャートインスタンスを破棄
-    if (window.chartInstances && window.chartInstances[canvasId]) {
-        try {
-            window.chartInstances[canvasId].destroy();
-        } catch (destroyError) {
-        }
-        delete window.chartInstances[canvasId];
-    }
-
-    // チャートインスタンス管理用のグローバルオブジェクト
-    if (!window.chartInstances) {
-        window.chartInstances = {};
-    }
+    destroyChartSafely(canvasId);
 
     // 全銘柄の日付を統合してソート
     const allDates = new Set();
