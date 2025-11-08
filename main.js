@@ -669,6 +669,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ページロード時にportfolioChartModeを復元
+    window.portfolioChartMode = safeGetJSON('portfolioChartMode', 'combined');
+
     // アップロード済みのデータがあるかチェック（localStorage）
     const portfolioData = safeGetJSON('portfolioData');
     if (portfolioData) {
