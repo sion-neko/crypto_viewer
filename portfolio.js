@@ -31,12 +31,6 @@ function refreshPortfolioDisplay(message = null) {
     const tableContainer = document.getElementById('portfolio-table-container');
     if (tableContainer) {
         tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-
-        // チャートも再描画（Canvas要素が新しく生成されたため）
-        setTimeout(() => {
-            const chartMode = window.portfolioChartMode || 'combined';
-            renderAllCoinNamesProfitChart(currentPortfolioData, chartMode);
-        }, 100);
     }
 
     // サマリー部分も更新（総合損益反映のため）
@@ -194,12 +188,6 @@ function sortTable(field) {
     // テーブル再描画
     const tableContainer = document.getElementById('portfolio-table-container');
     tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
-
-    // チャートも再描画（Canvas要素が新しく生成されたため）
-    setTimeout(() => {
-        const chartMode = window.portfolioChartMode || 'combined';
-        renderAllCoinNamesProfitChart(currentPortfolioData, chartMode);
-    }, 100);
 }
 
 // ポートフォリオデータソート
@@ -319,6 +307,52 @@ function displayDashboard(portfolioData) {
 
     // タブコンテナを表示
     document.getElementById('tabContainer').style.display = 'block';
+
+    // チャート表示エリアを一度だけ初期化（ソート時に消えないように）
+    const chartContainer = document.getElementById('portfolio-chart-container');
+    if (!chartContainer.hasChildNodes()) {
+        if (isMobile()) {
+            // モバイル版チャート
+            chartContainer.innerHTML = `
+                <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
+                    <div class="card-header">
+                        <span id="mobile-chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</span>
+                        <div style="float: right; display: flex; gap: 4px;">
+                            <button id="mobile-chart-mode-toggle" data-mode="combined" onclick="toggleChartMode('combined')" style="padding: 4px 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="個別表示に切り替え">
+                                個別
+                            </button>
+                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                更新
+                            </button>
+                        </div>
+                    </div>
+                    <div style="height: 300px; padding: 10px; position: relative;">
+                        <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            `;
+        } else {
+            // デスクトップ版チャート
+            chartContainer.innerHTML = `
+                <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;" id="chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="chart-mode-toggle" data-mode="combined" onclick="toggleChartMode('combined')" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;" title="各銘柄を個別に表示">
+                                個別表示
+                            </button>
+                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                チャート更新
+                            </button>
+                        </div>
+                    </div>
+                    <div style="height: 400px; position: relative;">
+                        <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
+                    </div>
+                </div>
+            `;
+        }
+    }
 
     // ポートフォリオテーブル表示
     const tableContainer = document.getElementById('portfolio-table-container');
@@ -623,28 +657,6 @@ function generateMobilePortfolioCards(portfolioData) {
         });
     }
 
-    // 損益チャートをモバイル版にも追加
-    html += `
-        <div class="table-card" style="background: white; border: 1px solid #cbd5e1;">
-            <div class="card-header">
-                <span id="mobile-chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</span>
-                <div style="float: right; display: flex; gap: 4px;">
-                    <button id="mobile-chart-mode-toggle" data-mode="combined" onclick="toggleChartMode('combined')" style="padding: 4px 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="個別表示に切り替え">
-                        個別
-                    </button>
-                    <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                        更新
-                    </button>
-                </div>
-            </div>
-            <div style="height: 300px; padding: 10px; position: relative;">
-                <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
-            </div>
-        </div>
-    `;
-
-    // チャート描画は displayDashboard 関数で一元管理するため、ここでは実行しない
-
     return `<div class="mobile-card-table">${html}</div>`;
 }
 
@@ -701,24 +713,6 @@ function generatePortfolioTable(portfolioData) {
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">手数料</div>
                     <div style="font-size: 16px; font-weight: 700; color: #475569;">¥${stats.totalFees.toLocaleString()}</div>
                 </div>
-            </div>
-        </div>
-
-        <!-- 1か月の損益推移チャート -->
-        <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;" id="chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
-                <div style="display: flex; gap: 8px;">
-                    <button id="chart-mode-toggle" data-mode="combined" onclick="toggleChartMode('combined')" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;" title="各銘柄を個別に表示">
-                        個別表示
-                    </button>
-                    <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                        チャート更新
-                    </button>
-                </div>
-            </div>
-            <div style="height: 400px; position: relative;">
-                <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
             </div>
         </div>
 
