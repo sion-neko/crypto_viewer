@@ -816,24 +816,6 @@ function generateTotalProfitTimeSeries(coinName, transactions, currentPrice) {
     return profitData;
 }
 
-// 旧関数（後方互換性のため残す）
-function generateProfitTimeSeries(coinName, transactions) {
-    return generateTotalProfitTimeSeries(coinName, transactions, 0);
-}
-
-// ローディング表示
-function showLoadingMessage(canvasId, message) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#666';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(message, canvas.width / 2, canvas.height / 2);
-}
-
 // チャートエラー表示（詳細版）
 function showChartError(canvasId, coinName, error, suggestions = []) {
     const canvas = document.getElementById(canvasId);
