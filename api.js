@@ -2,17 +2,7 @@
 // API.JS - Price fetching and CoinGecko API related functions
 // ===================================================================
 
-// Global variables for price data (use window object to avoid conflicts)
-if (!window.appPriceData) {
-    window.appPriceData = {
-        currentPrices: {},
-        lastPriceUpdate: null
-    };
-}
-
-// 後方互換性のためのエイリアス
-let currentPrices = window.appPriceData.currentPrices;
-let lastPriceUpdate = window.appPriceData.lastPriceUpdate;
+// 注: 価格データは全てCacheServiceで管理されます（window.cache）
 
 // 価格データ永続化設定 (from AppConfig)
 const CACHE_DURATION_PRICE = AppConfig.cacheDurations.CURRENT_PRICES;
@@ -96,12 +86,8 @@ async function fetchCurrentPrices() {
         // まず価格履歴キャッシュから現在価格を取得を試行（API効率化）
         const pricesFromHistory = await tryGetPricesFromHistory(validCoinNames);
         if (pricesFromHistory && Object.keys(pricesFromHistory).length === validCoinNames.length) {
-            window.appPriceData.currentPrices = pricesFromHistory;
-            currentPrices = pricesFromHistory;
-            window.appPriceData.lastPriceUpdate = new Date();
-            lastPriceUpdate = window.appPriceData.lastPriceUpdate;
-
-            updatePortfolioWithPrices(currentPortfolioData, currentPrices);
+            // 価格履歴から取得した価格でポートフォリオを更新
+            updatePortfolioWithPrices(currentPortfolioData, pricesFromHistory);
             refreshPortfolioDisplay(`キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`);
             return;
         }
@@ -112,15 +98,11 @@ async function fetchCurrentPrices() {
         // 永続化キャッシュチェック（30分有効）
         const cachedPrices = cache.get(cacheKey);
         if (cachedPrices) {
-            const cacheTimestamp = Date.now(); // 現在時刻を使用
+            const cacheTimestamp = cachedPrices._metadata?.lastUpdate || Date.now();
             const cacheDate = new Date(cacheTimestamp);
 
-            window.appPriceData.currentPrices = cachedPrices;
-            currentPrices = cachedPrices;
-            window.appPriceData.lastPriceUpdate = new Date(cachedPrices._metadata?.lastUpdate || cacheTimestamp);
-            lastPriceUpdate = window.appPriceData.lastPriceUpdate;
-
-            updatePortfolioWithPrices(currentPortfolioData, currentPrices);
+            // キャッシュから取得した価格でポートフォリオを更新
+            updatePortfolioWithPrices(currentPortfolioData, cachedPrices);
 
             // 永続キャッシュから取得した場合の通知（保存時刻付き）
             const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
@@ -167,16 +149,6 @@ async function fetchCurrentPrices() {
 
         // 永続化キャッシュに保存（30分有効）
         cache.set(cacheKey, prices, CACHE_DURATION_PRICE);
-
-        // グローバル変数に保存
-        window.appPriceData.currentPrices = prices;
-        currentPrices = prices;
-        window.appPriceData.lastPriceUpdate = new Date();
-        lastPriceUpdate = window.appPriceData.lastPriceUpdate;
-
-        // 従来のlocalStorageにも保存（後方互換性）
-        localStorage.setItem('currentPrices', JSON.stringify(prices));
-        localStorage.setItem('lastPriceUpdate', window.appPriceData.lastPriceUpdate.toISOString());
 
         // ポートフォリオデータを再計算（含み損益含む）
         updatePortfolioWithPrices(currentPortfolioData, prices);
@@ -280,7 +252,7 @@ function updatePortfolioWithPrices(portfolioData, prices) {
         (portfolioData.stats.totalProfit / portfolioData.stats.totalInvestment) * 100 : 0;
 }
 
-// 価格更新ステータス表示（永続化情報付き）
+// 価格更新ステータス表示（CacheService使用版）
 function updatePriceStatus(message = null) {
     const statusElement = document.getElementById('price-update-status');
     if (!statusElement) return;
@@ -290,14 +262,26 @@ function updatePriceStatus(message = null) {
         return;
     }
 
-    const lastUpdate = window.appPriceData.lastPriceUpdate || lastPriceUpdate;
-    if (lastUpdate) {
-        const coinNames = Object.keys(window.appPriceData.currentPrices || currentPrices).filter(key => key !== '_metadata').length;
+    // ポートフォリオデータから銘柄リストを取得
+    const portfolioData = cache.getPortfolioData();
+    if (!portfolioData || !portfolioData.summary) {
+        statusElement.textContent = '価格データなし';
+        statusElement.style.color = '#6c757d';
+        statusElement.title = '価格データを取得してください';
+        return;
+    }
+
+    const coinNames = portfolioData.summary.map(item => item.coinName);
+    const cacheKey = cacheKeys.currentPrices(coinNames);
+    const cachedPrices = cache.get(cacheKey);
+
+    if (cachedPrices && cachedPrices._metadata) {
+        const lastUpdate = new Date(cachedPrices._metadata.lastUpdate);
+        const validCoinNames = cachedPrices._metadata.coinNames || [];
         const timeStr = lastUpdate.toLocaleString('ja-JP');
         const ageMinutes = Math.round((Date.now() - lastUpdate.getTime()) / 1000 / 60);
 
-        statusElement.textContent = `${coinNames}銘柄 | ${timeStr} (${ageMinutes}分前)`;
-        statusElement.style.color = ageMinutes < 30 ? '#28a745' : '#ffc107';
+        statusElement.textContent = `${validCoinNames.length}銘柄 | ${timeStr} (${ageMinutes}分前)`;
 
         // 30分以上古い場合は警告色
         if (ageMinutes >= 30) {
