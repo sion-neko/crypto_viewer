@@ -163,14 +163,6 @@ class CacheService {
     getPortfolioData() {
         return safeGetJSON('portfolioData', null);
     }
-
-    /**
-     * 現在のチャート表示モードを取得
-     * @returns {string} チャート表示モード ('combined' または 'individual')
-     */
-    getChartMode() {
-        return this.storage.getItem('portfolioChartMode') || 'combined';
-    }
 }
 
 // ===================================================================

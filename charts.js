@@ -19,6 +19,40 @@ const COIN_NAME_COLORS = AppConfig.coinColors;
 const DEFAULT_COIN_NAME_COLOR = AppConfig.defaultCoinColor;
 
 // ===================================================================
+// DOM ELEMENT ID MANAGEMENT
+// ===================================================================
+
+/**
+ * チャート関連のDOM要素IDを管理するクラス
+ * デバイス（モバイル/デスクトップ）に応じて適切なIDを返す
+ */
+class ChartElementIds {
+    /**
+     * チャートモード切替ボタンのIDを取得
+     * @returns {string} 要素ID
+     */
+    static getToggleButton() {
+        return isMobile() ? 'mobile-chart-mode-toggle' : 'chart-mode-toggle';
+    }
+
+    /**
+     * チャートタイトル要素のIDを取得
+     * @returns {string} 要素ID
+     */
+    static getTitle() {
+        return isMobile() ? 'mobile-chart-title' : 'chart-title';
+    }
+
+    /**
+     * チャートキャンバス要素のIDを取得
+     * @returns {string} 要素ID
+     */
+    static getCanvas() {
+        return isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
+    }
+}
+
+// ===================================================================
 // PRICE HISTORY FUNCTIONS
 // ===================================================================
 
@@ -507,14 +541,12 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 
 // 全銘柄の総合損益推移チャートを描画
 async function renderAllCoinNamesProfitChart(portfolioData, chartMode) {
-
-    // デバイスに応じてcanvasを選択
-    const canvasId = isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
+    // ChartElementIdsを使用してcanvasIdを取得
+    const canvasId = ChartElementIds.getCanvas();
 
     try {
         // 取引のある銘柄を取得（保有量に関係なく）
         const coinNames = portfolioData.summary.map(item => item.coinName);
-
 
         if (coinNames.length === 0) {
             console.error('❌ No coinNames found in portfolio data');
@@ -537,7 +569,6 @@ async function renderAllCoinNamesProfitChart(portfolioData, chartMode) {
             console.error('❌ No valid coinNames with price history');
             throw new Error('価格履歴を取得できた銘柄がありません');
         }
-
 
         // 各銘柄の損益推移データを生成
         const allProfitData = {};
@@ -961,12 +992,9 @@ async function fetchCoinNameHistoricalData(coinName) {
 function toggleChartMode(currentMode = 'combined') {
     const newMode = (currentMode === 'combined') ? 'individual' : 'combined';
 
-    // デバイスに応じて適切な要素のみ更新
-    const toggleButtonId = isMobile() ? 'mobile-chart-mode-toggle' : 'chart-mode-toggle';
-    const chartTitleId = isMobile() ? 'mobile-chart-title' : 'chart-title';
-
-    const toggleButton = document.getElementById(toggleButtonId);
-    const chartTitle = document.getElementById(chartTitleId);
+    // ChartElementIdsを使用してDOM要素を取得
+    const toggleButton = document.getElementById(ChartElementIds.getToggleButton());
+    const chartTitle = document.getElementById(ChartElementIds.getTitle());
 
     if (newMode === 'combined') {
         toggleButton.textContent = '個別表示';
