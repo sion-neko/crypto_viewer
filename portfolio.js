@@ -720,9 +720,9 @@ function generatePortfolioTable(portfolioData) {
         <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-bottom: 30px; width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; table-layout: fixed;">
             <colgroup>
                 <col style="width: 8%;">  <!-- 銘柄 -->
-                <col style="width: 11%;">  <!-- 現在価格 -->
-                <col style="width: 12%;">  <!-- 平均購入レート -->
-                <col style="width: 11%;">  <!-- 評価額 -->
+                <col style="width: 10%;">  <!-- 現在価格 -->
+                <col style="width: 14%;">  <!-- 平均購入レート -->
+                <col style="width: 10%;">  <!-- 評価額 -->
                 <col style="width: 12%;">  <!-- 保有分購入額 -->
                 <col style="width: 11%;">  <!-- 合計購入額 -->
                 <col style="width: 11%;">  <!-- 含み損益 -->
