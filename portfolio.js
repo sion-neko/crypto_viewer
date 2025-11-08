@@ -312,9 +312,36 @@ function displayDashboard(portfolioData) {
     const tableContainer = document.getElementById('portfolio-table-container');
     tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
 
-    // 価格データは手動更新のみとし、自動復元は行わない
-    if (typeof updatePriceStatus === 'function') {
-        updatePriceStatus('価格データなし - 手動更新してください');
+    // キャッシュに価格データがある場合は自動的に復元
+    const coinNames = portfolioData.summary.map(item => item.coinName);
+    const cacheKey = window.cacheKeys.currentPrices(coinNames);
+    const cachedPrices = window.cache.get(cacheKey);
+
+    if (cachedPrices && cachedPrices._metadata) {
+        // キャッシュから価格データを復元
+        updatePortfolioWithPrices(portfolioData, cachedPrices);
+
+        // テーブルを再描画（含み損益を反映）
+        tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+
+        // ポートフォリオデータをlocalStorageに保存
+        safeSetJSON('portfolioData', portfolioData);
+
+        const lastUpdate = new Date(cachedPrices._metadata.lastUpdate);
+        const timeStr = lastUpdate.toLocaleString('ja-JP', {
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric'
+        });
+        if (typeof updatePriceStatus === 'function') {
+            updatePriceStatus(`${coinNames.length}銘柄 | ${timeStr}保存`);
+        }
+    } else {
+        // キャッシュがない場合は手動更新を促す
+        if (typeof updatePriceStatus === 'function') {
+            updatePriceStatus('価格データなし - 手動更新してください');
+        }
     }
 
     // 取引履歴テーブル表示
@@ -343,8 +370,9 @@ function displayDashboard(portfolioData) {
     // 全銘柄の損益推移チャートを描画（DOM準備完了後）
     setTimeout(() => {
         // チャートを描画（デスクトップ・モバイル両対応）
+        // 引数として渡されたportfolioDataを使用
         renderAllCoinNamesProfitChart(
-            window.cache.getPortfolioData(),
+            portfolioData,
             'combined'  // デフォルトは合計表示
         );
     }, 800); // DOM要素の準備を待つため少し短縮
