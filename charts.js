@@ -95,7 +95,7 @@ async function fetchCoinNamePriceHistory(coinName) {
     }));
 
     // 永続キャッシュに保存
-    cache.set(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY_DURATION);
+    cache.set(cacheKey, priceHistory, PRICE_CACHE_CONFIG.PRICE_HISTORY);
 
     return priceHistory;    
 }
@@ -975,7 +975,7 @@ async function fetchCoinNameHistoricalData(coinName) {
             }));
 
             // キャッシュに保存（6時間）
-            cache.set(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA_DURATION);
+            cache.set(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA);
 
             return chartData;
         }

@@ -110,6 +110,75 @@ class CacheService {
     }
 
     /**
+     * 価格関連のキャッシュのみをクリア
+     * @returns {number} クリアしたキャッシュ数
+     */
+    clearPriceCache() {
+        let clearedCount = 0;
+        const keysToDelete = [];
+
+        // 価格関連のキーを特定
+        for (let key in this.storage) {
+            if (this.storage.hasOwnProperty(key)) {
+                if (key.includes('_price_history_') ||
+                    key.includes('prices_') ||
+                    key.includes('chart_') ||
+                    key === 'currentPrices' ||
+                    key === 'lastPriceUpdate' ||
+                    key === 'cache_metadata') {
+                    keysToDelete.push(key);
+                }
+            }
+        }
+
+        // キャッシュを削除
+        keysToDelete.forEach(key => {
+            this.storage.removeItem(key);
+            clearedCount++;
+        });
+
+        return clearedCount;
+    }
+
+    /**
+     * ストレージ統計情報を取得
+     * @returns {object} ストレージ統計情報
+     */
+    getStorageStats() {
+        let totalSize = 0;
+        let priceDataCount = 0;
+        let priceDataSize = 0;
+        let portfolioDataSize = 0;
+
+        for (let key in this.storage) {
+            if (this.storage.hasOwnProperty(key)) {
+                const size = this.storage[key].length;
+                totalSize += size;
+
+                if (key.includes('_price_') || key.includes('prices_') || key.includes('chart_')) {
+                    priceDataCount++;
+                    priceDataSize += size;
+                }
+
+                if (key === 'portfolioData' || key === 'rawTransactions') {
+                    portfolioDataSize += size;
+                }
+            }
+        }
+
+        return {
+            totalSize,
+            totalSizeMB: (totalSize / 1024 / 1024).toFixed(2),
+            priceDataCount,
+            priceDataSize,
+            priceDataSizeMB: (priceDataSize / 1024 / 1024).toFixed(2),
+            portfolioDataSize,
+            portfolioDataSizeMB: (portfolioDataSize / 1024 / 1024).toFixed(2),
+            usageRatio: totalSize / CACHE_DURATIONS.MAX_STORAGE_SIZE
+        };
+    }
+
+    /**
      * キャッシュが期限切れかチェック
      * @param {object} data - キャッシュデータオブジェクト
      * @returns {boolean} 期限切れの場合true

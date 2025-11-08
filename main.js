@@ -433,88 +433,47 @@ function clearAllData() {
 // PRICE DATA MANAGEMENT FUNCTIONS
 // ===================================================================
 
-// 価格データ管理機能
+// 価格データ管理機能（CacheService使用版）
 function clearPriceData() {
     if (confirm('価格データをクリアしますか？チャート表示には再取得が必要になります。')) {
-        let clearedCount = 0;
-        
-        // 価格関連のキャッシュを削除
-        const keysToDelete = [];
-        for (let key in localStorage) {
-            if (key.includes('_price_history_') || 
-                key.includes('prices_') || 
-                key.includes('currentPrices') ||
-                key.includes('lastPriceUpdate') ||
-                key.includes('cache_metadata')) {
-                keysToDelete.push(key);
-            }
-        }
-        
-        keysToDelete.forEach(key => {
-            localStorage.removeItem(key);
-            clearedCount++;
-        });
-        
+        // CacheServiceを使用して価格キャッシュをクリア
+        const clearedCount = window.cache.clearPriceCache();
+
         // グローバル変数もクリア
-        if (typeof currentPrices !== 'undefined') {
-            currentPrices = {};
+        if (typeof window.appPriceData !== 'undefined') {
+            window.appPriceData.currentPrices = {};
+            window.appPriceData.lastPriceUpdate = null;
         }
-        if (typeof lastPriceUpdate !== 'undefined') {
-            lastPriceUpdate = null;
-        }
-        
+
         // 価格ステータス更新
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus('価格データクリア済み');
         }
-        
+
         showSuccessMessage(`価格データをクリアしました (${clearedCount}件)`);
     }
 }
 
-// 価格データ状況表示
+// 価格データ状況表示（CacheService使用版）
 function showPriceDataStatus() {
     try {
-        // charts.jsの関数が利用可能かチェック
-        if (typeof showPriceDataReport === 'function') {
-            const status = showPriceDataReport();
-            
-            // ユーザー向けの詳細表示
-            const totalSizeMB = Math.round(status.totalCacheSize / 1024 / 1024 * 100) / 100;
-            const currentPricesInfo = status.currentPrices ? 
-                `${status.currentPrices.coinNames.length}銘柄 (${Math.round(status.currentPrices.age / 1000 / 60)}分前)` : 
-                'なし';
-            
-            const historyInfo = status.priceHistories.length > 0 ?
-                status.priceHistories.map(h => `${h.coinName}: ${h.dataPoints}日分`).join(', ') :
-                'なし';
-            
-            const message = `
-📊 価格データ保存状況:
-💾 総サイズ: ${totalSizeMB}MB
-💰 現在価格: ${currentPricesInfo}
-📈 価格履歴: ${status.priceHistories.length}銘柄
-${historyInfo ? `詳細: ${historyInfo}` : ''}
+        // CacheServiceから統計情報を取得
+        const stats = window.cache.getStorageStats();
+
+        const maxSizeMB = (AppConfig.cacheDurations.MAX_STORAGE_SIZE / 1024 / 1024).toFixed(0);
+
+        const message = `
+📊 ストレージ使用状況:
+💾 合計サイズ: ${stats.totalSizeMB}MB / ${maxSizeMB}MB
+📈 価格キャッシュ: ${stats.priceDataCount}件 (${stats.priceDataSizeMB}MB)
+📂 ポートフォリオデータ: ${stats.portfolioDataSizeMB}MB
+📊 使用率: ${(stats.usageRatio * 100).toFixed(1)}%
 
 詳細はブラウザのコンソール(F12)で確認できます。
-            `.trim();
-            
-            alert(message);
-        } else {
-            // フォールバック: 基本的な情報のみ表示
-            let priceDataCount = 0;
-            let totalSize = 0;
-            
-            for (let key in localStorage) {
-                if (key.includes('_price_') || key.includes('prices_')) {
-                    priceDataCount++;
-                    totalSize += localStorage[key].length;
-                }
-            }
-            
-            const sizeMB = Math.round(totalSize / 1024 / 1024 * 100) / 100;
-            alert(`価格データ: ${priceDataCount}件のキャッシュ (${sizeMB}MB)`);
-        }
+        `.trim();
+
+        alert(message);
+        console.log('ストレージ統計:', stats);
     } catch (error) {
         console.error('価格データ状況表示エラー:', error);
         showErrorMessage('価格データ状況の取得に失敗しました');
@@ -522,40 +481,12 @@ ${historyInfo ? `詳細: ${historyInfo}` : ''}
 }
 
 // 古い価格データの自動クリーンアップ
+// 注: CacheServiceが自動的に期限切れキャッシュを管理するため、この関数は不要
+// 互換性のため残していますが、実際の処理はCacheServiceに委譲されます
 function autoCleanupOldPriceData() {
-    try {
-        let cleanedCount = 0;
-        const now = Date.now();
-        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7日間
-        
-        const keysToDelete = [];
-        for (let key in localStorage) {
-            if (key.includes('_price_') || key.includes('prices_')) {
-                try {
-                    const data = JSON.parse(localStorage[key]);
-                    if (data.timestamp && (now - data.timestamp) > maxAge) {
-                        keysToDelete.push(key);
-                    }
-                } catch (e) {
-                    // 破損したデータも削除対象
-                    keysToDelete.push(key);
-                }
-            }
-        }
-        
-        keysToDelete.forEach(key => {
-            localStorage.removeItem(key);
-            cleanedCount++;
-        });
-        
-        if (cleanedCount > 0) {
-        }
-        
-        return cleanedCount;
-    } catch (error) {
-        console.error('自動クリーンアップエラー:', error);
-        return 0;
-    }
+    // CacheServiceが自動的に期限切れキャッシュを削除するため、特に処理は不要
+    console.log('自動クリーンアップはCacheServiceが管理します');
+    return 0;
 }
 
 // ===================================================================
