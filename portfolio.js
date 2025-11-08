@@ -752,11 +752,6 @@ function generatePortfolioTable(portfolioData) {
         </table>
     `;
 
-    // チャートを非同期で描画（DOM更新後）
-    setTimeout(() => {
-        renderProfitChart(portfolioData);
-    }, 100);
-
     return html;
 }
 
