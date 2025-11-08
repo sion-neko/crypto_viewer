@@ -316,33 +316,6 @@ function updatePortfolioWithPrices(portfolioData, prices) {
         (portfolioData.stats.totalProfit / portfolioData.stats.totalInvestment) * 100 : 0;
 }
 
-// 保存済み価格データを復元
-function loadSavedPrices() {
-    try {
-        const savedPrices = localStorage.getItem('currentPrices');
-        const savedUpdate = localStorage.getItem('lastPriceUpdate');
-
-        if (savedPrices && savedUpdate) {
-            window.appPriceData.currentPrices = JSON.parse(savedPrices);
-            currentPrices = window.appPriceData.currentPrices;
-            window.appPriceData.lastPriceUpdate = new Date(savedUpdate);
-            lastPriceUpdate = window.appPriceData.lastPriceUpdate;
-
-            // 1時間以内のデータのみ使用
-            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-            if (window.appPriceData.lastPriceUpdate > oneHourAgo) {
-                updatePortfolioWithPrices(currentPortfolioData, currentPrices);
-                return true;
-            }
-        }
-    } catch (error) {
-        console.error('保存済み価格データ読み込みエラー:', error);
-    }
-    return false;
-}
-
-
-
 // 価格更新ステータス表示（永続化情報付き）
 function updatePriceStatus(message = null) {
     const statusElement = document.getElementById('price-update-status');

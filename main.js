@@ -121,11 +121,6 @@ function processCSVData(data, fileName) {
     const transactions = [];
     const selectedExchange = document.querySelector('input[name="exchange"]:checked').value;
 
-    // 最初の行で列名を確認（デバッグ用）
-    // if (data.length > 0) {
-    //     debugLog('CSV columns:', Object.keys(data[0]));
-    // }
-
     data.forEach(row => {
         // 空行をスキップ
         if (!row || Object.values(row).every(val => !val || val.trim() === '')) {
@@ -393,13 +388,6 @@ function showSimpleToast(message, type = 'success') {
         }, 300);
     }, 4000);
 }
-
-// 後方互換性のための関数
-function showToast(message) {
-    showSimpleToast(message, 'success');
-}
-
-
 
 // ===================================================================
 // FILE MANAGEMENT FUNCTIONS
