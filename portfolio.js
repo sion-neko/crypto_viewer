@@ -717,7 +717,18 @@ function generatePortfolioTable(portfolioData) {
         </div>
 
         <!-- 銘柄別詳細テーブル -->
-        <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-bottom: 30px; width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
+        <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-bottom: 30px; width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; table-layout: fixed;">
+            <colgroup>
+                <col style="width: 8%;">  <!-- 銘柄 -->
+                <col style="width: 11%;">  <!-- 現在価格 -->
+                <col style="width: 12%;">  <!-- 平均購入レート -->
+                <col style="width: 11%;">  <!-- 評価額 -->
+                <col style="width: 12%;">  <!-- 保有分購入額 -->
+                <col style="width: 11%;">  <!-- 合計購入額 -->
+                <col style="width: 11%;">  <!-- 含み損益 -->
+                <col style="width: 11%;">  <!-- 実現損益 -->
+                <col style="width: 13%;">  <!-- 総合損益 -->
+            </colgroup>
             <thead>
                 <tr style="background-color: #e8f5e8;">
                     <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
