@@ -1009,6 +1009,7 @@ function toggleChartMode(currentMode = 'combined') {
     }
 
     // チャートを再描画
+    // storage-utils.jsのCacheServiceを使用してポートフォリオデータを取得
     const portfolioData = window.cache.getPortfolioData();
     if (portfolioData) {
         renderAllCoinNamesProfitChart(portfolioData, newMode);

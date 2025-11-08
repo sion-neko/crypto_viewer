@@ -17,6 +17,18 @@ let currentSortField = window.appPortfolioState.currentSortField;
 let currentSortDirection = window.appPortfolioState.currentSortDirection;
 
 // ===================================================================
+// PORTFOLIO DATA GETTERS
+// ===================================================================
+
+/**
+ * 現在のポートフォリオデータを取得
+ * @returns {Object|null} ポートフォリオデータまたはnull
+ */
+function getCurrentPortfolioData() {
+    return window.appPortfolioState.currentPortfolioData;
+}
+
+// ===================================================================
 // PORTFOLIO UPDATE HELPER
 // ===================================================================
 
