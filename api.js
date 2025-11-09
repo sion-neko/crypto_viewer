@@ -57,7 +57,7 @@ async function executePriceHistoryApi(coingeckoId, options = {}) {
 // グローバル公開
 window.executePriceHistoryApi = executePriceHistoryApi;
 
-// 価格取得関連機能
+// 価格取得関連機能（サービスクラスへの委譲版）
 async function fetchCurrentPrices() {
     try {
         // PortfolioDataServiceを使用してポートフォリオデータを取得
@@ -71,98 +71,38 @@ async function fetchCurrentPrices() {
             throw new Error('ポートフォリオサマリーデータが見つかりません');
         }
 
-        // 対応銘柄のCoinGecko IDを取得
+        // 銘柄リストを取得
         const portfolioCoinNames = currentPortfolioData.summary.map(item => item.coinName);
-        const validCoinNames = portfolioCoinNames.filter(coinName => COIN_NAME_MAPPING[coinName]);
 
-        if (validCoinNames.length === 0) {
-            throw new Error('対応銘柄が見つかりません');
-        }
+        // APIServiceを使用して価格を取得
+        showInfoMessage('価格データを取得中...');
+        const prices = await window.apiService.fetchCurrentPrices(portfolioCoinNames);
 
-        // まず価格履歴キャッシュから現在価格を取得を試行（API効率化）
-        const pricesFromHistory = await tryGetPricesFromHistory(validCoinNames);
-        if (pricesFromHistory && Object.keys(pricesFromHistory).length === validCoinNames.length) {
-            // 価格履歴から取得した価格でポートフォリオを更新
-            updatePortfolioWithPrices(currentPortfolioData, pricesFromHistory);
+        // ポートフォリオデータを再計算（含み損益含む）
+        updatePortfolioWithPrices(currentPortfolioData, prices);
 
-            // ポートフォリオデータを渡して表示を更新（グローバルステート更新はportfolio.js内で行われる）
-            refreshPortfolioDisplay(currentPortfolioData, `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`);
-            return;
-        }
+        // メッセージ生成
+        const validCoinNames = prices._metadata?.coinNames || [];
+        let message = `価格更新完了: ${validCoinNames.length}銘柄`;
 
-        // 永続化キャッシュキーを生成
-        const cacheKey = cacheKeys.currentPrices(validCoinNames);
-
-        // 永続化キャッシュチェック（30分有効）
-        const cachedPrices = cache.get(cacheKey);
-        if (cachedPrices) {
-            const cacheTimestamp = cachedPrices._metadata?.lastUpdate || Date.now();
-            const cacheDate = new Date(cacheTimestamp);
-
-            // キャッシュから取得した価格でポートフォリオを更新
-            updatePortfolioWithPrices(currentPortfolioData, cachedPrices);
-
-            // 永続キャッシュから取得した場合の通知（保存時刻付き）
+        if (prices._metadata?.source === 'price_history_cache') {
+            message = `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`;
+        } else if (prices._metadata?.lastUpdate) {
+            const cacheDate = new Date(prices._metadata.lastUpdate);
             const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
                 month: 'numeric',
                 day: 'numeric',
                 hour: 'numeric',
                 minute: 'numeric'
             });
-
-            // ポートフォリオデータを渡して表示を更新（グローバルステート更新はportfolio.js内で行われる）
-            refreshPortfolioDisplay(currentPortfolioData, `キャッシュから表示: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`);
-            return;
+            message = `価格更新完了: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`;
         }
 
-        // API取得開始の通知
-        showInfoMessage('価格データを取得中...');
-
-        const coingeckoIds = validCoinNames.map(coinName => COIN_NAME_MAPPING[coinName]).join(',');
-        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        // データを整理
-        const prices = {};
-        for (const coinName of validCoinNames) {
-            const coingeckoId = COIN_NAME_MAPPING[coinName];
-            if (data[coingeckoId]) {
-                prices[coinName] = {
-                    price_jpy: data[coingeckoId].jpy,
-                    last_updated: data[coingeckoId].last_updated_at
-                };
-            }
-        }
-
-        // メタデータ追加
-        prices._metadata = {
-            lastUpdate: Date.now(),
-            coinNames: validCoinNames
-        };
-
-        // 永続化キャッシュに保存（30分有効）
-        cache.set(cacheKey, prices, CACHE_DURATION_PRICE);
-
-        // ポートフォリオデータを再計算（含み損益含む）
-        updatePortfolioWithPrices(currentPortfolioData, prices);
-
-        // ポートフォリオデータを渡して表示を更新（グローバルステート更新はportfolio.js内で行われる）
-        refreshPortfolioDisplay(currentPortfolioData, `価格更新完了: ${validCoinNames.length}銘柄 (30分間保存)`);
-
-        // 価格データ永続化レポート（デバッグモード時のみ）
-        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
-            setTimeout(() => showPriceDataReport(), 1000);
-        }
+        // ポートフォリオデータを渡して表示を更新
+        refreshPortfolioDisplay(currentPortfolioData, message);
 
     } catch (error) {
         console.error('価格取得エラー:', error);
-        // エラー通知を表示
         showErrorMessage(`価格取得失敗: ${error.message}`);
         updatePriceStatus('取得失敗');
     }

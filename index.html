@@ -228,9 +228,28 @@
     <!-- Include JavaScript files -->
     <script src="config.js"></script>
     <script src="storage-utils.js"></script>
+
+    <!-- Service Layer (Object-Oriented Architecture) -->
+    <script src="services/api-service.js"></script>
+    <script src="services/chart-service.js"></script>
+    <script src="services/ui-service.js"></script>
+    <script src="services/file-service.js"></script>
+
+    <!-- Legacy files (for backward compatibility) -->
     <script src="api.js"></script>
     <script src="charts.js"></script>
     <script src="portfolio.js"></script>
     <script src="main.js"></script>
+
+    <!-- Initialize service instances -->
+    <script>
+        // Initialize ChartService instance (depends on apiService and portfolioDataService)
+        window.chartService = new ChartService(window.apiService, window.portfolioDataService, AppConfig);
+
+        // Initialize FileService instance (depends on portfolioDataService and uiService)
+        window.fileService = new FileService(window.portfolioDataService, window.uiService);
+
+        console.log('✅ All services initialized successfully');
+    </script>
 </body>
 </html>
