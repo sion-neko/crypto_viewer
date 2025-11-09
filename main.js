@@ -161,12 +161,6 @@ function switchTab(tabName) {
 // サブタブ切り替え機能（サービスクラスへの委譲版）
 function switchSubtab(subtabName) {
     window.uiService.switchSubTab(subtabName);
-
-    // 各銘柄のチャート表示
-    if (subtabName !== 'summary') {
-        const coinName = subtabName.toUpperCase();
-        displayCoinNameChart(coinName);
-    }
 }
 
 // サブタブ間の移動関数（サービスクラスへの委譲版）

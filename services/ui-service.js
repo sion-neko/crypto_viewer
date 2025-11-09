@@ -378,14 +378,6 @@ class TableRenderer {
                 </div>
             </div>
 
-            <!-- チャートエリア -->
-            <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                <h4 style="margin: 0 0 15px 0; font-size: 16px; font-weight: 600; color: #1e293b;">📊 ${coinSummary.coinName} 価格チャート（過去30日）</h4>
-                <div style="position: relative; height: 300px;">
-                    <canvas id="${coinSummary.coinName.toLowerCase()}-chart-canvas" style="max-height: 300px;"></canvas>
-                </div>
-            </div>
-
             <!-- 取引履歴テーブル -->
             <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                 <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinSummary.coinName} 全取引履歴（${coinDetailData.allTransactions.length}件）</h4>
