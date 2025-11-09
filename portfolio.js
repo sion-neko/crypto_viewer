@@ -2,19 +2,119 @@
 // PORTFOLIO.JS - Portfolio analysis, calculations, and display
 // ===================================================================
 
-// Global variables for portfolio state (use window object to avoid conflicts)
+// ===================================================================
+// PORTFOLIO DATA SERVICE CLASS
+// ===================================================================
+
+/**
+ * ポートフォリオデータを管理するサービスクラス
+ * CacheServiceと連携してデータの取得・更新を行う
+ */
+class PortfolioDataService {
+    constructor() {
+        this.currentData = null;
+        this.sortField = 'realizedProfit';
+        this.sortDirection = 'desc';
+    }
+
+    /**
+     * ポートフォリオデータを取得
+     * @returns {object|null} ポートフォリオデータ
+     */
+    getData() {
+        // メモリキャッシュがあればそれを返す
+        if (this.currentData) {
+            return this.currentData;
+        }
+
+        // なければCacheServiceから取得
+        this.currentData = cache.getPortfolioData();
+        return this.currentData;
+    }
+
+    /**
+     * ポートフォリオデータを更新
+     * @param {object} portfolioData - 新しいポートフォリオデータ
+     */
+    updateData(portfolioData) {
+        if (portfolioData) {
+            this.currentData = portfolioData;
+            safeSetJSON('portfolioData', portfolioData);
+        }
+    }
+
+    /**
+     * 現在のソート状態を取得
+     * @returns {object} {field, direction}
+     */
+    getSortState() {
+        return {
+            field: this.sortField,
+            direction: this.sortDirection
+        };
+    }
+
+    /**
+     * ソート状態を更新
+     * @param {string} field - ソートフィールド
+     * @param {string} direction - ソート方向 ('asc' or 'desc')
+     */
+    setSortState(field, direction) {
+        this.sortField = field;
+        this.sortDirection = direction;
+    }
+
+    /**
+     * メモリキャッシュをクリア（次回getData()時に再読み込み）
+     */
+    clearCache() {
+        this.currentData = null;
+    }
+
+    /**
+     * ポートフォリオデータが存在するか確認
+     * @returns {boolean}
+     */
+    hasData() {
+        return this.getData() !== null;
+    }
+}
+
+// シングルトンインスタンスを作成してグローバルに公開
+window.portfolioDataService = new PortfolioDataService();
+
+// 後方互換性のためのエイリアス（段階的に削除予定）
 if (!window.appPortfolioState) {
     window.appPortfolioState = {
-        currentPortfolioData: null,
-        currentSortField: 'realizedProfit',
-        currentSortDirection: 'desc'
+        get currentPortfolioData() {
+            return window.portfolioDataService.getData();
+        },
+        set currentPortfolioData(value) {
+            window.portfolioDataService.updateData(value);
+        },
+        get currentSortField() {
+            return window.portfolioDataService.getSortState().field;
+        },
+        set currentSortField(value) {
+            const currentState = window.portfolioDataService.getSortState();
+            window.portfolioDataService.setSortState(value, currentState.direction);
+        },
+        get currentSortDirection() {
+            return window.portfolioDataService.getSortState().direction;
+        },
+        set currentSortDirection(value) {
+            const currentState = window.portfolioDataService.getSortState();
+            window.portfolioDataService.setSortState(currentState.field, value);
+        }
     };
 }
 
-// 後方互換性のためのエイリアス
-let currentPortfolioData = window.appPortfolioState.currentPortfolioData;
-let currentSortField = window.appPortfolioState.currentSortField;
-let currentSortDirection = window.appPortfolioState.currentSortDirection;
+// 後方互換性のためのローカル変数は削除されました
+// 以下のように PortfolioDataService を使用してください：
+//   - portfolioDataService.getData() : データ取得
+//   - portfolioDataService.updateData(data) : データ更新
+//   - portfolioDataService.getSortState() : ソート状態取得
+//   - portfolioDataService.setSortState(field, direction) : ソート状態更新
 
 // ===================================================================
 // PORTFOLIO UPDATE HELPER
@@ -40,25 +140,30 @@ function refreshPortfolioDisplay(portfolioDataOrMessage = null, message = null) 
         msg = message;
     }
 
-    // ポートフォリオデータが渡された場合、グローバルステートを更新
+    // ポートフォリオデータが渡された場合、PortfolioDataServiceを更新
     if (portfolioData) {
-        window.appPortfolioState.currentPortfolioData = portfolioData;
-        currentPortfolioData = portfolioData;
+        portfolioDataService.updateData(portfolioData);
+    }
+
+    // PortfolioDataServiceから現在のデータとソート状態を取得
+    const currentData = portfolioDataService.getData();
+    const sortState = portfolioDataService.getSortState();
+
+    if (!currentData) {
+        console.warn('ポートフォリオデータが存在しません');
+        return;
     }
 
     // 現在のソート順を維持してテーブル再描画
-    sortPortfolioData(currentSortField, currentSortDirection);
+    sortPortfolioData(sortState.field, sortState.direction);
 
     const tableContainer = document.getElementById('portfolio-table-container');
     if (tableContainer) {
-        tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+        tableContainer.innerHTML = generatePortfolioTable(currentData);
     }
 
     // サマリー部分も更新（総合損益反映のため）
-    updateDataStatus(currentPortfolioData);
-
-    // 更新されたポートフォリオデータを保存
-    safeSetJSON('portfolioData', currentPortfolioData);
+    updateDataStatus(currentData);
 
     // 成功メッセージ表示
     if (msg && typeof showSuccessMessage === 'function') {
@@ -193,29 +298,36 @@ function analyzePortfolioData(transactions) {
 
 // テーブルソート機能
 function sortTable(field) {
-    if (!currentPortfolioData) return;
+    const currentData = portfolioDataService.getData();
+    if (!currentData) return;
+
+    const sortState = portfolioDataService.getSortState();
+    let newDirection;
 
     // 同じフィールドクリック時は方向を逆転
-    if (currentSortField === field) {
-        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    if (sortState.field === field) {
+        newDirection = sortState.direction === 'asc' ? 'desc' : 'asc';
     } else {
         // 新しいフィールドの場合は降順から開始
-        currentSortField = field;
-        currentSortDirection = 'desc';
+        newDirection = 'desc';
     }
 
-    sortPortfolioData(field, currentSortDirection);
+    // ソート状態を更新
+    portfolioDataService.setSortState(field, newDirection);
+
+    sortPortfolioData(field, newDirection);
 
     // テーブル再描画
     const tableContainer = document.getElementById('portfolio-table-container');
-    tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+    tableContainer.innerHTML = generatePortfolioTable(currentData);
 }
 
 // ポートフォリオデータソート
 function sortPortfolioData(field, direction) {
-    if (!currentPortfolioData || !currentPortfolioData.summary) return;
+    const currentData = portfolioDataService.getData();
+    if (!currentData || !currentData.summary) return;
 
-    currentPortfolioData.summary.sort((a, b) => {
+    currentData.summary.sort((a, b) => {
         let aVal, bVal;
 
         // フィールド値取得
@@ -315,12 +427,14 @@ function updateSortIndicators(activeField, direction) {
 
 // ダッシュボード表示（タブシステム版）
 function displayDashboard(portfolioData) {
-    // グローバル変数に保存
-    window.appPortfolioState.currentPortfolioData = portfolioData;
-    currentPortfolioData = portfolioData;
-    window.currentPortfolioData = portfolioData; // グローバルアクセス用
+    // PortfolioDataServiceに保存
+    portfolioDataService.updateData(portfolioData);
+
+    // 後方互換性のためのグローバルアクセス（段階的に削除予定）
+    window.currentPortfolioData = portfolioData;
 
     // デフォルトソート（実現損益降順）
+    portfolioDataService.setSortState('realizedProfit', 'desc');
     sortPortfolioData('realizedProfit', 'desc');
 
     // 旧表示エリアを非表示
@@ -377,7 +491,8 @@ function displayDashboard(portfolioData) {
 
     // ポートフォリオテーブル表示
     const tableContainer = document.getElementById('portfolio-table-container');
-    tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+    const currentData = portfolioDataService.getData();
+    tableContainer.innerHTML = generatePortfolioTable(currentData);
 
     // キャッシュに価格データがある場合は自動的に復元
     const coinNames = portfolioData.summary.map(item => item.coinName);
@@ -388,8 +503,12 @@ function displayDashboard(portfolioData) {
         // キャッシュから価格データを復元
         updatePortfolioWithPrices(portfolioData, cachedPrices);
 
+        // PortfolioDataServiceを更新
+        portfolioDataService.updateData(portfolioData);
+
         // テーブルを再描画（含み損益を反映）
-        tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+        const updatedData = portfolioDataService.getData();
+        tableContainer.innerHTML = generatePortfolioTable(updatedData);
 
         // ポートフォリオデータをlocalStorageに保存
         safeSetJSON('portfolioData', portfolioData);

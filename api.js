@@ -60,8 +60,8 @@ window.executePriceHistoryApi = executePriceHistoryApi;
 // 価格取得関連機能
 async function fetchCurrentPrices() {
     try {
-        // CacheServiceを使用してポートフォリオデータを取得
-        const currentPortfolioData = cache.getPortfolioData();
+        // PortfolioDataServiceを使用してポートフォリオデータを取得
+        const currentPortfolioData = portfolioDataService.getData();
 
         if (!currentPortfolioData) {
             throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
