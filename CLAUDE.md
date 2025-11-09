@@ -40,11 +40,12 @@ python -m http.server 8000
 ```
 crypto_viewer/
 ├── index.html          # メインHTML（UI構造+CSS）
+├── config.js           # アプリケーション設定、定数管理
+├── storage-utils.js    # キャッシュ管理、localStorage操作、計算ユーティリティ
 ├── main.js             # ファイル処理、CSV解析、UIナビゲーション
 ├── portfolio.js        # ポートフォリオ分析エンジン、テーブル生成
 ├── api.js              # CoinGecko API統合、価格取得
 ├── charts.js           # Chart.js チャート描画、履歴データ処理
-├── cache-keys.js       # キャッシュキー生成の一元管理
 └── style.css           # スタイル（index.htmlから分離予定）
 ```
 
@@ -73,8 +74,11 @@ charts.js
   ├→ renderCoinNameProfitChart(coinName) : 個別銘柄チャート
   └→ キャッシュ管理 (24時間)
 
-cache-keys.js
-  └→ キャッシュキー生成関数の集約
+storage-utils.js
+  ├→ CacheService : キャッシュ管理クラス
+  ├→ cacheKeys : キャッシュキー生成関数（priceHistory, currentPrices, chartData）
+  ├→ safeGetJSON / safeSetJSON : localStorage操作
+  └→ 計算ユーティリティ（calculateWeightedAverage, calculateRealizedProfit, calculateUnrealizedProfit）
 ```
 
 ### データフロー
@@ -128,12 +132,12 @@ window.appChartData = {
 };
 ```
 
-### 3. キャッシュキー管理（cache-keys.js）
-全てのキャッシュキーは`cache-keys.js`で一元管理：
+### 3. キャッシュキー管理（storage-utils.js）
+全てのキャッシュキーは`storage-utils.js`の`window.cacheKeys`オブジェクトで一元管理：
 ```javascript
-getPriceHistoryCacheKey(coinName, days)  // 例: "btc_price_history_30d"
-getCurrentPricesCacheKey(coinNames)      // 例: "prices_btc_eth_sol"
-getChartDataCacheKey(coinName, days)     // 例: "chart_BTC_30days"
+cacheKeys.priceHistory(coinName)       // 例: "btc_price_history_30d"
+cacheKeys.currentPrices(coinNames)     // 例: "prices_btc_eth_sol"
+cacheKeys.chartData(coinName, days)    // 例: "chart_BTC_30days"
 ```
 
 ### 4. CSV解析（main.js）
@@ -203,7 +207,7 @@ renderAllCoinNamesProfitChart()
 'portfolioData'                // 分析済みポートフォリオデータ
 'loadedFileNames'              // 読み込み済みCSVファイル名
 
-// 価格データ（cache-keys.js参照）
+// 価格データ（storage-utils.jsのcacheKeys参照）
 'prices_[coinNames]'           // 現在価格（30分キャッシュ）
 '[coinName]_price_history_30d' // 価格履歴（24時間キャッシュ）
 'chart_[coinName]_30days'      // チャートデータ（6時間キャッシュ）
@@ -395,9 +399,11 @@ autoCleanupOldPriceData();
 
 1. **変数名は`coinName`を使用**（`symbol`は古い命名）
 2. **グローバル変数は`window.app*`に集約**
-3. **キャッシュキーは`cache-keys.js`の関数を使用**
+3. **キャッシュキーは`storage-utils.js`の`window.cacheKeys`を使用**
 4. **Chart.jsインスタンスは`window.chartInstances[canvasId]`で管理**
 5. **API呼び出しは必ずキャッシュチェック後**
+6. **設定値は`AppConfig`（config.js）から取得**
+7. **キャッシュ操作は`window.cache`（CacheService）を使用**
 
 ## 参考資料
 
