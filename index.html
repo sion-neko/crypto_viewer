@@ -17,16 +17,16 @@
     <!-- サイドバー -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h1>🚀 ポートフォリオビューアー</h1>
+            <h1>ポートフォリオビューアー</h1>
             <p style="font-size: 0.9rem; color: #7f8c8d; margin: 0;">暗号資産分析ツール</p>
         </div>
         
         <nav>
             <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
-                📊 ダッシュボード
+                ダッシュボード
             </button>
             <button class="nav-item" onclick="showPage('upload')" id="nav-upload">
-                📁 CSVアップロード
+                CSVアップロード
             </button>
         </nav>
 
@@ -42,13 +42,13 @@
         <div id="data-management" style="margin-top: 20px; display: none;">
             <!-- 価格データ管理 -->
             <div style="margin-bottom: 15px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; border-left: 4px solid #ffc107;">
-                <div style="font-size: 0.85rem; color: #856404; margin-bottom: 8px; font-weight: 600;">💾 価格データ管理</div>
+                <div style="font-size: 0.85rem; color: #856404; margin-bottom: 8px; font-weight: 600;">価格データ管理</div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button onclick="showPriceDataStatus()" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #17a2b8; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#138496'" onmouseout="this.style.background='#17a2b8'">
-                        📊 状況確認
+                        状況確認
                     </button>
                     <button onclick="clearPriceData()" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #fd7e14; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#e8690b'" onmouseout="this.style.background='#fd7e14'">
-                        🧹 価格クリア
+                        価格クリア
                     </button>
                 </div>
                 <div style="font-size: 0.75rem; color: #6c757d; margin-top: 6px; line-height: 1.3;">
@@ -58,7 +58,7 @@
 
             <!-- 全データクリア -->
             <button onclick="clearAllData()" style="width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
-                🗑️ 全データクリア
+                全データクリア
             </button>
         </div>
     </div>
@@ -69,13 +69,13 @@
             <!-- ダッシュボードページ -->
             <div id="page-dashboard" class="page-content active">
                 <div class="header">
-                    <h1>📊 ポートフォリオダッシュボード</h1>
+                    <h1>ポートフォリオダッシュボード</h1>
                     <p>あなたの暗号資産投資の詳細分析</p>
                 </div>
 
                 <div class="dashboard-area" id="dashboardArea">
                     <div class="no-data-message">
-                        <h3>📄 データがありません</h3>
+                        <h3>データがありません</h3>
                         <p>CSVファイルをアップロードしてポートフォリオを表示してください</p>
                         <button class="nav-button" onclick="showPage('upload')">CSVをアップロード</button>
                     </div>
@@ -84,15 +84,15 @@
                 <!-- タブコンテンツエリア（データがある時に表示） -->
                 <div class="tab-container" id="tabContainer" style="display: none;">
                     <div class="tab-nav">
-                        <button class="tab-button active" onclick="switchTab('portfolio')">📊 ポートフォリオ</button>
-                        <button class="tab-button" onclick="switchTab('trading')">📈 取引履歴</button>
+                        <button class="tab-button active" onclick="switchTab('portfolio')">ポートフォリオ</button>
+                        <button class="tab-button" onclick="switchTab('trading')">取引履歴</button>
                     </div>
 
                     <!-- ポートフォリオタブ -->
                     <div class="tab-content active" id="tab-portfolio">
                         <!-- サブタブナビゲーション -->
                         <div class="subtab-nav" id="subtab-nav">
-                            <button class="subtab-button active" onclick="switchSubtab('summary')" id="subtab-summary">📋 サマリー</button>
+                            <button class="subtab-button active" onclick="switchSubtab('summary')" id="subtab-summary">サマリー</button>
                             <!-- 銘柄別サブタブはJSで動的生成 -->
                         </div>
 
@@ -101,8 +101,8 @@
                             <!-- 価格更新セクション -->
                             <div id="price-update-section" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <button onclick="fetchCurrentPrices()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.3s;" onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
-                                        📈 価格更新
+                                    <button onclick="fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.3s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                                        価格更新
                                     </button>
                                     <span style="margin-left: 15px; font-size: 0.9rem; color: #6c757d;">
                                         CoinGecko APIから最新価格を取得
@@ -116,7 +116,7 @@
                             <!-- キーボードショートカット説明 -->
                             <div class="keyboard-shortcuts" style="margin-bottom: 20px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
                                 <div style="font-size: 0.9rem; color: #856404; margin-bottom: 8px;">
-                                    <strong>⌨️ キーボードショートカット</strong>
+                                    <strong>キーボードショートカット</strong>
                                 </div>
                                 <div style="font-size: 0.8rem; color: #6c757d; line-height: 1.4;">
                                     <strong>タブ切り替え:</strong> Ctrl+1 (ポートフォリオ) / Ctrl+2 (取引履歴)<br>
@@ -140,7 +140,7 @@
                     <!-- 取引履歴タブ -->
                     <div class="tab-content" id="tab-trading">
                         <div class="portfolio-summary">
-                            <h3 style="color: #2c3e50;">📈 取引履歴</h3>
+                            <h3 style="color: #2c3e50;">取引履歴</h3>
                             <div id="trading-history-container">
                                 <!-- 取引履歴テーブルをここに表示 -->
                             </div>
@@ -153,13 +153,12 @@
             <!-- アップロードページ -->
             <div id="page-upload" class="page-content">
                 <div class="header">
-                    <h1>📁 CSVファイルアップロード</h1>
+                    <h1>CSVファイルアップロード</h1>
                     <p>取引履歴CSVをアップロードして、ポートフォリオを分析・可視化</p>
                 </div>
 
                 <div class="upload-area">
                     <div class="upload-zone" id="uploadZone">
-                        <div class="upload-icon">📁</div>
                         <div class="upload-text">CSVファイルをドラッグ&ドロップ</div>
                         <div class="upload-subtext">または下のボタンをクリックしてファイルを選択</div>
                         
@@ -183,7 +182,7 @@
                         </div>
                         
                         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                            📂 ファイルを選択
+                            ファイルを選択
                         </button>
                         <input type="file" id="fileInput" class="file-input" accept=".csv" multiple>
                     </div>
@@ -193,7 +192,7 @@
                 <div id="upload-files-section" style="margin-top: 20px; margin-bottom: 30px; display: none;">
                     <div style="background: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; padding: 20px;">
                         <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #495057; display: flex; align-items: center; gap: 8px;">
-                            📁 読み込み済みファイル
+                            読み込み済みファイル
                         </h3>
                         <div id="upload-files-list" style="max-height: 150px; overflow-y: auto;">
                             <!-- ファイル名がここに表示される -->
@@ -202,7 +201,7 @@
                 </div>
 
                 <div class="info-section">
-                    <h2 class="info-title">🛡️ プライバシー保護</h2>
+                    <h2 class="info-title">プライバシー保護</h2>
                     <ul class="info-list">
                         <li>あなたのデータは完全にブラウザ内で処理されます</li>
                         <li>ファイルがサーバーにアップロードされることはありません</li>
@@ -210,7 +209,7 @@
                         <li>一度処理したデータは次回も自動で表示されます</li>
                     </ul>
 
-                    <h2 class="info-title" style="margin-top: 25px;">📊 対応形式</h2>
+                    <h2 class="info-title" style="margin-top: 25px;">対応形式</h2>
                     <ul class="info-list">
                         <li>GMO コイン取引履歴CSV</li>
                         <li>OKCoin Japan 取引履歴CSV</li>
