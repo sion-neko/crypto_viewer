@@ -22,9 +22,30 @@ let currentSortDirection = window.appPortfolioState.currentSortDirection;
 
 /**
  * ポートフォリオ表示を更新（共通処理）
+ * @param {object|string} portfolioDataOrMessage - ポートフォリオデータ（省略可）または成功メッセージ（後方互換性のため）
  * @param {string} message - 成功メッセージ（省略可）
  */
-function refreshPortfolioDisplay(message = null) {
+function refreshPortfolioDisplay(portfolioDataOrMessage = null, message = null) {
+    // 引数の型に応じて処理を分岐（後方互換性のため）
+    let portfolioData;
+    let msg;
+
+    if (typeof portfolioDataOrMessage === 'string') {
+        // 旧形式: refreshPortfolioDisplay(message)
+        portfolioData = null;
+        msg = portfolioDataOrMessage;
+    } else {
+        // 新形式: refreshPortfolioDisplay(portfolioData, message)
+        portfolioData = portfolioDataOrMessage;
+        msg = message;
+    }
+
+    // ポートフォリオデータが渡された場合、グローバルステートを更新
+    if (portfolioData) {
+        window.appPortfolioState.currentPortfolioData = portfolioData;
+        currentPortfolioData = portfolioData;
+    }
+
     // 現在のソート順を維持してテーブル再描画
     sortPortfolioData(currentSortField, currentSortDirection);
 
@@ -40,8 +61,8 @@ function refreshPortfolioDisplay(message = null) {
     safeSetJSON('portfolioData', currentPortfolioData);
 
     // 成功メッセージ表示
-    if (message && typeof showSuccessMessage === 'function') {
-        showSuccessMessage(message);
+    if (msg && typeof showSuccessMessage === 'function') {
+        showSuccessMessage(msg);
     }
 
     // 価格ステータス更新
