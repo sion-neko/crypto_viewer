@@ -51,6 +51,21 @@ const AppConfig = {
     // ===================================================================
 
     /**
+     * チャート期間オプション（日数）
+     */
+    chartPeriodOptions: [
+        { days: 30, label: '1ヶ月' },
+        { days: 90, label: '3ヶ月' },
+        { days: 365, label: '1年' },
+        { days: 1095, label: '3年' }
+    ],
+
+    /**
+     * デフォルトのチャート期間（日数）
+     */
+    defaultChartPeriod: 30,
+
+    /**
      * 銘柄別のチャート色設定
      * border: チャートの線の色
      * bg: チャートの背景色（透明度0.1）
@@ -83,6 +98,8 @@ const AppConfig = {
 // 設定オブジェクトを読み取り専用にする
 Object.freeze(AppConfig.coinGeckoMapping);
 Object.freeze(AppConfig.cacheDurations);
+AppConfig.chartPeriodOptions.forEach(option => Object.freeze(option));
+Object.freeze(AppConfig.chartPeriodOptions);
 Object.freeze(AppConfig.coinColors);
 Object.freeze(AppConfig.defaultCoinColor);
 Object.freeze(AppConfig);

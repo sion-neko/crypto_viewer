@@ -153,8 +153,8 @@ class APIService {
             throw new Error(`${coinName}はサポートされていない銘柄です`);
         }
 
-        // キャッシュから取得
-        const cacheKey = this.cacheKeys.priceHistory(coinName);
+        // キャッシュから取得（日数を含めたキー）
+        const cacheKey = `${this.cacheKeys.priceHistory(coinName)}_${days}d`;
         const cachedData = this.cache.get(cacheKey);
 
         if (cachedData) {

@@ -22,8 +22,13 @@ const DEFAULT_COIN_NAME_COLOR = AppConfig.defaultCoinColor;
 // PRICE HISTORY FUNCTIONS
 // ===================================================================
 
-// 銘柄の過去1か月の価格履歴を取得
-async function fetchCoinNamePriceHistory(coinName) {
+// 銘柄の価格履歴を取得（日数指定可能）
+async function fetchCoinNamePriceHistory(coinName, days = null) {
+    // 日数が指定されていない場合は、localStorageまたはデフォルトを使用
+    if (days === null) {
+        days = safeGetJSON('chartPeriod', AppConfig.defaultChartPeriod);
+    }
+
     const coingeckoId = AppConfig.coinGeckoMapping[coinName];
     // TODO: サポートしていない銘柄を自動でサポートするようにする
     if (!coingeckoId) {
@@ -31,8 +36,8 @@ async function fetchCoinNamePriceHistory(coinName) {
         throw new Error(`${coinName}はサポートされていません`);
     }
 
-    // キャッシュから取得
-    const cacheKey = cacheKeys.priceHistory(coinName);
+    // キャッシュキーに日数を含める
+    const cacheKey = `${cacheKeys.priceHistory(coinName)}_${days}d`;
     const cachedData = cache.get(cacheKey);
 
     // キャッシュがあれば返す
@@ -41,10 +46,10 @@ async function fetchCoinNamePriceHistory(coinName) {
     }
 
     // キャッシュがない場合はAPIを実行してデータを取得
-    // CoinGecko APIで過去30日の価格データを取得（API実行は共通関数に委譲）
+    // CoinGecko APIで指定日数の価格データを取得（API実行は共通関数に委譲）
     const data = await executePriceHistoryApi(coingeckoId, {
         vsCurrency: 'jpy',
-        days: 30,
+        days: days,
         interval: 'daily',
         timeoutMs: 10000
     });
@@ -363,11 +368,11 @@ function createMultiCoinNameProfitChartOptions(title) {
 // ===================================================================
 
 // 複数銘柄の価格履歴を並列取得
-async function fetchMultipleCoinNamePriceHistories(coinNames) {
+async function fetchMultipleCoinNamePriceHistories(coinNames, days = null) {
     const results = {};
     const promises = coinNames.map(async (coinName) => {
         try {
-            const priceHistory = await fetchCoinNamePriceHistory(coinName);
+            const priceHistory = await fetchCoinNamePriceHistory(coinName, days);
             results[coinName] = priceHistory;
         } catch (error) {
             results[coinName] = null;
@@ -381,10 +386,11 @@ async function fetchMultipleCoinNamePriceHistories(coinNames) {
 /**
  * ポートフォリオの全銘柄の価格履歴を取得
  * @param {object} portfolioData - ポートフォリオデータ
+ * @param {number} days - 取得する日数（nullの場合はlocalStorageまたはデフォルト）
  * @returns {Promise<{priceHistories: object, validCoinNames: string[]}>}
  * @throws {Error} 保有銘柄がない、または価格履歴を取得できた銘柄がない場合
  */
-async function fetchPriceHistoriesForPortfolio(portfolioData) {
+async function fetchPriceHistoriesForPortfolio(portfolioData, days = null) {
     const coinNames = portfolioData.summary.map(item => item.coinName);
 
     if (coinNames.length === 0) {
@@ -393,7 +399,7 @@ async function fetchPriceHistoriesForPortfolio(portfolioData) {
 
     showInfoMessage(`${coinNames.length}銘柄の価格履歴を取得中...`);
 
-    const priceHistories = await fetchMultipleCoinNamePriceHistories(coinNames);
+    const priceHistories = await fetchMultipleCoinNamePriceHistories(coinNames, days);
     const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
 
     if (validCoinNames.length === 0) {
@@ -529,10 +535,10 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画（サービスクラスへの委譲版）
-async function renderAllCoinNamesProfitChart(portfolioData, chartMode) {
+async function renderAllCoinNamesProfitChart(portfolioData, chartMode, days = null) {
     try {
         // ChartServiceを使用してチャートを描画
-        const result = await window.chartService.renderPortfolioProfitChart(portfolioData, chartMode);
+        const result = await window.chartService.renderPortfolioProfitChart(portfolioData, chartMode, days);
 
         if (result.success) {
             showSuccessMessage(`${result.coinCount}銘柄の損益推移チャートを表示しました`);
@@ -820,5 +826,96 @@ async function fetchCoinNameHistoricalData(coinName) {
         return [];
     }
 }
+
+// 表示モードを切り替える（デスクトップ/モバイル統合版）
+function toggleChartMode() {
+    // 現在のモードを取得（引数なしで自動判定）
+    const currentMode = window.portfolioChartMode || safeGetJSON('portfolioChartMode', 'combined');
+    const newMode = (currentMode === 'combined') ? 'individual' : 'combined';
+
+    // ChartElementIdsを使用してDOM要素を取得
+    const toggleButton = document.getElementById(ChartElementIds.getToggleButton());
+    const chartTitle = document.getElementById(ChartElementIds.getTitle());
+    const mobileChartTitle = document.getElementById('mobile-chart-title');
+
+    window.portfolioChartMode = newMode;
+    safeSetJSON('portfolioChartMode', newMode);
+
+    // モバイルかデスクトップかを判定
+    const isMobileView = typeof isMobile === 'function' && isMobile();
+
+    // 現在の期間を取得
+    const currentPeriod = safeGetJSON('chartPeriod', AppConfig.defaultChartPeriod);
+    const option = AppConfig.chartPeriodOptions.find(opt => opt.days === currentPeriod);
+    const periodLabel = option ? `過去${option.label}` : `過去${currentPeriod}日`;
+
+    if (newMode === 'combined') {
+        toggleButton.textContent = isMobileView ? '個別' : '個別表示';
+        toggleButton.title = '各銘柄を個別に表示';
+        const titleText = `📈 ポートフォリオ総合損益推移（${periodLabel}）`;
+        if (chartTitle) chartTitle.textContent = titleText;
+        if (mobileChartTitle) mobileChartTitle.textContent = titleText;
+    } else {
+        toggleButton.textContent = isMobileView ? '合計' : '合計表示';
+        toggleButton.title = 'ポートフォリオ全体の合計を表示';
+        const titleText = `📈 各銘柄の個別損益推移（${periodLabel}）`;
+        if (chartTitle) chartTitle.textContent = titleText;
+        if (mobileChartTitle) mobileChartTitle.textContent = titleText;
+    }
+
+    // チャートを再描画
+    // storage-utils.jsのCacheServiceを使用してポートフォリオデータを取得
+    const portfolioData = window.cache.getPortfolioData();
+    if (portfolioData) {
+        renderAllCoinNamesProfitChart(portfolioData, newMode, currentPeriod);
+    } else {
+        console.error('Portfolio data not available for chart rendering');
+        showErrorMessage('チャート表示エラー: ポートフォリオデータが利用できません');
+    }
+
+}
+
+/**
+ * チャート期間を変更
+ * @param {number} days - 選択された日数
+ */
+function changeChartPeriod(days) {
+    // localStorageに保存
+    safeSetJSON('chartPeriod', days);
+
+    // 期間ラベルを取得
+    const option = AppConfig.chartPeriodOptions.find(opt => opt.days === days);
+    const periodLabel = option ? `過去${option.label}` : `過去${days}日`;
+
+    // ChartElementIdsを使用してタイトル要素を取得
+    const chartTitle = document.getElementById(ChartElementIds.getTitle());
+    const mobileChartTitle = document.getElementById('mobile-chart-title');
+
+    // 現在のモードを取得
+    const currentMode = window.portfolioChartMode || safeGetJSON('portfolioChartMode', 'combined');
+
+    // タイトルを更新
+    const titlePrefix = currentMode === 'combined' ? '📈 ポートフォリオ総合損益推移' : '📈 各銘柄の個別損益推移';
+    const newTitle = `${titlePrefix}（${periodLabel}）`;
+
+    if (chartTitle) {
+        chartTitle.textContent = newTitle;
+    }
+    if (mobileChartTitle) {
+        mobileChartTitle.textContent = newTitle;
+    }
+
+    // チャートを再描画
+    const portfolioData = window.cache.getPortfolioData();
+    if (portfolioData) {
+        renderAllCoinNamesProfitChart(portfolioData, currentMode, days);
+    } else {
+        console.error('Portfolio data not available for chart rendering');
+        showErrorMessage('チャート表示エラー: ポートフォリオデータが利用できません');
+    }
+}
+
 // 関数を即座にグローバルに登録
+window.toggleChartMode = toggleChartMode;
 window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;
+window.changeChartPeriod = changeChartPeriod;

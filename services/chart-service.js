@@ -27,9 +27,15 @@ class ChartService {
      * 全銘柄の総合損益推移チャートを描画
      * @param {object} portfolioData - ポートフォリオデータ
      * @param {string} chartMode - チャートモード ('combined' or 'individual')
+     * @param {number} days - 取得する日数（nullの場合はlocalStorageまたはデフォルト）
      * @returns {Promise<void>}
      */
-    async renderPortfolioProfitChart(portfolioData, chartMode = 'combined') {
+    async renderPortfolioProfitChart(portfolioData, chartMode = 'combined', days = null) {
+        // 日数が指定されていない場合は、localStorageまたはデフォルトを使用
+        if (days === null) {
+            days = safeGetJSON('chartPeriod', this.config.defaultChartPeriod);
+        }
+
         const canvasId = ChartElementIds.getCanvas();
 
         try {
@@ -40,8 +46,8 @@ class ChartService {
                 throw new Error('保有銘柄がありません');
             }
 
-            // 複数銘柄の価格履歴を並列取得
-            const priceHistories = await this.apiService.fetchMultiplePriceHistories(coinNames);
+            // 複数銘柄の価格履歴を並列取得（日数を指定）
+            const priceHistories = await this.apiService.fetchMultiplePriceHistories(coinNames, { days });
             const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
 
             if (validCoinNames.length === 0) {
@@ -64,13 +70,16 @@ class ChartService {
                 }
             });
 
+            // 期間ラベルを生成
+            const periodLabel = this._getPeriodLabel(days);
+
             if (chartMode === 'combined') {
                 // 全銘柄の合計損益推移チャートを表示
                 const combinedProfitData = this._generateCombinedProfitTimeSeries(allProfitData);
-                this.displayProfitChart(canvasId, combinedProfitData, 'ポートフォリオ総合損益推移（過去1か月）');
+                this.displayProfitChart(canvasId, combinedProfitData, `ポートフォリオ総合損益推移（${periodLabel}）`);
             } else {
                 // 複数銘柄の個別損益推移チャートを表示
-                this._displayMultiCoinProfitChart(canvasId, allProfitData, '全銘柄個別損益推移（過去1か月）');
+                this._displayMultiCoinProfitChart(canvasId, allProfitData, `全銘柄個別損益推移（${periodLabel}）`);
             }
 
             return { success: true, coinCount: Object.keys(allProfitData).length };
@@ -83,6 +92,17 @@ class ChartService {
             ]);
             throw error;
         }
+    }
+
+    /**
+     * 日数から期間ラベルを生成
+     * @private
+     * @param {number} days - 日数
+     * @returns {string} 期間ラベル
+     */
+    _getPeriodLabel(days) {
+        const option = this.config.chartPeriodOptions.find(opt => opt.days === days);
+        return option ? `過去${option.label}` : `過去${days}日`;
     }
 
     /**

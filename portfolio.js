@@ -413,12 +413,25 @@ function displayDashboard(portfolioData) {
     if (!chartContainer.hasChildNodes()) {
         if (isMobile()) {
             // モバイル版チャート
+            const currentPeriod = safeGetJSON('chartPeriod', AppConfig.defaultChartPeriod);
+            const periodOption = AppConfig.chartPeriodOptions.find(opt => opt.days === currentPeriod);
+            const periodLabel = periodOption ? `過去${periodOption.label}` : `過去${currentPeriod}日`;
+            const periodOptions = AppConfig.chartPeriodOptions.map(opt =>
+                `<option value="${opt.days}" ${opt.days === currentPeriod ? 'selected' : ''}>${opt.label}</option>`
+            ).join('');
+
             chartContainer.innerHTML = `
                 <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
                     <div class="card-header">
-                        <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
-                        <div style="float: right;">
-                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        <span id="mobile-chart-title">📈 ポートフォリオ総合損益推移（${periodLabel}）</span>
+                        <div style="float: right; display: flex; gap: 4px;">
+                            <select id="mobile-chart-period-select" onchange="changeChartPeriod(parseInt(this.value))" style="padding: 4px 6px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                ${periodOptions}
+                            </select>
+                            <button id="mobile-chart-mode-toggle" onclick="toggleChartMode()" style="padding: 4px 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="個別表示に切り替え">
+                                個別
+                            </button>
+                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), window.portfolioChartMode || 'combined')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                                 更新
                             </button>
                         </div>
@@ -430,12 +443,25 @@ function displayDashboard(portfolioData) {
             `;
         } else {
             // デスクトップ版チャート
+            const currentPeriod = safeGetJSON('chartPeriod', AppConfig.defaultChartPeriod);
+            const periodOption = AppConfig.chartPeriodOptions.find(opt => opt.days === currentPeriod);
+            const periodLabel = periodOption ? `過去${periodOption.label}` : `過去${currentPeriod}日`;
+            const periodOptions = AppConfig.chartPeriodOptions.map(opt =>
+                `<option value="${opt.days}" ${opt.days === currentPeriod ? 'selected' : ''}>${opt.label}</option>`
+            ).join('');
+
             chartContainer.innerHTML = `
                 <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
-                        <div>
-                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;" id="chart-title">📈 ポートフォリオ総合損益推移（${periodLabel}）</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="chart-period-select" onchange="changeChartPeriod(parseInt(this.value))" style="padding: 8px 12px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                ${periodOptions}
+                            </select>
+                            <button id="chart-mode-toggle" onclick="toggleChartMode()" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;" title="各銘柄を個別に表示">
+                                個別表示
+                            </button>
+                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), window.portfolioChartMode || 'combined')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                                 チャート更新
                             </button>
                         </div>
