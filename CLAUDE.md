@@ -40,11 +40,12 @@ python -m http.server 8000
 ```
 crypto_viewer/
 ├── index.html          # メインHTML（UI構造+CSS）
+├── config.js           # アプリケーション設定、定数管理
+├── storage-utils.js    # キャッシュ管理、localStorage操作、計算ユーティリティ
 ├── main.js             # ファイル処理、CSV解析、UIナビゲーション
 ├── portfolio.js        # ポートフォリオ分析エンジン、テーブル生成
 ├── api.js              # CoinGecko API統合、価格取得
 ├── charts.js           # Chart.js チャート描画、履歴データ処理
-├── cache-keys.js       # キャッシュキー生成の一元管理
 └── style.css           # スタイル（index.htmlから分離予定）
 ```
 
@@ -73,8 +74,11 @@ charts.js
   ├→ renderCoinNameProfitChart(coinName) : 個別銘柄チャート
   └→ キャッシュ管理 (24時間)
 
-cache-keys.js
-  └→ キャッシュキー生成関数の集約
+storage-utils.js
+  ├→ CacheService : キャッシュ管理クラス
+  ├→ cacheKeys : キャッシュキー生成関数（priceHistory, currentPrices, chartData）
+  ├→ safeGetJSON / safeSetJSON : localStorage操作
+  └→ 計算ユーティリティ（calculateWeightedAverage, calculateRealizedProfit, calculateUnrealizedProfit）
 ```
 
 ### データフロー
@@ -105,35 +109,31 @@ cache-keys.js
 - ✅ 正: `coinName`, `coinNameData`, `COIN_NAME_MAPPING`
 - ❌ 誤: `symbol`, `symbolData`, `SYMBOL_MAPPING`（古い命名）
 
-### 2. グローバル変数管理
-グローバル変数の衝突を避けるため、`window.app*`オブジェクトに集約：
+### 2. サービスクラスによるデータ管理
+データ管理はサービスクラスを通じて行い、グローバル変数への直接アクセスを避ける：
 ```javascript
 // portfolio.js
-window.appPortfolioState = {
-    currentPortfolioData: null,
-    currentSortField: 'realizedProfit',
-    currentSortDirection: 'desc'
-};
+window.portfolioDataService = new PortfolioDataService();
+// 使用例:
+//   portfolioDataService.getData()           // データ取得
+//   portfolioDataService.updateData(data)    // データ更新
+//   portfolioDataService.getSortState()      // ソート状態取得
+//   portfolioDataService.setSortState(f, d)  // ソート状態更新
 
-// api.js
-window.appPriceData = {
-    currentPrices: {},
-    lastPriceUpdate: null
-};
-
-// charts.js
-window.appChartData = {
-    historicalData: {},
-    profitChartInstance: null
-};
+// storage-utils.js
+window.cache = new CacheService();
+// 使用例:
+//   cache.get(key)                // キャッシュ取得
+//   cache.set(key, value, ttl)    // キャッシュ設定
+//   cache.getPortfolioData()      // ポートフォリオデータ取得
 ```
 
-### 3. キャッシュキー管理（cache-keys.js）
-全てのキャッシュキーは`cache-keys.js`で一元管理：
+### 3. キャッシュキー管理（storage-utils.js）
+全てのキャッシュキーは`storage-utils.js`の`window.cacheKeys`オブジェクトで一元管理：
 ```javascript
-getPriceHistoryCacheKey(coinName, days)  // 例: "btc_price_history_30d"
-getCurrentPricesCacheKey(coinNames)      // 例: "prices_btc_eth_sol"
-getChartDataCacheKey(coinName, days)     // 例: "chart_BTC_30days"
+cacheKeys.priceHistory(coinName)       // 例: "btc_price_history_30d"
+cacheKeys.currentPrices(coinNames)     // 例: "prices_btc_eth_sol"
+cacheKeys.chartData(coinName, days)    // 例: "chart_BTC_30days"
 ```
 
 ### 4. CSV解析（main.js）
@@ -203,7 +203,7 @@ renderAllCoinNamesProfitChart()
 'portfolioData'                // 分析済みポートフォリオデータ
 'loadedFileNames'              // 読み込み済みCSVファイル名
 
-// 価格データ（cache-keys.js参照）
+// 価格データ（storage-utils.jsのcacheKeys参照）
 'prices_[coinNames]'           // 現在価格（30分キャッシュ）
 '[coinName]_price_history_30d' // 価格履歴（24時間キャッシュ）
 'chart_[coinName]_30days'      // チャートデータ（6時間キャッシュ）
@@ -394,10 +394,16 @@ autoCleanupOldPriceData();
 ## 重要な注意事項
 
 1. **変数名は`coinName`を使用**（`symbol`は古い命名）
-2. **グローバル変数は`window.app*`に集約**
-3. **キャッシュキーは`cache-keys.js`の関数を使用**
+2. **データアクセスはサービスクラス経由**
+   - ポートフォリオデータ: `portfolioDataService.getData()`
+   - キャッシュ: `cache.get(key)` / `cache.set(key, value, ttl)`
+3. **キャッシュキーは`window.cacheKeys`を使用**
+   - `cacheKeys.priceHistory(coinName)`
+   - `cacheKeys.currentPrices(coinNames)`
+   - `cacheKeys.chartData(coinName, days)`
 4. **Chart.jsインスタンスは`window.chartInstances[canvasId]`で管理**
 5. **API呼び出しは必ずキャッシュチェック後**
+6. **設定値は`AppConfig`（config.js）から取得**
 
 ## 参考資料
 

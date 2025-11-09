@@ -60,15 +60,11 @@ window.executePriceHistoryApi = executePriceHistoryApi;
 // 価格取得関連機能
 async function fetchCurrentPrices() {
     try {
-        // ポートフォリオデータの存在確認を強化
+        // PortfolioDataServiceを使用してポートフォリオデータを取得
+        const currentPortfolioData = portfolioDataService.getData();
+
         if (!currentPortfolioData) {
-            // localStorageから再読み込みを試行
-            const storedData = localStorage.getItem('portfolioData');
-            if (storedData) {
-                currentPortfolioData = JSON.parse(storedData);
-            } else {
-                throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
-            }
+            throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
         }
 
         if (!currentPortfolioData.summary || currentPortfolioData.summary.length === 0) {
@@ -88,7 +84,9 @@ async function fetchCurrentPrices() {
         if (pricesFromHistory && Object.keys(pricesFromHistory).length === validCoinNames.length) {
             // 価格履歴から取得した価格でポートフォリオを更新
             updatePortfolioWithPrices(currentPortfolioData, pricesFromHistory);
-            refreshPortfolioDisplay(`キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`);
+
+            // ポートフォリオデータを渡して表示を更新（グローバルステート更新はportfolio.js内で行われる）
+            refreshPortfolioDisplay(currentPortfolioData, `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`);
             return;
         }
 
@@ -112,7 +110,8 @@ async function fetchCurrentPrices() {
                 minute: 'numeric'
             });
 
-            refreshPortfolioDisplay(`キャッシュから表示: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`);
+            // ポートフォリオデータを渡して表示を更新（グローバルステート更新はportfolio.js内で行われる）
+            refreshPortfolioDisplay(currentPortfolioData, `キャッシュから表示: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`);
             return;
         }
 
@@ -153,8 +152,8 @@ async function fetchCurrentPrices() {
         // ポートフォリオデータを再計算（含み損益含む）
         updatePortfolioWithPrices(currentPortfolioData, prices);
 
-        // 成功通知を表示して再描画（永続化情報付き）
-        refreshPortfolioDisplay(`価格更新完了: ${validCoinNames.length}銘柄 (30分間保存)`);
+        // ポートフォリオデータを渡して表示を更新（グローバルステート更新はportfolio.js内で行われる）
+        refreshPortfolioDisplay(currentPortfolioData, `価格更新完了: ${validCoinNames.length}銘柄 (30分間保存)`);
 
         // 価格データ永続化レポート（デバッグモード時のみ）
         if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
@@ -176,7 +175,7 @@ async function tryGetPricesFromHistory(coinNames) {
 
     for (const coinName of coinNames) {
         try {
-            const cacheKey = cacheKeys.priceHistory(coinName, 30);
+            const cacheKey = cacheKeys.priceHistory(coinName);
             const historyValue = cache.get(cacheKey);
 
             if (historyValue && historyValue.length > 0) {
