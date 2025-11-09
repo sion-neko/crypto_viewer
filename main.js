@@ -5,60 +5,22 @@
 // DOM Elements and Event Listeners (will be initialized in DOMContentLoaded)
 let uploadZone, fileInput, dashboardArea;
 
-// CSVファイルアップロード処理
-function handleFiles(files) {
-    const csvFiles = Array.from(files).filter(file =>
-        file.type === 'text/csv' || file.name.endsWith('.csv')
-    );
+// CSVファイルアップロード処理（サービスクラスへの委譲版）
+async function handleFiles(files) {
+    const result = await window.fileService.handleFiles(files);
 
-    if (csvFiles.length === 0) {
-        showErrorMessage('CSVファイルを選択してください');
-        return;
+    if (result.success) {
+        displayDashboard(result.portfolioData);
+
+        if (result.addedCount > 0) {
+            showSuccessMessage(`${result.totalFiles}個のCSVファイルを処理し、${result.addedCount}件の新しい取引を追加しました`);
+        } else {
+            showInfoMessage(`${result.totalFiles}個のCSVファイルを処理しましたが、新しい取引はありませんでした（重複データのため）`);
+        }
+
+        // ファイル表示を更新
+        window.fileService.displayLoadedFiles();
     }
-
-    // 既存データを取得
-    const existingData = getExistingTransactions();
-
-    // 並列でCSVファイルを読み込み
-    const promises = csvFiles.map(file => parseCSVFile(file));
-
-    Promise.all(promises)
-        .then(results => {
-            const newData = results.flat();
-
-            if (newData.length > 0) {
-                // ファイル名を保存
-                const fileNames = csvFiles.map(file => file.name);
-                const existingFileNames = getLoadedFileNames();
-                const allFileNames = [...new Set([...existingFileNames, ...fileNames])];
-                saveLoadedFileNames(allFileNames);
-
-                // 重複データを除外して統合
-                const mergedData = mergeTransactionData(existingData, newData);
-                const addedCount = mergedData.length - existingData.length;
-
-                // ポートフォリオ再計算
-                const portfolioData = analyzePortfolioData(mergedData);
-
-                // 生の取引データも保存（次回の重複チェック用）
-                localStorage.setItem('rawTransactions', JSON.stringify(mergedData));
-                localStorage.setItem('portfolioData', JSON.stringify(portfolioData));
-
-                displayDashboard(portfolioData);
-
-                if (addedCount > 0) {
-                    showSuccessMessage(`${csvFiles.length}個のCSVファイルを処理し、${addedCount}件の新しい取引を追加しました`);
-                } else {
-                    showInfoMessage(`${csvFiles.length}個のCSVファイルを処理しましたが、新しい取引はありませんでした（重複データのため）`);
-                }
-            } else {
-                showErrorMessage('有効な取引データが見つかりませんでした');
-            }
-        })
-        .catch(error => {
-            console.error('CSV処理エラー:', error);
-            showErrorMessage('CSVファイルの処理中にエラーが発生しました');
-        });
 }
 
 // 既存取引データ取得
@@ -191,102 +153,44 @@ function showPage(pageId) {
     document.getElementById(`nav-${pageId}`).classList.add('active');
 }
 
-// タブ切り替え機能
+// タブ切り替え機能（サービスクラスへの委譲版）
 function switchTab(tabName) {
-    // 全タブボタンのアクティブ状態をリセット
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-    // 選択されたタブをアクティブに
-    document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
-    document.getElementById(`tab-${tabName}`).classList.add('active');
+    window.uiService.switchMainTab(tabName);
 }
 
-// サブタブ切り替え機能
+// サブタブ切り替え機能（サービスクラスへの委譲版）
 function switchSubtab(subtabName) {
-    // 全サブタブボタンのアクティブ状態をリセット
-    const allButtons = document.querySelectorAll('.subtab-button');
-    const allContents = document.querySelectorAll('.subtab-content');
-
-    // 全サブタブのactiveを削除
-    allButtons.forEach(btn => {
-        btn.classList.remove('active');
-        btn.style.backgroundColor = '';
-    });
-    allContents.forEach(content => content.classList.remove('active'));
-
-    // 選択されたサブタブをアクティブにする
-    const targetButton = document.getElementById(`subtab-${subtabName}`);
-    const targetContent = document.getElementById(`subtab-content-${subtabName}`);
-    if (targetButton) {
-        targetButton.classList.add('active');
-    }
-    if (targetContent) {
-        targetContent.classList.add('active');
-
-        // 各銘柄のチャート表示
-        if (subtabName !== 'summary') {
-            // 銘柄名を取得
-            const coinName = subtabName.toUpperCase();
-
-            // 価格チャートを描画
-            displayCoinNameChart(coinName);
-        }
-    }
+    window.uiService.switchSubTab(subtabName);
 }
 
-// サブタブ間の移動関数
+// サブタブ間の移動関数（サービスクラスへの委譲版）
 function switchToPreviousSubtab() {
-    if (!document.getElementById('tab-portfolio').classList.contains('active')) return;
-
-    const activeSubtab = document.querySelector('.subtab-button.active');
-    if (!activeSubtab) return;
-
-    const allSubtabs = document.querySelectorAll('.subtab-button');
-    const currentIndex = Array.from(allSubtabs).indexOf(activeSubtab);
-    const previousIndex = currentIndex > 0 ? currentIndex - 1 : allSubtabs.length - 1;
-
-    const previousSubtab = allSubtabs[previousIndex];
-    if (previousSubtab) {
-        previousSubtab.click();
-    }
+    window.uiService.switchToPreviousSubTab();
 }
 
 function switchToNextSubtab() {
-    if (!document.getElementById('tab-portfolio').classList.contains('active')) return;
-
-    const activeSubtab = document.querySelector('.subtab-button.active');
-    if (!activeSubtab) return;
-
-    const allSubtabs = document.querySelectorAll('.subtab-button');
-    const currentIndex = Array.from(allSubtabs).indexOf(activeSubtab);
-    const nextIndex = currentIndex < allSubtabs.length - 1 ? currentIndex + 1 : 0;
-
-    const nextSubtab = allSubtabs[nextIndex];
-    if (nextSubtab) {
-        nextSubtab.click();
-    }
+    window.uiService.switchToNextSubTab();
 }
 
 // ===================================================================
 // MESSAGE AND NOTIFICATION FUNCTIONS
 // ===================================================================
 
-// メッセージ表示（シンプル版）
+// メッセージ表示（サービスクラスへの委譲版）
 function showSuccessMessage(message) {
-    showSimpleToast(message, 'success');
+    window.uiService.showSuccess(message);
 }
 
 function showErrorMessage(message) {
-    showSimpleToast(message, 'error');
+    window.uiService.showError(message);
 }
 
 function showInfoMessage(message) {
-    showSimpleToast(message, 'info');
+    window.uiService.showInfo(message);
 }
 
 function showWarningMessage(message) {
-    showSimpleToast(message, 'warning');
+    window.uiService.showWarning(message);
 }
 
 // ===================================================================
@@ -410,22 +314,10 @@ function displayLoadedFiles() {
     }
 }
 
-// 全データクリア
+// 全データクリア（サービスクラスへの委譲版）
 function clearAllData() {
-    if (confirm('本当に全てのデータをクリアしますか？この操作は元に戻せません。')) {
-        localStorage.removeItem('portfolioData');
-        localStorage.removeItem('rawTransactions');
-        localStorage.removeItem('loadedFileNames');
-
-        // UI初期状態に戻す
-        document.getElementById('dashboardArea').style.display = 'block';
-        document.getElementById('tabContainer').style.display = 'none';
+    if (window.fileService.clearAllData()) {
         updateDataStatus(null);
-
-        // ファイル表示もクリア
-        displayLoadedFiles();
-
-        showSuccessMessage('全データをクリアしました');
     }
 }
 
