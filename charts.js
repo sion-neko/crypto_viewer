@@ -19,40 +19,6 @@ const COIN_NAME_COLORS = AppConfig.coinColors;
 const DEFAULT_COIN_NAME_COLOR = AppConfig.defaultCoinColor;
 
 // ===================================================================
-// DOM ELEMENT ID MANAGEMENT
-// ===================================================================
-
-/**
- * チャート関連のDOM要素IDを管理するクラス
- * デバイス（モバイル/デスクトップ）に応じて適切なIDを返す
- */
-class ChartElementIds {
-    /**
-     * チャートモード切替ボタンのIDを取得
-     * @returns {string} 要素ID
-     */
-    static getToggleButton() {
-        return isMobile() ? 'mobile-chart-mode-toggle' : 'chart-mode-toggle';
-    }
-
-    /**
-     * チャートタイトル要素のIDを取得
-     * @returns {string} 要素ID
-     */
-    static getTitle() {
-        return isMobile() ? 'mobile-chart-title' : 'chart-title';
-    }
-
-    /**
-     * チャートキャンバス要素のIDを取得
-     * @returns {string} 要素ID
-     */
-    static getCanvas() {
-        return isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
-    }
-}
-
-// ===================================================================
 // PRICE HISTORY FUNCTIONS
 // ===================================================================
 

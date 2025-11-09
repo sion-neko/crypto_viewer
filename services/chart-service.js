@@ -17,7 +17,6 @@ class ChartService {
         this.portfolioDataService = portfolioDataService;
         this.config = config;
         this.chartInstances = {};
-        this.elementIds = new ChartElementIds();
     }
 
     // ===================================================================
@@ -31,7 +30,7 @@ class ChartService {
      * @returns {Promise<void>}
      */
     async renderPortfolioProfitChart(portfolioData, chartMode = 'combined') {
-        const canvasId = this.elementIds.getCanvas();
+        const canvasId = ChartElementIds.getCanvas();
 
         try {
             // ポートフォリオの価格履歴を取得
@@ -764,15 +763,15 @@ class ChartService {
  * チャート関連のDOM要素IDを管理するクラス
  */
 class ChartElementIds {
-    getToggleButton() {
+    static getToggleButton() {
         return typeof isMobile === 'function' && isMobile() ? 'mobile-chart-mode-toggle' : 'chart-mode-toggle';
     }
 
-    getTitle() {
+    static getTitle() {
         return typeof isMobile === 'function' && isMobile() ? 'mobile-chart-title' : 'chart-title';
     }
 
-    getCanvas() {
+    static getCanvas() {
         return typeof isMobile === 'function' && isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
     }
 }
@@ -780,3 +779,4 @@ class ChartElementIds {
 // グローバルシングルトンインスタンスを作成（依存関係を解決後に初期化）
 // 注: apiService と portfolioDataService が既に初期化されている前提
 window.ChartService = ChartService;
+window.ChartElementIds = ChartElementIds;
