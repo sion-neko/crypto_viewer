@@ -83,39 +83,6 @@ class PortfolioDataService {
 // シングルトンインスタンスを作成してグローバルに公開
 window.portfolioDataService = new PortfolioDataService();
 
-// 後方互換性のためのエイリアス（段階的に削除予定）
-if (!window.appPortfolioState) {
-    window.appPortfolioState = {
-        get currentPortfolioData() {
-            return window.portfolioDataService.getData();
-        },
-        set currentPortfolioData(value) {
-            window.portfolioDataService.updateData(value);
-        },
-        get currentSortField() {
-            return window.portfolioDataService.getSortState().field;
-        },
-        set currentSortField(value) {
-            const currentState = window.portfolioDataService.getSortState();
-            window.portfolioDataService.setSortState(value, currentState.direction);
-        },
-        get currentSortDirection() {
-            return window.portfolioDataService.getSortState().direction;
-        },
-        set currentSortDirection(value) {
-            const currentState = window.portfolioDataService.getSortState();
-            window.portfolioDataService.setSortState(currentState.field, value);
-        }
-    };
-}
-
-// 後方互換性のためのローカル変数は削除されました
-// 以下のように PortfolioDataService を使用してください：
-//   - portfolioDataService.getData() : データ取得
-//   - portfolioDataService.updateData(data) : データ更新
-//   - portfolioDataService.getSortState() : ソート状態取得
-//   - portfolioDataService.setSortState(field, direction) : ソート状態更新
-
 // ===================================================================
 // PORTFOLIO UPDATE HELPER
 // ===================================================================
@@ -395,8 +362,9 @@ function sortPortfolioData(field, direction) {
 
 // ソートアイコン取得
 function getSortIcon(field) {
-    if (currentSortField === field) {
-        return currentSortDirection === 'asc' ? '▲' : '▼';
+    const sortState = portfolioDataService.getSortState();
+    if (sortState.field === field) {
+        return sortState.direction === 'asc' ? '▲' : '▼';
     }
     return '';
 }
@@ -429,9 +397,6 @@ function updateSortIndicators(activeField, direction) {
 function displayDashboard(portfolioData) {
     // PortfolioDataServiceに保存
     portfolioDataService.updateData(portfolioData);
-
-    // 後方互換性のためのグローバルアクセス（段階的に削除予定）
-    window.currentPortfolioData = portfolioData;
 
     // デフォルトソート（実現損益降順）
     portfolioDataService.setSortState('realizedProfit', 'desc');

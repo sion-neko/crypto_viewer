@@ -581,15 +581,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ウィンドウリサイズ時にテーブル表示を更新
     window.addEventListener('resize', () => {
-        if (currentPortfolioData) {
+        const currentData = portfolioDataService.getData();
+        if (currentData) {
             const tableContainer = document.getElementById('portfolio-table-container');
             if (tableContainer) {
-                tableContainer.innerHTML = generatePortfolioTable(currentPortfolioData);
+                tableContainer.innerHTML = generatePortfolioTable(currentData);
             }
 
             const tradingContainer = document.getElementById('trading-history-container');
             if (tradingContainer) {
-                tradingContainer.innerHTML = generateTradingHistoryTable(currentPortfolioData);
+                tradingContainer.innerHTML = generateTradingHistoryTable(currentData);
             }
         }
     });
