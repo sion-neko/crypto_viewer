@@ -822,7 +822,9 @@ async function fetchCoinNameHistoricalData(coinName) {
 }
 // チャート
 // 表示モードを切り替える（デスクトップ/モバイル統合版）
-function toggleChartMode(currentMode = 'combined') {
+function toggleChartMode() {
+    // 現在のモードを取得（引数なしで自動判定）
+    const currentMode = window.portfolioChartMode || safeGetJSON('portfolioChartMode', 'combined');
     const newMode = (currentMode === 'combined') ? 'individual' : 'combined';
 
     // ChartElementIdsを使用してDOM要素を取得
@@ -832,12 +834,15 @@ function toggleChartMode(currentMode = 'combined') {
     window.portfolioChartMode = newMode;
     safeSetJSON('portfolioChartMode', newMode);
 
+    // モバイルかデスクトップかを判定
+    const isMobileView = typeof isMobile === 'function' && isMobile();
+
     if (newMode === 'combined') {
-        toggleButton.textContent = '個別表示';
+        toggleButton.textContent = isMobileView ? '個別' : '個別表示';
         toggleButton.title = '各銘柄を個別に表示';
         chartTitle.textContent = '📈 ポートフォリオ総合損益推移（過去1か月）';
     } else {
-        toggleButton.textContent = '合計表示';
+        toggleButton.textContent = isMobileView ? '合計' : '合計表示';
         toggleButton.title = 'ポートフォリオ全体の合計を表示';
         chartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
     }
