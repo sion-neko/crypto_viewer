@@ -24,10 +24,17 @@ async function executePriceHistoryApi(coingeckoId, options = {}) {
 		vsCurrency = 'jpy',
 		days = 30,
 		interval = 'daily',
-		timeoutMs = 10000
+		timeoutMs = 20000  // デフォルトタイムアウトを20秒に延長
 	} = options;
 
-	const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
+	// CoinGecko APIでは90日以上の場合、intervalパラメータを省略する必要がある
+	// （自動的に適切なgranularityが選択される）
+	let url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}`;
+
+	// 90日未満の場合のみintervalパラメータを追加
+	if (days < 90) {
+		url += `&interval=${encodeURIComponent(interval)}`;
+	}
 
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);

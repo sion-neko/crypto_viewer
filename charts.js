@@ -51,7 +51,7 @@ async function fetchCoinNamePriceHistory(coinName, days = null) {
         vsCurrency: 'jpy',
         days: days,
         interval: 'daily',
-        timeoutMs: 10000
+        timeoutMs: 20000  // タイムアウトを20秒に延長
     });
 
     if (!data.prices || data.prices.length === 0) {

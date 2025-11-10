@@ -135,8 +135,8 @@ class APIService {
      * @param {object} options - オプション設定
      * @param {string} options.vsCurrency - 通貨単位（デフォルト: 'jpy'）
      * @param {number} options.days - 日数（デフォルト: 30）
-     * @param {string} options.interval - 間隔（デフォルト: 'daily'）
-     * @param {number} options.timeoutMs - タイムアウト（デフォルト: 10000）
+     * @param {string} options.interval - 間隔（デフォルト: 'daily'）※90日以上の場合は自動的に省略される
+     * @param {number} options.timeoutMs - タイムアウト（デフォルト: 20000）
      * @returns {Promise<Array>} 価格履歴データ [{date: Date, price: number}, ...]
      * @throws {Error} 銘柄が未サポート、またはAPI呼び出しエラー
      */
@@ -145,7 +145,7 @@ class APIService {
             vsCurrency = 'jpy',
             days = 30,
             interval = 'daily',
-            timeoutMs = 10000
+            timeoutMs = 20000  // デフォルトタイムアウトを20秒に延長
         } = options;
 
         const coingeckoId = this.config.coinGeckoMapping[coinName];
@@ -272,10 +272,17 @@ class APIService {
             vsCurrency = 'jpy',
             days = 30,
             interval = 'daily',
-            timeoutMs = 10000
+            timeoutMs = 20000  // デフォルトタイムアウトを20秒に延長
         } = options;
 
-        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
+        // CoinGecko APIでは90日以上の場合、intervalパラメータを省略する必要がある
+        // （自動的に適切なgranularityが選択される）
+        let url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}`;
+
+        // 90日未満の場合のみintervalパラメータを追加
+        if (days < 90) {
+            url += `&interval=${encodeURIComponent(interval)}`;
+        }
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
