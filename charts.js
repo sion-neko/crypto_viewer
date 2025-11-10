@@ -47,11 +47,12 @@ async function fetchCoinNamePriceHistory(coinName, days = null) {
 
     // キャッシュがない場合はAPIを実行してデータを取得
     // CoinGecko APIで指定日数の価格データを取得（API実行は共通関数に委譲）
+    console.log(`${coinName}の価格履歴（${days}日）をAPIから取得中...`);
     const data = await executePriceHistoryApi(coingeckoId, {
         vsCurrency: 'jpy',
         days: days,
         interval: 'daily',
-        timeoutMs: 20000  // タイムアウトを20秒に延長
+        timeoutMs: null  // nullの場合は日数に応じて自動設定（20秒〜45秒）
     });
 
     if (!data.prices || data.prices.length === 0) {

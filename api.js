@@ -24,8 +24,11 @@ async function executePriceHistoryApi(coingeckoId, options = {}) {
 		vsCurrency = 'jpy',
 		days = 30,
 		interval = 'daily',
-		timeoutMs = 20000  // デフォルトタイムアウトを20秒に延長
+		timeoutMs = null  // nullの場合は日数に応じて自動設定
 	} = options;
+
+	// 日数に応じてタイムアウトを調整
+	const adjustedTimeout = timeoutMs || getTimeoutForDays(days);
 
 	// CoinGecko APIでは90日以上の場合、intervalパラメータを省略する必要がある
 	// （自動的に適切なgranularityが選択される）
@@ -37,7 +40,7 @@ async function executePriceHistoryApi(coingeckoId, options = {}) {
 	}
 
 	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+	const timeoutId = setTimeout(() => controller.abort(), adjustedTimeout);
 
 	try {
 		const response = await fetch(url, {
@@ -51,13 +54,29 @@ async function executePriceHistoryApi(coingeckoId, options = {}) {
 			} else if (response.status === 403) {
 				throw new Error('APIアクセスが拒否されました (403 Forbidden)');
 			} else {
-				throw new Error(`API Error: ${response.status}`);
+				throw new Error(`API Error: ${response.status} - ${response.statusText}`);
 			}
 		}
 
 		return await response.json();
+	} catch (error) {
+		if (error.name === 'AbortError') {
+			throw new Error(`タイムアウト: ${days}日分のデータ取得に${adjustedTimeout}ms以上かかりました`);
+		}
+		throw error;
 	} finally {
 		clearTimeout(timeoutId);
+	}
+}
+
+// 日数に応じた適切なタイムアウトを返す
+function getTimeoutForDays(days) {
+	if (days <= 90) {
+		return 20000;  // 20秒
+	} else if (days <= 365) {
+		return 30000;  // 30秒
+	} else {
+		return 45000;  // 45秒
 	}
 }
 
