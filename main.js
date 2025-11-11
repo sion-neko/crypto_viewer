@@ -88,6 +88,7 @@ function processCSVData(data, fileName) {
             const coinName = row['銘柄名'];
             if (coinName && coinName !== 'JPY') {
                 const transaction = {
+                    fileName: fileName,  // ファイル名を追加
                     exchange: 'GMO',
                     coinName: coinName,
                     type: row['売買区分'], // 買 or 売
@@ -112,6 +113,7 @@ function processCSVData(data, fileName) {
 
             if (coinName !== 'JPY' && row['売買'] === '購入') {
                 const transaction = {
+                    fileName: fileName,  // ファイル名を追加
                     exchange: 'OKJ',
                     coinName: coinName,
                     type: '買', // OKJの「購入」を「買」に統一
