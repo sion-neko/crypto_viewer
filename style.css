@@ -448,7 +448,11 @@ body {
 
     /* ハンバーガーメニューボタン */
     .sidebar-toggle {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
         position: fixed;
         top: 15px;
         left: 15px;
@@ -462,6 +466,7 @@ body {
         cursor: pointer;
         box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         transition: all 0.3s ease;
+        padding: 0;
     }
 
     .sidebar-toggle:active {
@@ -470,10 +475,9 @@ body {
 
     .sidebar-toggle span {
         display: block;
-        width: 22px;
-        height: 2px;
+        width: 20px;
+        height: 2.5px;
         background: white;
-        margin: 5px auto;
         transition: all 0.3s ease;
         border-radius: 2px;
     }
@@ -1026,9 +1030,11 @@ body {
         left: 12px;
         width: 40px;
         height: 40px;
+        gap: 4px;
     }
 
     .sidebar-toggle span {
-        width: 20px;
+        width: 18px;
+        height: 2px;
     }
 }
