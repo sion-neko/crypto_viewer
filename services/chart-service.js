@@ -76,10 +76,17 @@ class ChartService {
             if (chartMode === 'combined') {
                 // 全銘柄の合計損益推移チャートを表示
                 const combinedProfitData = this._generateCombinedProfitTimeSeries(allProfitData);
-                this.displayProfitChart(canvasId, combinedProfitData, `ポートフォリオ総合損益推移（${periodLabel}）`);
+                // 長期間データの場合はサンプリング
+                const sampledData = this._sampleDataPoints(combinedProfitData, days);
+                this.displayProfitChart(canvasId, sampledData, `ポートフォリオ総合損益推移（${periodLabel}）`);
             } else {
                 // 複数銘柄の個別損益推移チャートを表示
-                this._displayMultiCoinProfitChart(canvasId, allProfitData, `全銘柄個別損益推移（${periodLabel}）`);
+                // 各銘柄のデータをサンプリング
+                const sampledAllProfitData = {};
+                Object.keys(allProfitData).forEach(coinName => {
+                    sampledAllProfitData[coinName] = this._sampleDataPoints(allProfitData[coinName], days);
+                });
+                this._displayMultiCoinProfitChart(canvasId, sampledAllProfitData, `全銘柄個別損益推移（${periodLabel}）`);
             }
 
             return { success: true, coinCount: Object.keys(allProfitData).length };
@@ -103,6 +110,56 @@ class ChartService {
     _getPeriodLabel(days) {
         const option = this.config.chartPeriodOptions.find(opt => opt.days === days);
         return option ? `過去${option.label}` : `過去${days}日`;
+    }
+
+    /**
+     * データポイントをサンプリング（間引き）
+     * 長期間のデータは点数を減らして表示パフォーマンスを改善
+     * @private
+     * @param {Array} data - 元のデータ配列
+     * @param {number} days - 期間（日数）
+     * @returns {Array} サンプリング後のデータ配列
+     */
+    _sampleDataPoints(data, days) {
+        if (!data || data.length === 0) {
+            return data;
+        }
+
+        // 期間に応じた目標データポイント数
+        let targetPoints;
+        if (days <= 90) {
+            // 90日以下は全データ表示
+            return data;
+        } else if (days <= 365) {
+            // 1年: 約60ポイント（週1回程度）
+            targetPoints = 60;
+        } else {
+            // 3年: 約50ポイント（月2回程度）
+            targetPoints = 50;
+        }
+
+        // データが目標より少ない場合はそのまま返す
+        if (data.length <= targetPoints) {
+            return data;
+        }
+
+        // サンプリング間隔を計算
+        const step = Math.floor(data.length / targetPoints);
+        const sampledData = [];
+
+        // 等間隔でサンプリング
+        for (let i = 0; i < data.length; i += step) {
+            sampledData.push(data[i]);
+        }
+
+        // 最後のデータポイントは必ず含める（現在の状態を表示）
+        if (sampledData[sampledData.length - 1] !== data[data.length - 1]) {
+            sampledData.push(data[data.length - 1]);
+        }
+
+        console.log(`データポイントをサンプリング: ${data.length}点 → ${sampledData.length}点 (${days}日)`);
+
+        return sampledData;
     }
 
     /**

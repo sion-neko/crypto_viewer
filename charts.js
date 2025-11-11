@@ -632,6 +632,9 @@ function displayProfitChart(canvasId, profitData, title) {
             throw new Error('有効なデータポイントがありません');
         }
 
+        // データポイント数に応じて点のサイズを調整
+        const pointRadius = profitData.length > 100 ? 0 : (profitData.length > 60 ? 1 : 2);
+        const pointHoverRadius = pointRadius === 0 ? 3 : pointRadius + 2;
 
         // Chart.jsでチャートを作成
         window.chartInstances[canvasId] = new Chart(ctx, {
@@ -649,7 +652,9 @@ function displayProfitChart(canvasId, profitData, title) {
                         backgroundColor: profitData[profitData.length - 1].totalProfit >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
                         borderWidth: 3,
                         fill: true,
-                        tension: 0.1
+                        tension: 0.1,
+                        pointRadius: pointRadius,
+                        pointHoverRadius: pointHoverRadius
                     },
                     {
                         label: '実現損益 (¥)',
@@ -659,7 +664,9 @@ function displayProfitChart(canvasId, profitData, title) {
                         borderWidth: 2,
                         fill: false,
                         tension: 0.1,
-                        borderDash: [5, 5]
+                        borderDash: [5, 5],
+                        pointRadius: pointRadius,
+                        pointHoverRadius: pointHoverRadius
                     },
                     {
                         label: '含み損益 (¥)',
@@ -669,7 +676,9 @@ function displayProfitChart(canvasId, profitData, title) {
                         borderWidth: 2,
                         fill: false,
                         tension: 0.1,
-                        borderDash: [2, 2]
+                        borderDash: [2, 2],
+                        pointRadius: pointRadius,
+                        pointHoverRadius: pointHoverRadius
                     }
                 ]
             },
@@ -715,6 +724,10 @@ function displayMultiCoinNameProfitChart(canvasId, allProfitData, title) {
         return `${date.getMonth() + 1}/${date.getDate()}`;
     });
 
+    // データポイント数に応じて点のサイズを調整
+    const pointRadius = sortedDates.length > 100 ? 0 : (sortedDates.length > 60 ? 1 : 2);
+    const pointHoverRadius = pointRadius === 0 ? 3 : pointRadius + 2;
+
     // 銘柄ごとのデータセットを作成
     const datasets = [];
     const colors = [
@@ -748,8 +761,8 @@ function displayMultiCoinNameProfitChart(canvasId, allProfitData, title) {
             pointBackgroundColor: color,
             pointBorderColor: '#ffffff',
             pointBorderWidth: 1,
-            pointRadius: 3,
-            pointHoverRadius: 5,
+            pointRadius: pointRadius,
+            pointHoverRadius: pointHoverRadius,
             spanGaps: true
         });
 
