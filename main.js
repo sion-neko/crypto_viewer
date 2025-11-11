@@ -425,6 +425,51 @@ function initializeKeyboardShortcuts() {
     });
 }
 
+// モバイルメニューの初期化（ハンバーガーメニュー）
+function initializeMobileMenu() {
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    if (!sidebarToggle || !sidebar || !sidebarOverlay) return;
+
+    // メニューを開く/閉じる
+    function toggleMenu() {
+        const isOpen = sidebar.classList.contains('mobile-open');
+
+        if (isOpen) {
+            sidebar.classList.remove('mobile-open');
+            sidebarOverlay.classList.remove('active');
+            sidebarToggle.classList.remove('active');
+        } else {
+            sidebar.classList.add('mobile-open');
+            sidebarOverlay.classList.add('active');
+            sidebarToggle.classList.add('active');
+        }
+    }
+
+    // ハンバーガーボタンクリック
+    sidebarToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMenu();
+    });
+
+    // オーバーレイクリックでメニューを閉じる
+    sidebarOverlay.addEventListener('click', () => {
+        toggleMenu();
+    });
+
+    // サイドバー内のナビゲーションアイテムをクリックしたら閉じる
+    const navItems = sidebar.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            if (isMobile()) {
+                toggleMenu();
+            }
+        });
+    });
+}
+
 // ===================================================================
 // UTILITY FUNCTIONS
 // ===================================================================
@@ -478,6 +523,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // キーボードショートカット初期化
     initializeKeyboardShortcuts();
+
+    // モバイルメニュー初期化
+    initializeMobileMenu();
 
     // ウィンドウリサイズ時にテーブル表示を更新
     window.addEventListener('resize', () => {
