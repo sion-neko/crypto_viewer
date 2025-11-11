@@ -232,6 +232,187 @@
             border-radius: 5px;
             font-size: 14px;
         }
+
+        /* テーブル表示用スタイル */
+        .cache-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .table-key {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #333;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .table-type {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .type-price {
+            background: #e7f3ff;
+            color: #0066cc;
+        }
+
+        .type-portfolio {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .type-chart {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .type-other {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .view-mode-toggle {
+            display: flex;
+            gap: 0;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-left: auto;
+        }
+
+        .view-mode-btn {
+            padding: 8px 16px;
+            background: white;
+            color: #007bff;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .view-mode-btn.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .view-mode-btn:hover:not(.active) {
+            background: #e7f3ff;
+        }
+
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 800px;
+            max-height: 80vh;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow: auto;
+            flex: 1;
+        }
+
+        .modal-actions {
+            padding: 15px 20px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -245,10 +426,14 @@
 
         <div class="controls">
             <button class="btn-primary" onclick="refreshData()">🔄 更新</button>
-            <button class="btn-warning" onclick="expandAll()">📂 すべて展開</button>
-            <button class="btn-warning" onclick="collapseAll()">📁 すべて折りたたむ</button>
+            <button class="btn-warning" onclick="expandAll()" id="expandBtn">📂 すべて展開</button>
+            <button class="btn-warning" onclick="collapseAll()" id="collapseBtn">📁 すべて折りたたむ</button>
             <button class="btn-danger" onclick="clearAllCache()">🗑️ すべてクリア</button>
             <button class="btn-danger" onclick="clearPriceCache()">💰 価格データクリア</button>
+            <div class="view-mode-toggle">
+                <button class="view-mode-btn active" onclick="setViewMode('card')">📇 カード</button>
+                <button class="view-mode-btn" onclick="setViewMode('table')">📊 テーブル</button>
+            </div>
         </div>
 
         <div class="filter-group">
@@ -267,8 +452,27 @@
         <div class="cache-list" id="cacheList"></div>
     </div>
 
+    <!-- モーダル -->
+    <div class="modal" id="detailModal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle"></div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <pre id="modalContent"></pre>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary btn-small" onclick="copyModalContent()">📋 コピー</button>
+                <button class="btn-danger btn-small" onclick="deleteFromModal()">🗑️ 削除</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let allCacheData = [];
+        let viewMode = 'card';
+        let currentModalKey = null;
 
         function formatBytes(bytes) {
             if (bytes === 0) return '0 Bytes';
@@ -390,6 +594,14 @@
         }
 
         function renderCacheList(cacheData) {
+            if (viewMode === 'table') {
+                renderTableView(cacheData);
+            } else {
+                renderCardView(cacheData);
+            }
+        }
+
+        function renderCardView(cacheData) {
             const container = document.getElementById('cacheList');
 
             if (cacheData.length === 0) {
@@ -416,9 +628,11 @@
                     prettyValue = value;
                 }
 
+                const escapedKey = key.replace(/'/g, "\\'");
+
                 return `
                     <div class="cache-item">
-                        <div class="cache-header" onclick="toggleCache('${key}')">
+                        <div class="cache-header" onclick="toggleCache('${escapedKey}')">
                             <div>
                                 <div class="cache-key">${key}</div>
                                 <div class="cache-meta">
@@ -428,11 +642,11 @@
                                 </div>
                             </div>
                             <div class="action-buttons">
-                                <button class="btn-primary btn-small" onclick="event.stopPropagation(); copyToClipboard('${key}')">📋 コピー</button>
-                                <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteCache('${key}')">🗑️ 削除</button>
+                                <button class="btn-primary btn-small" onclick="event.stopPropagation(); copyToClipboard('${escapedKey}')">📋 コピー</button>
+                                <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteCache('${escapedKey}')">🗑️ 削除</button>
                             </div>
                         </div>
-                        <div class="cache-content" id="content-${key}">
+                        <div class="cache-content" id="content-${escapedKey}">
                             <pre>${prettyValue}</pre>
                         </div>
                     </div>
@@ -442,9 +656,101 @@
             container.innerHTML = html;
         }
 
+        function renderTableView(cacheData) {
+            const container = document.getElementById('cacheList');
+
+            if (cacheData.length === 0) {
+                container.innerHTML = '<div class="empty-state">キャッシュデータがありません</div>';
+                return;
+            }
+
+            const typeLabels = {
+                'price': '価格',
+                'portfolio': 'ポートフォリオ',
+                'chart': 'チャート',
+                'other': 'その他'
+            };
+
+            const rows = cacheData.map(item => {
+                const { key, metadata } = item;
+                const timeRemaining = getTimeRemaining(metadata.expiresAt);
+
+                let status = '-';
+                let statusClass = '';
+                if (timeRemaining === 'expired') {
+                    status = '期限切れ';
+                    statusClass = 'badge-danger';
+                } else if (timeRemaining) {
+                    status = `残り ${timeRemaining}`;
+                    statusClass = 'badge-success';
+                }
+
+                const escapedKey = key.replace(/'/g, "\\'");
+
+                return `
+                    <tr onclick="openModal('${escapedKey}')">
+                        <td><div class="table-key" title="${key}">${key}</div></td>
+                        <td><span class="table-type type-${metadata.type}">${typeLabels[metadata.type]}</span></td>
+                        <td>${formatBytes(metadata.size)}</td>
+                        <td>${formatDate(metadata.cachedAt)}</td>
+                        <td>${status ? `<span class="badge ${statusClass}">${status}</span>` : '-'}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-primary btn-small" onclick="event.stopPropagation(); copyToClipboard('${escapedKey}')">📋</button>
+                                <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteCache('${escapedKey}')">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="cache-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>キー</th>
+                                <th>種類</th>
+                                <th>サイズ</th>
+                                <th>キャッシュ時刻</th>
+                                <th>状態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
         function toggleCache(key) {
             const content = document.getElementById(`content-${key}`);
             content.classList.toggle('expanded');
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+
+            // ボタンのアクティブ状態を更新
+            document.querySelectorAll('.view-mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 展開/折りたたみボタンの表示/非表示
+            const expandBtn = document.getElementById('expandBtn');
+            const collapseBtn = document.getElementById('collapseBtn');
+            if (mode === 'table') {
+                expandBtn.style.display = 'none';
+                collapseBtn.style.display = 'none';
+            } else {
+                expandBtn.style.display = 'block';
+                collapseBtn.style.display = 'block';
+            }
+
+            filterCache();
         }
 
         function expandAll() {
@@ -457,6 +763,43 @@
             document.querySelectorAll('.cache-content').forEach(el => {
                 el.classList.remove('expanded');
             });
+        }
+
+        function openModal(key) {
+            currentModalKey = key;
+            const value = localStorage.getItem(key);
+
+            let prettyValue;
+            try {
+                const parsed = JSON.parse(value);
+                prettyValue = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                prettyValue = value;
+            }
+
+            document.getElementById('modalTitle').textContent = key;
+            document.getElementById('modalContent').textContent = prettyValue;
+            document.getElementById('detailModal').classList.add('show');
+        }
+
+        function closeModal(event) {
+            if (!event || event.target.id === 'detailModal' || event.target.className === 'modal-close') {
+                document.getElementById('detailModal').classList.remove('show');
+                currentModalKey = null;
+            }
+        }
+
+        function copyModalContent() {
+            if (currentModalKey) {
+                copyToClipboard(currentModalKey);
+            }
+        }
+
+        function deleteFromModal() {
+            if (currentModalKey) {
+                deleteCache(currentModalKey);
+                closeModal();
+            }
         }
 
         function filterCache() {
@@ -518,6 +861,13 @@
 
         // 自動更新（10秒ごと）
         setInterval(refreshData, 10000);
+
+        // キーボードショートカット
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
     </script>
 </body>
 </html>
