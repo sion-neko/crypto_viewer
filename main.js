@@ -88,6 +88,7 @@ function processCSVData(data, fileName) {
             const coinName = row['銘柄名'];
             if (coinName && coinName !== 'JPY') {
                 const transaction = {
+                    fileName: fileName,  // ファイル名を追加
                     exchange: 'GMO',
                     coinName: coinName,
                     type: row['売買区分'], // 買 or 売
@@ -112,6 +113,7 @@ function processCSVData(data, fileName) {
 
             if (coinName !== 'JPY' && row['売買'] === '購入') {
                 const transaction = {
+                    fileName: fileName,  // ファイル名を追加
                     exchange: 'OKJ',
                     coinName: coinName,
                     type: '買', // OKJの「購入」を「買」に統一
@@ -281,36 +283,10 @@ function getLoadedFileNames() {
     return safeGetJSON('loadedFileNames', []);
 }
 
-// 読み込み済みファイル情報を表示（アップロードタブのみ）
+// 読み込み済みファイル情報を表示（fileServiceに委譲）
 function displayLoadedFiles() {
-    const fileNames = getLoadedFileNames();
-    const uploadSection = document.getElementById('upload-files-section');
-    const uploadList = document.getElementById('upload-files-list');
-
-    if (fileNames.length > 0) {
-        uploadSection.style.display = 'block';
-        uploadList.innerHTML = fileNames.map(fileName =>
-            `<div style="
-                background: white;
-                padding: 12px 15px;
-                margin-bottom: 8px;
-                border-radius: 8px;
-                border: 1px solid #dee2e6;
-                font-size: 0.95rem;
-                color: #495057;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)'">
-                <span style="font-size: 1.2rem;">📄</span>
-                <span style="word-break: break-all; flex: 1;">${fileName}</span>
-                <span style="font-size: 0.8rem; color: #28a745; background: #d4edda; padding: 2px 8px; border-radius: 12px;">読み込み済み</span>
-            </div>`
-        ).join('');
-    } else {
-        uploadSection.style.display = 'none';
+    if (window.fileService) {
+        window.fileService.displayLoadedFiles();
     }
 }
 

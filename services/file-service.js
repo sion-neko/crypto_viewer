@@ -124,6 +124,7 @@ class FileService {
                 const coinName = row['銘柄名'];
                 if (coinName && coinName !== 'JPY') {
                     const transaction = {
+                        fileName: fileName,  // ファイル名を追加
                         exchange: 'GMO',
                         coinName: coinName,
                         type: row['売買区分'], // 買 or 売
@@ -148,6 +149,7 @@ class FileService {
 
                 if (coinName !== 'JPY' && row['売買'] === '購入') {
                     const transaction = {
+                        fileName: fileName,  // ファイル名を追加
                         exchange: 'OKJ',
                         coinName: coinName,
                         type: '買', // OKJの「購入」を「買」に統一
@@ -271,10 +273,106 @@ class FileService {
                     <span style="font-size: 1.2rem;">📄</span>
                     <span style="word-break: break-all; flex: 1;">${fileName}</span>
                     <span style="font-size: 0.8rem; color: #28a745; background: #d4edda; padding: 2px 8px; border-radius: 12px;">読み込み済み</span>
+                    <button
+                        onclick="window.fileService.deleteFile('${fileName.replace(/'/g, "\\'")}')"
+                        style="
+                            background: #dc3545;
+                            color: white;
+                            border: none;
+                            padding: 4px 12px;
+                            border-radius: 6px;
+                            font-size: 0.8rem;
+                            cursor: pointer;
+                            transition: background 0.2s ease;
+                        "
+                        onmouseover="this.style.background='#c82333'"
+                        onmouseout="this.style.background='#dc3545'"
+                        title="このファイルを削除">
+                        削除
+                    </button>
                 </div>`
             ).join('');
         } else if (uploadSection) {
             uploadSection.style.display = 'none';
+        }
+    }
+
+    // ===================================================================
+    // ファイル削除
+    // ===================================================================
+
+    /**
+     * 指定したファイルの取引データを削除し、ポートフォリオを再計算
+     * @param {string} fileName - 削除するファイル名
+     * @returns {boolean} 削除成功時true
+     */
+    deleteFile(fileName) {
+        if (!confirm(`「${fileName}」を削除しますか？\nこのファイルから読み込んだ取引データがすべて削除されます。`)) {
+            return false;
+        }
+
+        try {
+            // 既存の取引データを取得
+            const allTransactions = this._getExistingTransactions();
+
+            // 該当ファイルの取引をフィルタリングして除外
+            const remainingTransactions = allTransactions.filter(tx => tx.fileName !== fileName);
+
+            // 削除された取引の数を計算
+            const deletedCount = allTransactions.length - remainingTransactions.length;
+
+            if (deletedCount === 0) {
+                this.uiService.showWarning(`「${fileName}」に紐づく取引データが見つかりませんでした`);
+                return false;
+            }
+
+            // ファイル名リストから削除
+            const fileNames = this.getLoadedFileNames();
+            const updatedFileNames = fileNames.filter(name => name !== fileName);
+            safeSetJSON('loadedFileNames', updatedFileNames);
+            this.loadedFileNames = updatedFileNames;
+
+            // 残りの取引データでポートフォリオを再計算
+            if (remainingTransactions.length > 0) {
+                const portfolioData = analyzePortfolioData(remainingTransactions);
+                localStorage.setItem('rawTransactions', JSON.stringify(remainingTransactions));
+                this.portfolioDataService.updateData(portfolioData);
+
+                // ダッシュボードを更新
+                if (typeof displayDashboard === 'function') {
+                    displayDashboard(portfolioData);
+                }
+
+                this.uiService.showSuccess(`「${fileName}」を削除しました（${deletedCount}件の取引を削除）`);
+            } else {
+                // 全データが削除された場合
+                localStorage.removeItem('portfolioData');
+                localStorage.removeItem('rawTransactions');
+                this.portfolioDataService.clearCache();
+
+                // UI初期状態に戻す
+                const dashboardArea = document.getElementById('dashboardArea');
+                const tabContainer = document.getElementById('tabContainer');
+                if (dashboardArea) dashboardArea.style.display = 'block';
+                if (tabContainer) tabContainer.style.display = 'none';
+
+                // データステータス更新
+                if (typeof updateDataStatus === 'function') {
+                    updateDataStatus(null);
+                }
+
+                this.uiService.showSuccess(`「${fileName}」を削除しました（全データが削除されました）`);
+            }
+
+            // ファイル一覧表示を更新
+            this.displayLoadedFiles();
+
+            return true;
+
+        } catch (error) {
+            console.error('ファイル削除エラー:', error);
+            this.uiService.showError('ファイル削除中にエラーが発生しました');
+            return false;
         }
     }
 
