@@ -136,6 +136,11 @@ class TabManager {
         allButtons.forEach(btn => {
             btn.classList.remove('active');
             btn.style.backgroundColor = '';
+            // 非アクティブボタンは損益の色を復元（data属性から）
+            if (btn.dataset.profitColor) {
+                btn.style.borderColor = btn.dataset.profitColor;
+                btn.style.color = btn.dataset.profitColor;
+            }
         });
         allContents.forEach(content => content.classList.remove('active'));
 
@@ -145,6 +150,9 @@ class TabManager {
 
         if (targetButton) {
             targetButton.classList.add('active');
+            // アクティブボタンは青背景・白文字にするため、損益の色をクリア
+            targetButton.style.borderColor = '';
+            targetButton.style.color = '';
         }
 
         if (targetContent) {
@@ -230,13 +238,20 @@ class TabManager {
                 tabButton.textContent = coinNameData.coinName;
                 tabButton.onclick = () => this.switchSubTab(coinNameData.coinName.toLowerCase());
 
-                // 損益に応じて色分け
+                // 損益に応じて色分け（data属性に保存して切り替え時に復元できるようにする）
+                let profitColor = '';
                 if (coinNameData.realizedProfit > 0) {
-                    tabButton.style.borderColor = '#28a745';
-                    tabButton.style.color = '#28a745';
+                    profitColor = '#10b981'; // 緑色（より洗練された緑）
+                    tabButton.style.borderColor = profitColor;
+                    tabButton.style.color = profitColor;
                 } else if (coinNameData.realizedProfit < 0) {
-                    tabButton.style.borderColor = '#dc3545';
-                    tabButton.style.color = '#dc3545';
+                    profitColor = '#ef4444'; // 赤色（より洗練された赤）
+                    tabButton.style.borderColor = profitColor;
+                    tabButton.style.color = profitColor;
+                }
+                // data属性に色を保存
+                if (profitColor) {
+                    tabButton.dataset.profitColor = profitColor;
                 }
 
                 // ホバー効果
