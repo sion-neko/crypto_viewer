@@ -441,7 +441,7 @@ body {
 /* レスポンシブデザイン */
 @media (max-width: 768px) {
     body {
-        flex-direction: column;
+        display: block; /* flexを解除 */
         padding: 0;
         margin: 0;
     }
@@ -493,13 +493,14 @@ body {
 
     /* サイドバー - モバイル版 */
     .sidebar {
-        position: fixed;
+        position: fixed !important; /* 確実に固定配置 */
         width: 280px;
         height: 100vh;
         padding: 60px 20px 20px 20px;
         border-right: 1px solid #e2e8f0;
-        left: -280px;
-        top: 0;
+        border-bottom: none;
+        left: -280px !important; /* 確実に画面外 */
+        top: 0 !important;
         transition: left 0.3s ease;
         z-index: 1001;
         background: #ffffff;
@@ -507,7 +508,7 @@ body {
     }
 
     .sidebar.mobile-open {
-        left: 0;
+        left: 0 !important;
     }
 
     .sidebar::before,
@@ -539,6 +540,7 @@ body {
     .main-content {
         margin-left: 0;
         padding: 70px 12px 12px 12px;
+        width: 100%;
     }
 
     .sidebar-header {
