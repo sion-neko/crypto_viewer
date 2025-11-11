@@ -483,8 +483,19 @@ body {
     }
 
     /* ハンバーガーメニューが開いている時のアイコン変化 */
+    .sidebar-toggle.active {
+        gap: 0; /* ×印を作るときはgapを0に */
+    }
+
+    .sidebar-toggle.active span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin: 0;
+    }
+
     .sidebar-toggle.active span:nth-child(1) {
-        transform: rotate(45deg) translate(0px, 7.5px);
+        transform: translate(-50%, -50%) rotate(45deg);
     }
 
     .sidebar-toggle.active span:nth-child(2) {
@@ -492,7 +503,7 @@ body {
     }
 
     .sidebar-toggle.active span:nth-child(3) {
-        transform: rotate(-45deg) translate(0px, -7.5px);
+        transform: translate(-50%, -50%) rotate(-45deg);
     }
 
     /* サイドバー - モバイル版 */
