@@ -245,56 +245,62 @@ class FileService {
      */
     displayLoadedFiles(containerId = 'upload-files-list') {
         const fileNames = this.getLoadedFileNames();
-        const uploadSection = document.getElementById('upload-files-section');
-        const uploadList = document.getElementById(containerId);
 
-        if (!uploadList) {
-            console.warn('Upload files list container not found');
-            return;
-        }
+        // アップロード画面とダッシュボード（取引履歴タブ）の両方を更新
+        const containers = [
+            { listId: 'upload-files-list', sectionId: 'upload-files-section' },
+            { listId: 'trading-files-list', sectionId: 'trading-files-section' }
+        ];
 
-        if (fileNames.length > 0 && uploadSection) {
-            uploadSection.style.display = 'block';
-            uploadList.innerHTML = fileNames.map(fileName =>
-                `<div style="
-                    background: white;
-                    padding: 12px 15px;
-                    margin-bottom: 8px;
-                    border-radius: 8px;
-                    border: 1px solid #dee2e6;
-                    font-size: 0.95rem;
-                    color: #495057;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-                    transition: transform 0.2s ease, box-shadow 0.2s ease;
-                " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)'">
-                    <span style="font-size: 1.2rem;">📄</span>
-                    <span style="word-break: break-all; flex: 1;">${fileName}</span>
-                    <span style="font-size: 0.8rem; color: #28a745; background: #d4edda; padding: 2px 8px; border-radius: 12px;">読み込み済み</span>
-                    <button
-                        onclick="window.fileService.deleteFile('${fileName.replace(/'/g, "\\'")}')"
-                        style="
-                            background: #dc3545;
-                            color: white;
-                            border: none;
-                            padding: 4px 12px;
-                            border-radius: 6px;
-                            font-size: 0.8rem;
-                            cursor: pointer;
-                            transition: background 0.2s ease;
-                        "
-                        onmouseover="this.style.background='#c82333'"
-                        onmouseout="this.style.background='#dc3545'"
-                        title="このファイルを削除">
-                        削除
-                    </button>
-                </div>`
-            ).join('');
-        } else if (uploadSection) {
-            uploadSection.style.display = 'none';
-        }
+        containers.forEach(({ listId, sectionId }) => {
+            const section = document.getElementById(sectionId);
+            const list = document.getElementById(listId);
+
+            if (!list) return;
+
+            if (fileNames.length > 0 && section) {
+                section.style.display = 'block';
+                list.innerHTML = fileNames.map(fileName =>
+                    `<div style="
+                        background: white;
+                        padding: 12px 15px;
+                        margin-bottom: 8px;
+                        border-radius: 8px;
+                        border: 1px solid #dee2e6;
+                        font-size: 0.95rem;
+                        color: #495057;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+                        transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 3px 8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)'">
+                        <span style="font-size: 1.2rem;">📄</span>
+                        <span style="word-break: break-all; flex: 1;">${fileName}</span>
+                        <span style="font-size: 0.8rem; color: #28a745; background: #d4edda; padding: 2px 8px; border-radius: 12px;">読み込み済み</span>
+                        <button
+                            onclick="window.fileService.deleteFile('${fileName.replace(/'/g, "\\'")}')"
+                            style="
+                                background: #dc3545;
+                                color: white;
+                                border: none;
+                                padding: 4px 12px;
+                                border-radius: 6px;
+                                font-size: 0.8rem;
+                                cursor: pointer;
+                                transition: background 0.2s ease;
+                            "
+                            onmouseover="this.style.background='#c82333'"
+                            onmouseout="this.style.background='#dc3545'"
+                            title="このファイルを削除">
+                            削除
+                        </button>
+                    </div>`
+                ).join('');
+            } else if (section) {
+                section.style.display = 'none';
+            }
+        });
     }
 
     // ===================================================================

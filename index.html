@@ -41,12 +41,15 @@
         <!-- データ管理 -->
         <div id="data-management" style="margin-top: 20px; display: none;">
             <!-- 価格データ管理 -->
-            <div style="margin-bottom: 15px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; border-left: 4px solid #ffc107;">
+            <div style="padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; border-left: 4px solid #ffc107;">
                 <div style="font-size: 0.85rem; color: #856404; margin-bottom: 8px; font-weight: 600;">価格データ管理</div>
+
+                <!-- 価格データ状態表示 -->
+                <div id="price-data-status" style="font-size: 0.75rem; color: #495057; margin-bottom: 10px; padding: 8px; background: rgba(255, 255, 255, 0.5); border-radius: 4px; line-height: 1.5;">
+                    読み込み中...
+                </div>
+
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button onclick="showPriceDataStatus()" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #17a2b8; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#138496'" onmouseout="this.style.background='#17a2b8'">
-                        状況確認
-                    </button>
                     <button onclick="clearPriceData()" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #fd7e14; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#e8690b'" onmouseout="this.style.background='#fd7e14'">
                         価格クリア
                     </button>
@@ -55,11 +58,6 @@
                     価格データは自動で永続保存されます。古いデータは定期的にクリーンアップされます。
                 </div>
             </div>
-
-            <!-- 全データクリア -->
-            <button onclick="clearAllData()" style="width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
-                全データクリア
-            </button>
         </div>
     </div>
 
@@ -141,6 +139,29 @@
                     <div class="tab-content" id="tab-trading">
                         <div class="portfolio-summary">
                             <h3 style="color: #2c3e50;">取引履歴</h3>
+
+                            <!-- 読み込み済みファイル一覧（取引履歴タブ用） -->
+                            <div id="trading-files-section" style="margin-bottom: 20px; display: none;">
+                                <div style="background: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; padding: 20px;">
+                                    <h4 style="margin: 0 0 15px 0; font-size: 1rem; color: #495057; display: flex; align-items: center; gap: 8px;">
+                                        読み込み済みファイル
+                                    </h4>
+                                    <div id="trading-files-list" style="max-height: 150px; overflow-y: auto;">
+                                        <!-- ファイル名がここに表示される -->
+                                    </div>
+
+                                    <!-- 全データクリアボタン -->
+                                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                                        <button onclick="clearAllData()" style="width: 100%; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s ease;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">
+                                            全データクリア
+                                        </button>
+                                        <div style="font-size: 0.75rem; color: #6c757d; margin-top: 6px; text-align: center; line-height: 1.3;">
+                                            全ての取引データと価格データを削除
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div id="trading-history-container">
                                 <!-- 取引履歴テーブルをここに表示 -->
                             </div>
@@ -196,6 +217,16 @@
                         </h3>
                         <div id="upload-files-list" style="max-height: 150px; overflow-y: auto;">
                             <!-- ファイル名がここに表示される -->
+                        </div>
+
+                        <!-- 全データクリアボタン -->
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                            <button onclick="clearAllData()" style="width: 100%; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s ease;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">
+                                全データクリア
+                            </button>
+                            <div style="font-size: 0.75rem; color: #6c757d; margin-top: 6px; text-align: center; line-height: 1.3;">
+                                全ての取引データと価格データを削除
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -20,6 +20,9 @@ async function handleFiles(files) {
 
         // ファイル表示を更新
         window.fileService.displayLoadedFiles();
+
+        // 価格データ状況を更新
+        updatePriceDataStatusDisplay();
     }
 }
 
@@ -294,6 +297,8 @@ function displayLoadedFiles() {
 function clearAllData() {
     if (window.fileService.clearAllData()) {
         updateDataStatus(null);
+        // 価格データ状況を更新
+        updatePriceDataStatusDisplay();
     }
 }
 
@@ -311,6 +316,9 @@ function clearPriceData() {
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus('価格データクリア済み');
         }
+
+        // サイドバーの価格データ状況を更新
+        updatePriceDataStatusDisplay();
 
         showSuccessMessage(`価格データをクリアしました (${clearedCount}件)`);
     }
@@ -339,6 +347,30 @@ function showPriceDataStatus() {
     } catch (error) {
         console.error('価格データ状況表示エラー:', error);
         showErrorMessage('価格データ状況の取得に失敗しました');
+    }
+}
+
+// 価格データ状況を自動更新（サイドバーに表示）
+function updatePriceDataStatusDisplay() {
+    const statusElement = document.getElementById('price-data-status');
+    if (!statusElement) return;
+
+    try {
+        // CacheServiceから統計情報を取得
+        const stats = window.cache.getStorageStats();
+        const maxSizeMB = (AppConfig.cacheDurations.MAX_STORAGE_SIZE / 1024 / 1024).toFixed(0);
+
+        // 状態表示を生成
+        const statusHTML = `
+            <div style="margin-bottom: 4px;">合計: ${stats.totalSizeMB}MB / ${maxSizeMB}MB (${(stats.usageRatio * 100).toFixed(1)}%)</div>
+            <div style="margin-bottom: 4px;">価格キャッシュ: ${stats.priceDataCount}件 (${stats.priceDataSizeMB}MB)</div>
+            <div>ポートフォリオ: ${stats.portfolioDataSizeMB}MB</div>
+        `;
+
+        statusElement.innerHTML = statusHTML;
+    } catch (error) {
+        console.error('価格データ状況更新エラー:', error);
+        statusElement.innerHTML = '<div style="color: #dc3545;">状態取得エラー</div>';
     }
 }
 
@@ -480,8 +512,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanedCount = autoCleanupOldPriceData();
         if (cleanedCount > 0) {
         }
-        
+
     }, 2000);
+
+    // 価格データ状況を初期表示
+    setTimeout(() => {
+        updatePriceDataStatusDisplay();
+    }, 100);
+
+    // 定期的に価格データ状況を更新（30秒ごと）
+    setInterval(() => {
+        updatePriceDataStatusDisplay();
+    }, 30000);
 });
 
 // グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
@@ -493,6 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof clearAllData === 'function') window.clearAllData = clearAllData;
     if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
     if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
+    if (typeof updatePriceDataStatusDisplay === 'function') window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
     if (typeof showSuccessMessage === 'function') window.showSuccessMessage = showSuccessMessage;
     if (typeof showErrorMessage === 'function') window.showErrorMessage = showErrorMessage;
