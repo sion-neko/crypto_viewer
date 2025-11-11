@@ -484,7 +484,7 @@ body {
 
     /* ハンバーガーメニューが開いている時のアイコン変化 */
     .sidebar-toggle.active span:nth-child(1) {
-        transform: rotate(45deg) translate(6px, 6px);
+        transform: rotate(45deg) translate(0px, 7.5px);
     }
 
     .sidebar-toggle.active span:nth-child(2) {
@@ -492,7 +492,7 @@ body {
     }
 
     .sidebar-toggle.active span:nth-child(3) {
-        transform: rotate(-45deg) translate(6px, -6px);
+        transform: rotate(-45deg) translate(0px, -7.5px);
     }
 
     /* サイドバー - モバイル版 */
