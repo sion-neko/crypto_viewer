@@ -484,14 +484,8 @@
 
         <div class="controls">
             <button class="btn-primary" onclick="refreshData()">🔄 更新</button>
-            <button class="btn-warning" onclick="expandAll()" id="expandBtn">📂 すべて展開</button>
-            <button class="btn-warning" onclick="collapseAll()" id="collapseBtn">📁 すべて折りたたむ</button>
             <button class="btn-danger" onclick="clearAllCache()">🗑️ すべてクリア</button>
             <button class="btn-danger" onclick="clearPriceCache()">💰 価格データクリア</button>
-            <div class="view-mode-toggle">
-                <button class="view-mode-btn active" onclick="setViewMode('card')">📇 カード</button>
-                <button class="view-mode-btn" onclick="setViewMode('table')">📊 テーブル</button>
-            </div>
         </div>
 
         <div class="filter-group">
@@ -534,9 +528,7 @@
 
     <script>
         let allCacheData = [];
-        let viewMode = 'card';
         let currentModalKey = null;
-        let expandedCards = new Set(); // 展開中のカードを記録
         let lastScrollPosition = 0; // スクロール位置を記録
 
         function formatBytes(bytes) {
@@ -662,123 +654,12 @@
             // スクロール位置を保存
             lastScrollPosition = window.scrollY || document.documentElement.scrollTop;
 
-            if (viewMode === 'table') {
-                renderTableView(cacheData);
-            } else {
-                renderCardView(cacheData);
-            }
+            renderTableView(cacheData);
 
             // スクロール位置を復元（次のフレームで実行）
             requestAnimationFrame(() => {
                 window.scrollTo(0, lastScrollPosition);
             });
-        }
-
-        function renderCardView(cacheData) {
-            const container = document.getElementById('cacheList');
-
-            if (cacheData.length === 0) {
-                container.innerHTML = '<div class="empty-state">キャッシュデータがありません</div>';
-                return;
-            }
-
-            const html = cacheData.map(item => {
-                const { key, value, metadata } = item;
-                const timeRemaining = getTimeRemaining(metadata.expiresAt);
-
-                let statusBadge = '';
-                if (timeRemaining === 'expired') {
-                    statusBadge = '<span class="badge badge-danger">期限切れ</span>';
-                } else if (timeRemaining) {
-                    statusBadge = `<span class="badge badge-success">残り ${timeRemaining}</span>`;
-                }
-
-                let contentHtml = '';
-                let parsedData = null;
-                let hasTableData = false;
-
-                try {
-                    parsedData = JSON.parse(value);
-                    const prettyValue = JSON.stringify(parsedData, null, 2);
-                    hasTableData = detectTableData(parsedData);
-
-                    if (hasTableData) {
-                        // テーブルとJSONの両方を表示
-                        let tableHtml = '';
-                        if (Array.isArray(parsedData)) {
-                            tableHtml = generateTable(parsedData, 'データ');
-                        } else if (typeof parsedData === 'object') {
-                            for (const k in parsedData) {
-                                if (Array.isArray(parsedData[k]) && parsedData[k].length > 0) {
-                                    tableHtml += `<h4 style="margin: 15px 0 10px 0; color: #333;">${k}</h4>`;
-                                    tableHtml += generateTable(parsedData[k], k);
-                                }
-                            }
-                        }
-
-                        const escapedKey = key.replace(/'/g, "\\'");
-                        contentHtml = `
-                            <div class="view-toggle" id="card-toggle-${escapedKey}">
-                                <button class="btn-primary btn-small" onclick="event.stopPropagation(); switchCardView('${escapedKey}', 'table')">📊 表形式</button>
-                                <button class="btn-warning btn-small" onclick="event.stopPropagation(); switchCardView('${escapedKey}', 'json')">📝 JSON</button>
-                            </div>
-                            <div id="card-table-${escapedKey}" class="table-view active">${tableHtml}</div>
-                            <pre id="card-json-${escapedKey}" class="json-view">${prettyValue}</pre>
-                        `;
-                    } else {
-                        contentHtml = `<pre>${prettyValue}</pre>`;
-                    }
-                } catch (e) {
-                    contentHtml = `<pre>${value}</pre>`;
-                }
-
-                const escapedKey = key.replace(/'/g, "\\'");
-
-                return `
-                    <div class="cache-item">
-                        <div class="cache-header" onclick="toggleCache('${escapedKey}')">
-                            <div>
-                                <div class="cache-key">${key}</div>
-                                <div class="cache-meta">
-                                    <span>${formatBytes(metadata.size)}</span>
-                                    ${metadata.cachedAt ? `<span>キャッシュ: ${formatDate(metadata.cachedAt)}</span>` : ''}
-                                    ${statusBadge}
-                                </div>
-                            </div>
-                            <div class="action-buttons">
-                                <button class="btn-primary btn-small" onclick="event.stopPropagation(); copyToClipboard('${escapedKey}')">📋 コピー</button>
-                                <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteCache('${escapedKey}')">🗑️ 削除</button>
-                            </div>
-                        </div>
-                        <div class="cache-content" id="content-${escapedKey}">
-                            ${contentHtml}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            container.innerHTML = html;
-
-            // 展開状態を復元
-            expandedCards.forEach(key => {
-                const content = document.getElementById(`content-${key}`);
-                if (content) {
-                    content.classList.add('expanded');
-                }
-            });
-        }
-
-        function switchCardView(key, view) {
-            const tableView = document.getElementById(`card-table-${key}`);
-            const jsonView = document.getElementById(`card-json-${key}`);
-
-            if (view === 'table') {
-                tableView.classList.add('active');
-                jsonView.classList.remove('active');
-            } else {
-                tableView.classList.remove('active');
-                jsonView.classList.add('active');
-            }
         }
 
         function renderTableView(cacheData) {
@@ -848,58 +729,6 @@
                     </table>
                 </div>
             `;
-        }
-
-        function toggleCache(key) {
-            const content = document.getElementById(`content-${key}`);
-            content.classList.toggle('expanded');
-
-            // 展開状態を記録
-            if (content.classList.contains('expanded')) {
-                expandedCards.add(key);
-            } else {
-                expandedCards.delete(key);
-            }
-        }
-
-        function setViewMode(mode) {
-            viewMode = mode;
-
-            // ボタンのアクティブ状態を更新
-            document.querySelectorAll('.view-mode-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            // 展開/折りたたみボタンの表示/非表示
-            const expandBtn = document.getElementById('expandBtn');
-            const collapseBtn = document.getElementById('collapseBtn');
-            if (mode === 'table') {
-                expandBtn.style.display = 'none';
-                collapseBtn.style.display = 'none';
-            } else {
-                expandBtn.style.display = 'block';
-                collapseBtn.style.display = 'block';
-            }
-
-            filterCache();
-        }
-
-        function expandAll() {
-            document.querySelectorAll('.cache-content').forEach(el => {
-                el.classList.add('expanded');
-                // IDから key を取得して記録
-                const key = el.id.replace('content-', '');
-                expandedCards.add(key);
-            });
-        }
-
-        function collapseAll() {
-            document.querySelectorAll('.cache-content').forEach(el => {
-                el.classList.remove('expanded');
-            });
-            // すべてクリア
-            expandedCards.clear();
         }
 
         function openModal(key) {
@@ -1107,7 +936,6 @@
         function deleteCache(key) {
             if (confirm(`"${key}" を削除しますか?`)) {
                 localStorage.removeItem(key);
-                expandedCards.delete(key); // 展開状態もクリア
                 refreshData();
             }
         }
@@ -1115,7 +943,6 @@
         function clearAllCache() {
             if (confirm('すべてのキャッシュを削除しますか?\n\n警告: ポートフォリオデータも削除されます!')) {
                 localStorage.clear();
-                expandedCards.clear(); // 展開状態もクリア
                 refreshData();
             }
         }
@@ -1130,10 +957,7 @@
                         keysToDelete.push(key);
                     }
                 }
-                keysToDelete.forEach(key => {
-                    localStorage.removeItem(key);
-                    expandedCards.delete(key); // 展開状態もクリア
-                });
+                keysToDelete.forEach(key => localStorage.removeItem(key));
                 refreshData();
             }
         }
