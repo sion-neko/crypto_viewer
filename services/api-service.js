@@ -198,7 +198,9 @@ class APIService {
                 const priceHistory = await this.fetchPriceHistory(coinName, options);
                 results[coinName] = priceHistory;
             } catch (error) {
-                console.warn(`${coinName}の価格履歴取得失敗:`, error.message);
+                // トーストでエラー表示
+                window.uiService.showWarning(`${coinName}の価格履歴取得失敗: ${error.message}`);
+                
                 results[coinName] = null;
             }
         });
