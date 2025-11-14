@@ -820,45 +820,5 @@ async function fetchCoinNameHistoricalData(coinName) {
         return [];
     }
 }
-// チャート
-// 表示モードを切り替える（デスクトップ/モバイル統合版）
-function toggleChartMode() {
-    // 現在のモードを取得（引数なしで自動判定）
-    const currentMode = window.portfolioChartMode || safeGetJSON('portfolioChartMode', 'combined');
-    const newMode = (currentMode === 'combined') ? 'individual' : 'combined';
-
-    // ChartElementIdsを使用してDOM要素を取得
-    const toggleButton = document.getElementById(ChartElementIds.getToggleButton());
-    const chartTitle = document.getElementById(ChartElementIds.getTitle());
-
-    window.portfolioChartMode = newMode;
-    safeSetJSON('portfolioChartMode', newMode);
-
-    // モバイルかデスクトップかを判定
-    const isMobileView = typeof isMobile === 'function' && isMobile();
-
-    if (newMode === 'combined') {
-        toggleButton.textContent = isMobileView ? '個別' : '個別表示';
-        toggleButton.title = '各銘柄を個別に表示';
-        chartTitle.textContent = '📈 ポートフォリオ総合損益推移（過去1か月）';
-    } else {
-        toggleButton.textContent = isMobileView ? '合計' : '合計表示';
-        toggleButton.title = 'ポートフォリオ全体の合計を表示';
-        chartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
-    }
-
-    // チャートを再描画
-    // storage-utils.jsのCacheServiceを使用してポートフォリオデータを取得
-    const portfolioData = window.cache.getPortfolioData();
-    if (portfolioData) {
-        renderAllCoinNamesProfitChart(portfolioData, newMode);
-    } else {
-        console.error('Portfolio data not available for chart rendering');
-        showErrorMessage('チャート表示エラー: ポートフォリオデータが利用できません');
-    }
-
-}
-
 // 関数を即座にグローバルに登録
-window.toggleChartMode = toggleChartMode;
 window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;

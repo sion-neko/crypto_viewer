@@ -416,12 +416,9 @@ function displayDashboard(portfolioData) {
             chartContainer.innerHTML = `
                 <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
                     <div class="card-header">
-                        <span id="mobile-chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</span>
-                        <div style="float: right; display: flex; gap: 4px;">
-                            <button id="mobile-chart-mode-toggle" onclick="toggleChartMode()" style="padding: 4px 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;" title="個別表示に切り替え">
-                                個別
-                            </button>
-                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), window.portfolioChartMode || 'combined')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
+                        <div style="float: right;">
+                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                                 更新
                             </button>
                         </div>
@@ -436,12 +433,9 @@ function displayDashboard(portfolioData) {
             chartContainer.innerHTML = `
                 <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;" id="chart-title">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
-                        <div style="display: flex; gap: 8px;">
-                            <button id="chart-mode-toggle" onclick="toggleChartMode()" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;" title="各銘柄を個別に表示">
-                                個別表示
-                            </button>
-                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), window.portfolioChartMode || 'combined')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
+                        <div>
+                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                                 チャート更新
                             </button>
                         </div>
@@ -520,32 +514,8 @@ function displayDashboard(portfolioData) {
 
     // 全銘柄の損益推移チャートを描画（DOM準備完了後）
     setTimeout(() => {
-        // 保存されたチャートモードを読み込む（デフォルトは'combined'）
-        const savedMode = safeGetJSON('portfolioChartMode', 'combined');
-        window.portfolioChartMode = savedMode;
-
-        // チャートを描画（デスクトップ・モバイル両対応）
-        renderAllCoinNamesProfitChart(portfolioData, savedMode);
-
-        // ボタンのテキストを現在のモードに合わせて設定
-        const toggleButton = document.getElementById(
-            typeof isMobile === 'function' && isMobile() ? 'mobile-chart-mode-toggle' : 'chart-mode-toggle'
-        );
-        const chartTitle = document.getElementById(
-            typeof isMobile === 'function' && isMobile() ? 'mobile-chart-title' : 'chart-title'
-        );
-
-        if (toggleButton && chartTitle) {
-            if (savedMode === 'combined') {
-                toggleButton.textContent = isMobile() ? '個別' : '個別表示';
-                toggleButton.title = '各銘柄を個別に表示';
-                chartTitle.textContent = '📈 ポートフォリオ総合損益推移（過去1か月）';
-            } else {
-                toggleButton.textContent = isMobile() ? '合計' : '合計表示';
-                toggleButton.title = 'ポートフォリオ全体の合計を表示';
-                chartTitle.textContent = '📈 各銘柄の個別損益推移（過去1か月）';
-            }
-        }
+        // サマリータブは常に全体表示（combined）モードで描画
+        renderAllCoinNamesProfitChart(portfolioData, 'combined');
     }, 800); // DOM要素の準備を待つため少し短縮
 }
 

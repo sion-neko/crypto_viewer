@@ -574,6 +574,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 30000);
 });
 
+// ===================================================================
+// INDIVIDUAL COIN PROFIT CHART RENDERING
+// ===================================================================
+
+/**
+ * 個別銘柄の損益推移チャートを描画
+ * @param {string} coinName - 銘柄シンボル（例: "BTC"）
+ */
+async function renderCoinProfitChart(coinName) {
+    try {
+        // ポートフォリオデータを取得
+        const portfolioData = window.cache.getPortfolioData();
+        if (!portfolioData || !portfolioData.coins || !portfolioData.coins[coinName]) {
+            throw new Error(`${coinName}のデータが見つかりません`);
+        }
+
+        const coinData = portfolioData.coins[coinName];
+        const canvasId = `${coinName.toLowerCase()}-profit-chart`;
+
+        // 価格履歴を取得
+        showInfoMessage(`${coinName}の価格履歴を取得中...`);
+        const priceHistory = await fetchCoinNamePriceHistory(coinName);
+
+        // 損益推移データを生成
+        const profitData = generateHistoricalProfitTimeSeries(
+            coinData.allTransactions,
+            priceHistory
+        );
+
+        // チャートを描画
+        displayProfitChart(
+            canvasId,
+            profitData,
+            `${coinName} 損益推移（過去1か月）`
+        );
+
+        showSuccessMessage(`${coinName}の損益チャートを表示しました`);
+
+    } catch (error) {
+        console.error(`${coinName}チャート描画エラー:`, error);
+        showErrorMessage(`${coinName}チャート描画失敗: ${error.message}`);
+    }
+}
+
 // グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
 (function () {
     // 関数が定義されているか確認してからグローバルに設定
@@ -584,6 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
     if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
     if (typeof updatePriceDataStatusDisplay === 'function') window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
+    if (typeof renderCoinProfitChart === 'function') window.renderCoinProfitChart = renderCoinProfitChart;
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
     if (typeof showSuccessMessage === 'function') window.showSuccessMessage = showSuccessMessage;
     if (typeof showErrorMessage === 'function') window.showErrorMessage = showErrorMessage;
