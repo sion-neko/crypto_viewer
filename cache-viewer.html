@@ -537,6 +537,7 @@
         let viewMode = 'card';
         let currentModalKey = null;
         let expandedCards = new Set(); // 展開中のカードを記録
+        let lastScrollPosition = 0; // スクロール位置を記録
 
         function formatBytes(bytes) {
             if (bytes === 0) return '0 Bytes';
@@ -658,11 +659,19 @@
         }
 
         function renderCacheList(cacheData) {
+            // スクロール位置を保存
+            lastScrollPosition = window.scrollY || document.documentElement.scrollTop;
+
             if (viewMode === 'table') {
                 renderTableView(cacheData);
             } else {
                 renderCardView(cacheData);
             }
+
+            // スクロール位置を復元（次のフレームで実行）
+            requestAnimationFrame(() => {
+                window.scrollTo(0, lastScrollPosition);
+            });
         }
 
         function renderCardView(cacheData) {
