@@ -413,6 +413,64 @@
             display: flex;
             gap: 10px;
         }
+
+        /* データテーブル */
+        .data-table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table td {
+            padding: 6px 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .view-toggle button {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .json-view {
+            display: block;
+        }
+
+        .table-view {
+            display: none;
+        }
+
+        .table-view.active {
+            display: block;
+        }
+
+        .json-view.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -460,7 +518,12 @@
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <pre id="modalContent"></pre>
+                <div class="view-toggle" id="viewToggle" style="display: none;">
+                    <button class="btn-primary btn-small" onclick="switchDataView('table')">📊 表形式</button>
+                    <button class="btn-warning btn-small" onclick="switchDataView('json')">📝 JSON</button>
+                </div>
+                <div id="tableView" class="table-view"></div>
+                <pre id="modalContent" class="json-view"></pre>
             </div>
             <div class="modal-actions">
                 <button class="btn-primary btn-small" onclick="copyModalContent()">📋 コピー</button>
@@ -620,12 +683,43 @@
                     statusBadge = `<span class="badge badge-success">残り ${timeRemaining}</span>`;
                 }
 
-                let prettyValue;
+                let contentHtml = '';
+                let parsedData = null;
+                let hasTableData = false;
+
                 try {
-                    const parsed = JSON.parse(value);
-                    prettyValue = JSON.stringify(parsed, null, 2);
+                    parsedData = JSON.parse(value);
+                    const prettyValue = JSON.stringify(parsedData, null, 2);
+                    hasTableData = detectTableData(parsedData);
+
+                    if (hasTableData) {
+                        // テーブルとJSONの両方を表示
+                        let tableHtml = '';
+                        if (Array.isArray(parsedData)) {
+                            tableHtml = generateTable(parsedData, 'データ');
+                        } else if (typeof parsedData === 'object') {
+                            for (const k in parsedData) {
+                                if (Array.isArray(parsedData[k]) && parsedData[k].length > 0) {
+                                    tableHtml += `<h4 style="margin: 15px 0 10px 0; color: #333;">${k}</h4>`;
+                                    tableHtml += generateTable(parsedData[k], k);
+                                }
+                            }
+                        }
+
+                        const escapedKey = key.replace(/'/g, "\\'");
+                        contentHtml = `
+                            <div class="view-toggle" id="card-toggle-${escapedKey}">
+                                <button class="btn-primary btn-small" onclick="event.stopPropagation(); switchCardView('${escapedKey}', 'table')">📊 表形式</button>
+                                <button class="btn-warning btn-small" onclick="event.stopPropagation(); switchCardView('${escapedKey}', 'json')">📝 JSON</button>
+                            </div>
+                            <div id="card-table-${escapedKey}" class="table-view active">${tableHtml}</div>
+                            <pre id="card-json-${escapedKey}" class="json-view">${prettyValue}</pre>
+                        `;
+                    } else {
+                        contentHtml = `<pre>${prettyValue}</pre>`;
+                    }
                 } catch (e) {
-                    prettyValue = value;
+                    contentHtml = `<pre>${value}</pre>`;
                 }
 
                 const escapedKey = key.replace(/'/g, "\\'");
@@ -647,13 +741,26 @@
                             </div>
                         </div>
                         <div class="cache-content" id="content-${escapedKey}">
-                            <pre>${prettyValue}</pre>
+                            ${contentHtml}
                         </div>
                     </div>
                 `;
             }).join('');
 
             container.innerHTML = html;
+        }
+
+        function switchCardView(key, view) {
+            const tableView = document.getElementById(`card-table-${key}`);
+            const jsonView = document.getElementById(`card-json-${key}`);
+
+            if (view === 'table') {
+                tableView.classList.add('active');
+                jsonView.classList.remove('active');
+            } else {
+                tableView.classList.remove('active');
+                jsonView.classList.add('active');
+            }
         }
 
         function renderTableView(cacheData) {
@@ -770,16 +877,161 @@
             const value = localStorage.getItem(key);
 
             let prettyValue;
+            let parsedData = null;
+            let hasTableData = false;
+
             try {
-                const parsed = JSON.parse(value);
-                prettyValue = JSON.stringify(parsed, null, 2);
+                parsedData = JSON.parse(value);
+                prettyValue = JSON.stringify(parsedData, null, 2);
+
+                // テーブル表示可能なデータがあるかチェック
+                hasTableData = detectTableData(parsedData);
             } catch (e) {
                 prettyValue = value;
             }
 
             document.getElementById('modalTitle').textContent = key;
             document.getElementById('modalContent').textContent = prettyValue;
+
+            // テーブル表示可能な場合、切り替えボタンとテーブルを表示
+            if (hasTableData) {
+                document.getElementById('viewToggle').style.display = 'flex';
+                renderTableData(parsedData);
+                switchDataView('table'); // デフォルトで表形式を表示
+            } else {
+                document.getElementById('viewToggle').style.display = 'none';
+                document.getElementById('tableView').innerHTML = '';
+                document.getElementById('modalContent').classList.add('active');
+                document.getElementById('tableView').classList.remove('active');
+            }
+
             document.getElementById('detailModal').classList.add('show');
+        }
+
+        function detectTableData(data) {
+            if (!data) return false;
+
+            // 直接配列の場合
+            if (Array.isArray(data) && data.length > 0) {
+                return true;
+            }
+
+            // オブジェクトの中に配列がある場合
+            if (typeof data === 'object') {
+                // data.data, data.prices, data.summary などよくあるパターン
+                if (data.data && Array.isArray(data.data) && data.data.length > 0) return true;
+                if (data.prices && Array.isArray(data.prices) && data.prices.length > 0) return true;
+                if (data.summary && Array.isArray(data.summary) && data.summary.length > 0) return true;
+                if (data.allTransactions && Array.isArray(data.allTransactions) && data.allTransactions.length > 0) return true;
+                if (data.buyTransactions && Array.isArray(data.buyTransactions) && data.buyTransactions.length > 0) return true;
+                if (data.sellTransactions && Array.isArray(data.sellTransactions) && data.sellTransactions.length > 0) return true;
+
+                // 汎用：最初に見つかった配列
+                for (const key in data) {
+                    if (Array.isArray(data[key]) && data[key].length > 0) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        function renderTableData(data) {
+            const container = document.getElementById('tableView');
+            let html = '';
+
+            if (Array.isArray(data)) {
+                html = generateTable(data, 'データ');
+            } else if (typeof data === 'object') {
+                // オブジェクトの各配列プロパティをテーブル化
+                for (const key in data) {
+                    if (Array.isArray(data[key]) && data[key].length > 0) {
+                        html += `<h4 style="margin: 15px 0 10px 0; color: #333;">${key}</h4>`;
+                        html += generateTable(data[key], key);
+                    }
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        function generateTable(array, title) {
+            if (!array || array.length === 0) return '';
+
+            const firstItem = array[0];
+
+            // プリミティブ型の配列の場合
+            if (typeof firstItem !== 'object') {
+                const rows = array.map((item, index) =>
+                    `<tr><td>${index}</td><td>${item}</td></tr>`
+                ).join('');
+
+                return `
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Index</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            // オブジェクト配列の場合
+            const keys = Object.keys(firstItem);
+            const headers = keys.map(key => `<th>${key}</th>`).join('');
+
+            const rows = array.map((item, index) => {
+                const cells = keys.map(key => {
+                    let value = item[key];
+
+                    // ネストされたオブジェクトや配列は JSON として表示
+                    if (typeof value === 'object' && value !== null) {
+                        value = JSON.stringify(value);
+                    }
+
+                    // 長い文字列は省略
+                    if (typeof value === 'string' && value.length > 100) {
+                        value = value.substring(0, 100) + '...';
+                    }
+
+                    return `<td>${value !== null && value !== undefined ? value : '-'}</td>`;
+                }).join('');
+
+                return `<tr>${cells}</tr>`;
+            }).join('');
+
+            return `
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>${headers}</tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <div style="padding: 10px; color: #666; font-size: 12px;">
+                        全 ${array.length} 件
+                    </div>
+                </div>
+            `;
+        }
+
+        function switchDataView(view) {
+            const tableView = document.getElementById('tableView');
+            const jsonView = document.getElementById('modalContent');
+
+            if (view === 'table') {
+                tableView.classList.add('active');
+                jsonView.classList.remove('active');
+            } else {
+                tableView.classList.remove('active');
+                jsonView.classList.add('active');
+            }
         }
 
         function closeModal(event) {
