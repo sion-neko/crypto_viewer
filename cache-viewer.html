@@ -257,6 +257,29 @@
             font-weight: 600;
             color: #333;
             font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        th:hover {
+            background: #e9ecef;
+        }
+
+        th.sortable::after {
+            content: ' ⇅';
+            color: #ccc;
+            font-size: 10px;
+        }
+
+        th.sort-asc::after {
+            content: ' ↑';
+            color: #007bff;
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            color: #007bff;
         }
 
         td {
@@ -530,6 +553,8 @@
         let allCacheData = [];
         let currentModalKey = null;
         let lastScrollPosition = 0; // スクロール位置を記録
+        let currentSortField = null; // 現在のソートフィールド
+        let currentSortDirection = 'asc'; // 'asc' or 'desc'
 
         function formatBytes(bytes) {
             if (bytes === 0) return '0 Bytes';
@@ -650,9 +675,75 @@
             document.getElementById('stats').innerHTML = statsHtml;
         }
 
+        function sortCacheData(data, field, direction) {
+            return [...data].sort((a, b) => {
+                let aVal, bVal;
+
+                switch(field) {
+                    case 'key':
+                        aVal = a.key.toLowerCase();
+                        bVal = b.key.toLowerCase();
+                        break;
+                    case 'type':
+                        aVal = a.metadata.type;
+                        bVal = b.metadata.type;
+                        break;
+                    case 'size':
+                        aVal = a.metadata.size;
+                        bVal = b.metadata.size;
+                        break;
+                    case 'cachedAt':
+                        aVal = a.metadata.cachedAt || 0;
+                        bVal = b.metadata.cachedAt || 0;
+                        break;
+                    case 'status':
+                        const aRemaining = getTimeRemaining(a.metadata.expiresAt);
+                        const bRemaining = getTimeRemaining(b.metadata.expiresAt);
+
+                        // 期限切れは最後
+                        if (aRemaining === 'expired' && bRemaining !== 'expired') return 1;
+                        if (aRemaining !== 'expired' && bRemaining === 'expired') return -1;
+                        if (aRemaining === 'expired' && bRemaining === 'expired') return 0;
+
+                        // 期限なし（null）も考慮
+                        if (!aRemaining && bRemaining) return 1;
+                        if (aRemaining && !bRemaining) return -1;
+                        if (!aRemaining && !bRemaining) return 0;
+
+                        // 残り時間で比較（expiresAtの値で）
+                        aVal = a.metadata.expiresAt || 0;
+                        bVal = b.metadata.expiresAt || 0;
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function handleSort(field) {
+            // 同じフィールドをクリックした場合は方向を反転
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDirection = 'asc';
+            }
+
+            filterCache();
+        }
+
         function renderCacheList(cacheData) {
             // スクロール位置を保存
             lastScrollPosition = window.scrollY || document.documentElement.scrollTop;
+
+            // ソートが有効な場合はソート実行
+            if (currentSortField) {
+                cacheData = sortCacheData(cacheData, currentSortField, currentSortDirection);
+            }
 
             renderTableView(cacheData);
 
@@ -710,16 +801,23 @@
                 `;
             }).join('');
 
+            const getSortClass = (field) => {
+                if (currentSortField === field) {
+                    return currentSortDirection === 'asc' ? 'sort-asc' : 'sort-desc';
+                }
+                return 'sortable';
+            };
+
             container.innerHTML = `
                 <div class="cache-table">
                     <table>
                         <thead>
                             <tr>
-                                <th>キー</th>
-                                <th>種類</th>
-                                <th>サイズ</th>
-                                <th>キャッシュ時刻</th>
-                                <th>状態</th>
+                                <th class="${getSortClass('key')}" onclick="handleSort('key')">キー</th>
+                                <th class="${getSortClass('type')}" onclick="handleSort('type')">種類</th>
+                                <th class="${getSortClass('size')}" onclick="handleSort('size')">サイズ</th>
+                                <th class="${getSortClass('cachedAt')}" onclick="handleSort('cachedAt')">キャッシュ時刻</th>
+                                <th class="${getSortClass('status')}" onclick="handleSort('status')">状態</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
