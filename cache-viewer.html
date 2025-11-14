@@ -536,6 +536,7 @@
         let allCacheData = [];
         let viewMode = 'card';
         let currentModalKey = null;
+        let expandedCards = new Set(); // 展開中のカードを記録
 
         function formatBytes(bytes) {
             if (bytes === 0) return '0 Bytes';
@@ -748,6 +749,14 @@
             }).join('');
 
             container.innerHTML = html;
+
+            // 展開状態を復元
+            expandedCards.forEach(key => {
+                const content = document.getElementById(`content-${key}`);
+                if (content) {
+                    content.classList.add('expanded');
+                }
+            });
         }
 
         function switchCardView(key, view) {
@@ -835,6 +844,13 @@
         function toggleCache(key) {
             const content = document.getElementById(`content-${key}`);
             content.classList.toggle('expanded');
+
+            // 展開状態を記録
+            if (content.classList.contains('expanded')) {
+                expandedCards.add(key);
+            } else {
+                expandedCards.delete(key);
+            }
         }
 
         function setViewMode(mode) {
@@ -863,6 +879,9 @@
         function expandAll() {
             document.querySelectorAll('.cache-content').forEach(el => {
                 el.classList.add('expanded');
+                // IDから key を取得して記録
+                const key = el.id.replace('content-', '');
+                expandedCards.add(key);
             });
         }
 
@@ -870,6 +889,8 @@
             document.querySelectorAll('.cache-content').forEach(el => {
                 el.classList.remove('expanded');
             });
+            // すべてクリア
+            expandedCards.clear();
         }
 
         function openModal(key) {
@@ -1077,6 +1098,7 @@
         function deleteCache(key) {
             if (confirm(`"${key}" を削除しますか?`)) {
                 localStorage.removeItem(key);
+                expandedCards.delete(key); // 展開状態もクリア
                 refreshData();
             }
         }
@@ -1084,6 +1106,7 @@
         function clearAllCache() {
             if (confirm('すべてのキャッシュを削除しますか?\n\n警告: ポートフォリオデータも削除されます!')) {
                 localStorage.clear();
+                expandedCards.clear(); // 展開状態もクリア
                 refreshData();
             }
         }
@@ -1098,7 +1121,10 @@
                         keysToDelete.push(key);
                     }
                 }
-                keysToDelete.forEach(key => localStorage.removeItem(key));
+                keysToDelete.forEach(key => {
+                    localStorage.removeItem(key);
+                    expandedCards.delete(key); // 展開状態もクリア
+                });
                 refreshData();
             }
         }
