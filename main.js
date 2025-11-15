@@ -199,6 +199,75 @@ function showWarningMessage(message) {
 }
 
 // ===================================================================
+// SIMPLE TOAST SYSTEM (FALLBACK)
+// ===================================================================
+
+// シンプルなトースト表示関数（フォールバック）
+function showSimpleToast(message, type = 'success') {
+    // 既存のトーストがあれば削除
+    document.querySelector('.simple-toast')?.remove();
+
+    // 新しいトースト作成
+    const toast = document.createElement('div');
+    toast.className = 'simple-toast';
+
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${colors[type] || colors.success};
+        color: white;
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 99999;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 14px;
+        max-width: 350px;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        line-height: 1.4;
+    `;
+
+    toast.innerHTML = `
+        <span>${icons[type] || icons.success}</span>
+        <span style="white-space: pre-line;">${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    // 表示アニメーション
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+
+    // 自動削除
+    setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            toast.parentNode.removeChild(toast);
+        }, 300);
+    }, 4000);
+}
+
+// ===================================================================
 // FILE MANAGEMENT FUNCTIONS
 // ===================================================================
 
@@ -289,6 +358,15 @@ function updatePriceDataStatusDisplay() {
     `;
 
     statusElement.innerHTML = statusHTML;
+}
+
+// 古い価格データの自動クリーンアップ
+// 注: CacheServiceが自動的に期限切れキャッシュを管理するため、この関数は不要
+// 互換性のため残していますが、実際の処理はCacheServiceに委譲されます
+function autoCleanupOldPriceData() {
+    // CacheServiceが自動的に期限切れキャッシュを削除するため、特に処理は不要
+    console.log('自動クリーンアップはCacheServiceが管理します');
+    return 0;
 }
 
 // ===================================================================

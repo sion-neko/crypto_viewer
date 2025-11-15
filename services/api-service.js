@@ -325,3 +325,6 @@ class APIService {
 
 // グローバルシングルトンインスタンスを作成
 window.apiService = new APIService(window.cache, AppConfig);
+
+// 後方互換性のためのエクスポート
+window.APIService = APIService;

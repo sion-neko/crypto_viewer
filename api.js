@@ -11,6 +11,9 @@ const CACHE_DURATION_HISTORY = AppConfig.cacheDurations.PRICE_HISTORY;
 // 銘柄マッピング（CoinGecko API用） - AppConfigから取得
 const COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 
+// 後方互換性のため、グローバルにも公開
+window.COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
+
 // ===================================================================
 // PRICE FETCHING FUNCTIONS
 // ===================================================================
@@ -103,6 +106,40 @@ async function fetchCurrentPrices() {
         showErrorMessage(`価格取得失敗: ${error.message}`);
         updatePriceStatus('取得失敗');
     }
+}
+
+// 価格履歴キャッシュから現在価格を取得（API効率化）
+async function tryGetPricesFromHistory(coinNames) {
+    const prices = {};
+    let successCount = 0;
+
+    for (const coinName of coinNames) {
+        try {
+            const cacheKey = cacheKeys.priceHistory(coinName);
+            const historyValue = cache.get(cacheKey);
+
+            if (historyValue && historyValue.length > 0) {
+                const latestPrice = historyValue[historyValue.length - 1].price;
+                prices[coinName] = {
+                    price_jpy: latestPrice,
+                    last_updated_at: Date.now() / 1000
+                };
+                successCount++;
+            }
+        } catch (error) {
+        }
+    }
+
+    if (successCount > 0) {
+        prices._metadata = {
+            lastUpdate: Date.now(),
+            coinNames: Object.keys(prices).filter(key => key !== '_metadata'),
+            source: 'price_history_cache'
+        };
+        return prices;
+    }
+
+    return null;
 }
 
 // 価格データでポートフォリオを更新（含み損益計算）
