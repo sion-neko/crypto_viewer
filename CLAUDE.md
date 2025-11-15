@@ -15,6 +15,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 日本語UI（GMOコイン、OKCoin Japan対応）
 
 ## 開発・テスト方法
+### お願い
+コードは簡潔に書く。
+必要のないエラー処理はしない。
+例えばロジック的にnullが来ないのであればnullチェックは不要
 
 ### 実行方法
 ```bash
@@ -39,46 +43,92 @@ python -m http.server 8000
 
 ```
 crypto_viewer/
-├── index.html          # メインHTML（UI構造+CSS）
-├── config.js           # アプリケーション設定、定数管理
-├── storage-utils.js    # キャッシュ管理、localStorage操作、計算ユーティリティ
-├── main.js             # ファイル処理、CSV解析、UIナビゲーション
-├── portfolio.js        # ポートフォリオ分析エンジン、テーブル生成
-├── api.js              # CoinGecko API統合、価格取得
-├── charts.js           # Chart.js チャート描画、履歴データ処理
-└── style.css           # スタイル（index.htmlから分離予定）
+├── index.html          # メインHTML（UI構造）
+├── style.css           # スタイルシート
+├── config.js           # アプリケーション設定、定数管理（AppConfig）
+├── storage-utils.js    # CacheService、localStorage操作、計算ユーティリティ
+├── main.js             # エントリーポイント、CSV処理、初期化
+├── portfolio.js        # ポートフォリオ分析エンジン、PortfolioDataService
+├── api.js              # レガシーAPI関数（段階的に廃止予定）
+├── charts.js           # レガシーチャート関数（段階的に廃止予定）
+├── cache-viewer.html   # 開発用キャッシュ状態表示ツール
+└── services/           # サービスレイヤー（新アーキテクチャ）
+    ├── api-service.js     # APIService - CoinGecko API統合
+    ├── chart-service.js   # ChartService - チャート描画・管理
+    ├── file-service.js    # FileService - CSV処理・ファイル管理
+    └── ui-service.js      # UIService - UI操作統合（MessageManager、TabManager、TableRenderer）
 ```
 
-### モジュール間の関係
+**重要**: 現在、レガシーコード（api.js、charts.js）と新サービスレイヤー（services/）が共存しています。新機能追加時は必ずサービスクラスを使用してください。
+
+### モジュール間の関係（新アーキテクチャ）
 
 ```
-main.js (Entry Point)
-  ├→ parseCSVFile() → portfolio.js: analyzePortfolioData()
-  ├→ displayDashboard() → portfolio.js
-  └→ UI Events → switchTab(), switchSubtab()
+【サービスレイヤー - 推奨】
 
-portfolio.js
-  ├→ analyzePortfolioData() : 損益計算エンジン
-  ├→ generatePortfolioTable() : テーブル/カード生成
-  ├→ createCoinNameSubtabs() : 銘柄別タブ動的生成
-  └→ sortPortfolioData() : ソート機能
+services/api-service.js (APIService)
+  ├→ fetchCurrentPrices(coinNames) : 現在価格取得（キャッシュ優先）
+  ├→ fetchPriceHistory(coinName, days) : 価格履歴取得
+  └→ fetchMultiplePriceHistories(coinNames) : 複数銘柄の価格履歴並列取得
 
-api.js
-  ├→ fetchCurrentPrices() : CoinGecko API呼び出し
-  ├→ updatePortfolioWithPrices() : 含み損益計算
-  └→ キャッシュ管理 (30分)
+services/chart-service.js (ChartService)
+  ├→ renderPortfolioProfitChart(portfolioData, mode) : ポートフォリオチャート描画
+  ├→ renderCoinChart(coinName) : 個別銘柄価格チャート
+  ├→ destroyChart(canvasId) : チャート破棄
+  └→ 内部: _generateHistoricalProfitTimeSeries(), _generateCombinedProfitTimeSeries()
 
-charts.js
-  ├→ fetchCoinNamePriceHistory() : 過去30日の価格取得
-  ├→ renderAllCoinNamesProfitChart() : 全銘柄損益チャート
-  ├→ renderCoinNameProfitChart(coinName) : 個別銘柄チャート
-  └→ キャッシュ管理 (24時間)
+services/file-service.js (FileService)
+  ├→ handleFiles(files) : CSVファイルアップロード処理
+  ├→ parseCSVFile(file) : CSV解析（PapaParse使用）
+  └→ 内部: _processCSVData(), _mergeTransactionData()
+
+services/ui-service.js (UIService)
+  ├→ MessageManager : トースト通知管理
+  │   └→ showSuccess(), showError(), showWarning(), showInfo()
+  ├→ TabManager : タブ切り替え管理
+  │   ├→ switchMainTab(tabName)
+  │   ├→ switchSubTab(subtabName)
+  │   └→ createCoinSubTabs(portfolioData)
+  └→ TableRenderer : テーブル/カード描画
+      ├→ renderPortfolioTable(portfolioData, isMobile)
+      ├→ renderTradingHistoryTable(portfolioData, isMobile)
+      └→ renderCoinDetailPage(coinSummary, coinDetailData)
+
+【コアレイヤー】
 
 storage-utils.js
-  ├→ CacheService : キャッシュ管理クラス
-  ├→ cacheKeys : キャッシュキー生成関数（priceHistory, currentPrices, chartData）
-  ├→ safeGetJSON / safeSetJSON : localStorage操作
-  └→ 計算ユーティリティ（calculateWeightedAverage, calculateRealizedProfit, calculateUnrealizedProfit）
+  ├→ CacheService : キャッシュ管理（localStorage操作）
+  │   ├→ get(key), set(key, value, ttl)
+  │   ├→ clearPriceCache(), clearAll()
+  │   └→ getStorageStats()
+  ├→ cacheKeys : キャッシュキー生成
+  │   ├→ priceHistory(coinName)
+  │   ├→ currentPrices(coinNames)
+  │   └→ chartData(coinName, days)
+  └→ 計算ユーティリティ
+      ├→ calculateWeightedAverage()
+      ├→ calculateRealizedProfit()
+      └→ calculateUnrealizedProfit()
+
+portfolio.js
+  ├→ PortfolioDataService : ポートフォリオデータ管理
+  │   ├→ getData(), updateData(data)
+  │   ├→ getSortState(), setSortState(field, direction)
+  │   └→ clearCache()
+  ├→ analyzePortfolioData(transactions) : 損益計算エンジン
+  ├→ sortPortfolioData(field, direction) : ソート機能
+  └→ displayDashboard(portfolioData) : ダッシュボード初期化
+
+config.js
+  └→ AppConfig : 読み取り専用グローバル設定
+      ├→ coinGeckoMapping : 銘柄マッピング
+      ├→ cacheDurations : キャッシュ有効期限
+      └→ coinColors : チャート色設定
+
+【レガシーレイヤー - 段階的廃止予定】
+
+api.js, charts.js
+  └→ 下位互換性のため保持（新規開発では使用禁止）
 ```
 
 ### データフロー
@@ -104,29 +154,59 @@ storage-utils.js
 
 ## 重要な実装ポイント
 
-### 1. 変数名規則（最近の変更）
+### 1. サービスレイヤーアーキテクチャ（新規開発必須）
+
+**全ての新規開発はサービスクラスを使用してください。レガシーコード（api.js、charts.js）は使用禁止です。**
+
+#### サービスインスタンスの初期化順序
+
+```javascript
+// 1. 基本サービス（依存関係なし）
+window.cache = new CacheService();                          // storage-utils.js
+window.portfolioDataService = new PortfolioDataService();   // portfolio.js
+
+// 2. APIサービス（CacheServiceに依存）
+window.apiService = new APIService(cache, AppConfig);       // services/api-service.js
+
+// 3. UIサービス（依存関係なし）
+window.uiService = new UIService();                         // services/ui-service.js
+
+// 4. チャートサービス（APIService、PortfolioDataServiceに依存）
+window.chartService = new ChartService(apiService, portfolioDataService, AppConfig);  // services/chart-service.js
+
+// 5. ファイルサービス（PortfolioDataService、UIServiceに依存）
+window.fileService = new FileService(portfolioDataService, uiService);  // services/file-service.js
+```
+
+#### サービス使用例
+
+```javascript
+// 価格取得
+const prices = await apiService.fetchCurrentPrices(['BTC', 'ETH']);
+
+// チャート描画
+await chartService.renderPortfolioProfitChart(portfolioData, 'combined');
+
+// メッセージ表示
+uiService.showSuccess('処理が完了しました');
+uiService.showError('エラーが発生しました');
+
+// タブ切り替え
+uiService.switchSubTab('btc');
+
+// ポートフォリオデータ管理
+const data = portfolioDataService.getData();
+portfolioDataService.updateData(newData);
+
+// キャッシュ管理
+cache.set('key', value, 30 * 60 * 1000);  // 30分キャッシュ
+const cached = cache.get('key');
+```
+
+### 2. 変数名規則
 **重要**: `symbol` → `coinName` に統一しました。
 - ✅ 正: `coinName`, `coinNameData`, `COIN_NAME_MAPPING`
 - ❌ 誤: `symbol`, `symbolData`, `SYMBOL_MAPPING`（古い命名）
-
-### 2. サービスクラスによるデータ管理
-データ管理はサービスクラスを通じて行い、グローバル変数への直接アクセスを避ける：
-```javascript
-// portfolio.js
-window.portfolioDataService = new PortfolioDataService();
-// 使用例:
-//   portfolioDataService.getData()           // データ取得
-//   portfolioDataService.updateData(data)    // データ更新
-//   portfolioDataService.getSortState()      // ソート状態取得
-//   portfolioDataService.setSortState(f, d)  // ソート状態更新
-
-// storage-utils.js
-window.cache = new CacheService();
-// 使用例:
-//   cache.get(key)                // キャッシュ取得
-//   cache.set(key, value, ttl)    // キャッシュ設定
-//   cache.getPortfolioData()      // ポートフォリオデータ取得
-```
 
 ### 3. キャッシュキー管理（storage-utils.js）
 全てのキャッシュキーは`storage-utils.js`の`window.cacheKeys`オブジェクトで一元管理：
@@ -136,7 +216,24 @@ cacheKeys.currentPrices(coinNames)     // 例: "prices_btc_eth_sol"
 cacheKeys.chartData(coinName, days)    // 例: "chart_BTC_30days"
 ```
 
-### 4. CSV解析（main.js）
+### 4. 開発用ツール
+
+#### cache-viewer.html
+キャッシュの状態を可視化する開発用ツール。ブラウザで直接開いて使用。
+
+**主な機能**:
+- localStorage内の全キャッシュデータを表示
+- キャッシュサイズ、有効期限の確認
+- 配列データをテーブル形式で表示
+- 個別キャッシュの削除・全クリア
+
+**使用方法**:
+```bash
+# ブラウザで直接開く
+open cache-viewer.html
+```
+
+### 5. CSV解析（main.js / FileService）
 GMOコイン、OKCoin Japanの2つの形式をサポート：
 ```javascript
 processCSVData(data, fileName)
@@ -146,7 +243,7 @@ processCSVData(data, fileName)
 
 **重複検出**: 日時・銘柄・取引所・数量・金額が完全一致する取引を除外
 
-### 5. 損益計算アルゴリズム（portfolio.js）
+### 6. 損益計算アルゴリズム（portfolio.js）
 
 ```javascript
 analyzePortfolioData(transactions)
@@ -164,7 +261,7 @@ analyzePortfolioData(transactions)
     総合損益: 実現損益 + 含み損益
 ```
 
-### 6. API制限対策（api.js）
+### 7. API制限対策（APIService）
 
 CoinGecko無料プラン制限:
 - 50回/分
@@ -172,26 +269,34 @@ CoinGecko無料プラン制限:
 - フォールバック: 価格履歴キャッシュから現在価格を推定
 
 ```javascript
-fetchCurrentPrices()
-  1. 価格履歴キャッシュから推定を試行
+// APIService.fetchCurrentPrices() の処理フロー
+apiService.fetchCurrentPrices(coinNames)
+  1. 価格履歴キャッシュから現在価格を推定を試行
   2. 永続化キャッシュ確認 (30分)
-  3. API呼び出し
+  3. CoinGecko API呼び出し
+  4. キャッシュに保存
 ```
 
-### 7. チャート描画（charts.js）
+### 8. チャート描画（ChartService）
 
 2つの表示モード:
 - **combined**: 全銘柄の合計損益推移
 - **individual**: 各銘柄の個別損益推移
 
 ```javascript
-renderAllCoinNamesProfitChart()
-  → 複数銘柄の価格履歴を並列取得
-  → generateHistoricalProfitTimeSeries() で損益データ生成
-  → モードに応じてチャート描画
+// ChartService使用例
+await chartService.renderPortfolioProfitChart(portfolioData, 'combined')
+  → apiService.fetchMultiplePriceHistories(coinNames) : 並列取得
+  → _generateHistoricalProfitTimeSeries() : 日次損益データ生成
+  → displayProfitChart() : Chart.jsで描画
+
+// 個別銘柄チャート
+await chartService.renderCoinChart('BTC')
+  → apiService.fetchChartData('BTC', 30)
+  → Chart.jsで価格推移チャートを描画
 ```
 
-**重要**: `renderCoinNameProfitChart()`は重複実行防止フラグ付き（2秒間）
+**Chart.jsインスタンス管理**: `chartService.chartInstances[canvasId]`で一元管理
 
 ## データ構造
 
@@ -319,6 +424,55 @@ Ctrl+→   : 次のサブタブ
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 ```
 
+## アーキテクチャ移行の現状
+
+### レガシーコードからサービスレイヤーへの移行
+
+このプロジェクトは段階的にサービス指向アーキテクチャに移行中です。
+
+#### 移行済み
+
+✅ **UIService**: メッセージ表示、タブ管理、テーブル描画を統合
+- MessageManager: トースト通知
+- TabManager: タブ切り替え、銘柄サブタブ生成
+- TableRenderer: ポートフォリオ・取引履歴テーブル描画
+
+✅ **APIService**: CoinGecko API呼び出しをカプセル化
+- 現在価格取得（キャッシュ優先）
+- 価格履歴取得
+- 複数銘柄の並列取得
+
+✅ **ChartService**: Chart.js チャート描画を統合
+- ポートフォリオ損益チャート（combined/individual）
+- 個別銘柄価格チャート
+- チャートインスタンス管理
+
+✅ **FileService**: CSV処理を統合
+- ファイルアップロード処理
+- CSV解析（PapaParse）
+- 重複検出・マージ
+
+#### 移行中・未移行
+
+⚠️ **レガシーコード**: api.js、charts.js
+- 下位互換性のため保持
+- 新規開発では使用禁止
+- 将来的に削除予定
+
+#### 移行時の注意点
+
+1. **既存コードの修正時**:
+   - 可能な限りサービスクラスに移行
+   - レガシー関数の呼び出しを見つけたらサービスメソッドに置き換え
+
+2. **新機能追加時**:
+   - 必ずサービスクラスを使用
+   - グローバル関数の追加は禁止
+
+3. **依存関係の管理**:
+   - サービスはコンストラクタで依存を受け取る
+   - グローバル変数への直接アクセスは避ける
+
 ## よくあるタスク
 
 ### 新しい取引所のCSV形式を追加
@@ -348,29 +502,49 @@ if (row['新取引所固有の列名']) {
 
 ```javascript
 // 1. Canvas要素の存在確認
-console.log(document.getElementById('btc-profit-chart'));
+console.log(document.getElementById('btc-chart-canvas'));
 
-// 2. データ取得状況確認
-console.log(window.appChartData.historicalData['BTC']);
+// 2. ChartServiceインスタンス確認
+console.log(window.chartService);
+console.log(chartService.chartInstances);
 
-// 3. Chart.jsインスタンス確認
-console.log(window.chartInstances);
+// 3. APIServiceキャッシュ確認
+const coinNames = ['BTC', 'ETH'];
+const cacheKey = cacheKeys.currentPrices(coinNames);
+console.log(cache.get(cacheKey));
 
-// 4. キャッシュ状況確認
-console.log(getPriceDataStatus());
+// 4. ストレージ統計確認
+console.log(cache.getStorageStats());
+
+// 5. ポートフォリオデータ確認
+console.log(portfolioDataService.getData());
+
+// 6. キャッシュビューアを使用（推奨）
+// → cache-viewer.html をブラウザで開く
 ```
 
 ### localStorageのクリーンアップ
 
 ```javascript
-// 全データクリア
-clearAllData();
+// CacheService経由（推奨）
+
+// 全キャッシュクリア
+cache.clearAll();
 
 // 価格データのみクリア
-clearPriceData();
+const count = cache.clearPriceCache();
+console.log(`${count}件のキャッシュを削除しました`);
 
-// 古い価格データの自動削除（起動時実行）
-autoCleanupOldPriceData();
+// ストレージ統計確認
+const stats = cache.getStorageStats();
+console.log(`総容量: ${stats.totalSizeMB}MB, 使用率: ${(stats.usageRatio * 100).toFixed(1)}%`);
+
+// 特定のキャッシュ削除
+cache.delete(cacheKeys.priceHistory('BTC'));
+
+// レガシー関数（非推奨）
+// clearAllData();  // ← 使用禁止
+// clearPriceData();  // ← 使用禁止
 ```
 
 ## トラブルシューティング
@@ -393,21 +567,81 @@ autoCleanupOldPriceData();
 
 ## 重要な注意事項
 
-1. **変数名は`coinName`を使用**（`symbol`は古い命名）
-2. **データアクセスはサービスクラス経由**
+1. **新規開発は必ずサービスクラスを使用**
+   - ✅ 正: `apiService.fetchCurrentPrices()`
+   - ❌ 誤: `fetchCurrentPrices()`（レガシー関数）
+   - ✅ 正: `uiService.showSuccess()`
+   - ❌ 誤: `showSuccessMessage()`（レガシー関数）
+
+2. **変数名は`coinName`を使用**（`symbol`は古い命名）
+
+3. **データアクセスはサービスクラス経由**
    - ポートフォリオデータ: `portfolioDataService.getData()`
    - キャッシュ: `cache.get(key)` / `cache.set(key, value, ttl)`
-3. **キャッシュキーは`window.cacheKeys`を使用**
+   - API: `apiService.fetchCurrentPrices(coinNames)`
+   - UI: `uiService.showSuccess(message)`
+
+4. **キャッシュキーは`window.cacheKeys`を使用**
    - `cacheKeys.priceHistory(coinName)`
    - `cacheKeys.currentPrices(coinNames)`
    - `cacheKeys.chartData(coinName, days)`
-4. **Chart.jsインスタンスは`window.chartInstances[canvasId]`で管理**
-5. **API呼び出しは必ずキャッシュチェック後**
+
+5. **Chart.jsインスタンスは`chartService.chartInstances[canvasId]`で管理**
+
 6. **設定値は`AppConfig`（config.js）から取得**
+   - `AppConfig.coinGeckoMapping['BTC']`
+   - `AppConfig.cacheDurations.CURRENT_PRICES`
+   - `AppConfig.coinColors['BTC']`
+
+7. **サービス初期化の依存関係順序を守る**
+   - 基本: cache, portfolioDataService
+   - 次: apiService (cacheに依存)
+   - 次: uiService
+   - 次: chartService (apiService, portfolioDataServiceに依存)
+   - 最後: fileService (portfolioDataService, uiServiceに依存)
+
+## 最近の主要な変更（2週間以内）
+
+### アーキテクチャの大幅リファクタリング
+
+1. **サービスレイヤーの導入** (commit: 5f8e4d1)
+   - オブジェクト指向設計への移行
+   - APIService, ChartService, FileService, UIService を新設
+   - グローバル関数からクラスメソッドへの移行
+
+2. **データ管理の統一**
+   - PortfolioDataService の導入（クラスベース）
+   - CacheService による一元管理
+   - グローバル変数依存の削減
+
+3. **コード整理**
+   - 未使用コードの削除（約360行削減）
+   - 重複コードの共通化
+   - 銘柄名を `symbol` → `coinName` に統一
+
+4. **UI/UX改善**
+   - ミニマルで洗練されたデザインに刷新
+   - トースト通知システムの導入（MessageManager）
+   - サイドバーとデータ管理UIの改善
+
+5. **開発ツール追加**
+   - [cache-viewer.html](cache-viewer.html) の追加（キャッシュ可視化ツール）
+
+### 削除された機能
+
+- ❌ カード表示（テーブル表示のみに統一）
+- ❌ 自動価格更新（手動更新のみ）
+- ❌ 個別銘柄タブの価格チャート
+
+### 破壊的変更
+
+⚠️ レガシー関数の非推奨化:
+- `fetchCurrentPrices()` → `apiService.fetchCurrentPrices()`
+- `showSuccessMessage()` → `uiService.showSuccess()`
+- `clearAllData()` → `cache.clearAll()`
 
 ## 参考資料
 
-- 詳細アーキテクチャ: `ARCHITECTURE.md`
 - CoinGecko API: https://www.coingecko.com/en/api
 - Chart.js: https://www.chartjs.org/
 - PapaParse: https://www.papaparse.com/
