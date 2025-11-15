@@ -205,10 +205,7 @@ function showWarningMessage(message) {
 // シンプルなトースト表示関数（フォールバック）
 function showSimpleToast(message, type = 'success') {
     // 既存のトーストがあれば削除
-    const existingToast = document.querySelector('.simple-toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
+    document.querySelector('.simple-toast')?.remove();
 
     // 新しいトースト作成
     const toast = document.createElement('div');
@@ -265,9 +262,7 @@ function showSimpleToast(message, type = 'success') {
     setTimeout(() => {
         toast.style.transform = 'translateX(100%)';
         setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
+            toast.parentNode.removeChild(toast);
         }, 300);
     }, 4000);
 }
@@ -288,9 +283,7 @@ function getLoadedFileNames() {
 
 // 読み込み済みファイル情報を表示（fileServiceに委譲）
 function displayLoadedFiles() {
-    if (window.fileService) {
-        window.fileService.displayLoadedFiles();
-    }
+    window.fileService.displayLoadedFiles();
 }
 
 // 全データクリア（サービスクラスへの委譲版）
@@ -313,9 +306,7 @@ function clearPriceData() {
         const clearedCount = window.cache.clearPriceCache();
 
         // 価格ステータス更新
-        if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus('価格データクリア済み');
-        }
+        updatePriceStatus('価格データクリア済み');
 
         // サイドバーの価格データ状況を更新
         updatePriceDataStatusDisplay();
@@ -355,23 +346,18 @@ function updatePriceDataStatusDisplay() {
     const statusElement = document.getElementById('price-data-status');
     if (!statusElement) return;
 
-    try {
-        // CacheServiceから統計情報を取得
-        const stats = window.cache.getStorageStats();
-        const maxSizeMB = (AppConfig.cacheDurations.MAX_STORAGE_SIZE / 1024 / 1024).toFixed(0);
+    // CacheServiceから統計情報を取得
+    const stats = window.cache.getStorageStats();
+    const maxSizeMB = (AppConfig.cacheDurations.MAX_STORAGE_SIZE / 1024 / 1024).toFixed(0);
 
-        // 状態表示を生成
-        const statusHTML = `
-            <div style="margin-bottom: 4px;">合計: ${stats.totalSizeMB}MB / ${maxSizeMB}MB (${(stats.usageRatio * 100).toFixed(1)}%)</div>
-            <div style="margin-bottom: 4px;">価格キャッシュ: ${stats.priceDataCount}件 (${stats.priceDataSizeMB}MB)</div>
-            <div>ポートフォリオ: ${stats.portfolioDataSizeMB}MB</div>
-        `;
+    // 状態表示を生成
+    const statusHTML = `
+        <div style="margin-bottom: 4px;">合計: ${stats.totalSizeMB}MB / ${maxSizeMB}MB (${(stats.usageRatio * 100).toFixed(1)}%)</div>
+        <div style="margin-bottom: 4px;">価格キャッシュ: ${stats.priceDataCount}件 (${stats.priceDataSizeMB}MB)</div>
+        <div>ポートフォリオ: ${stats.portfolioDataSizeMB}MB</div>
+    `;
 
-        statusElement.innerHTML = statusHTML;
-    } catch (error) {
-        console.error('価格データ状況更新エラー:', error);
-        statusElement.innerHTML = '<div style="color: #dc3545;">状態取得エラー</div>';
-    }
+    statusElement.innerHTML = statusHTML;
 }
 
 // 古い価格データの自動クリーンアップ
@@ -557,14 +543,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 起動時に旧形式の価格キャッシュをクリーンアップ
     setTimeout(() => {
-        if (window.cache && typeof window.cache.cleanupLegacyPriceCache === 'function') {
-            window.cache.cleanupLegacyPriceCache();
-        }
-
+        window.cache.cleanupLegacyPriceCache();
         // 旧チャートキャッシュのクリーンアップ（chart_* → price_history統合）
-        if (window.cache && typeof window.cache.cleanupLegacyChartCache === 'function') {
-            window.cache.cleanupLegacyChartCache();
-        }
+        window.cache.cleanupLegacyChartCache();
     }, 1000);
 
     // 価格データ状況を初期表示
@@ -629,18 +610,17 @@ async function renderCoinProfitChart(coinName) {
 
 // グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
 (function () {
-    // 関数が定義されているか確認してからグローバルに設定
-    if (typeof showPage === 'function') window.showPage = showPage;
-    if (typeof switchTab === 'function') window.switchTab = switchTab;
-    if (typeof switchSubtab === 'function') window.switchSubtab = switchSubtab;
-    if (typeof clearAllData === 'function') window.clearAllData = clearAllData;
-    if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
-    if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
-    if (typeof updatePriceDataStatusDisplay === 'function') window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
-    if (typeof renderCoinProfitChart === 'function') window.renderCoinProfitChart = renderCoinProfitChart;
+    window.showPage = showPage;
+    window.switchTab = switchTab;
+    window.switchSubtab = switchSubtab;
+    window.clearAllData = clearAllData;
+    window.clearPriceData = clearPriceData;
+    window.showPriceDataStatus = showPriceDataStatus;
+    window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
+    window.renderCoinProfitChart = renderCoinProfitChart;
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
-    if (typeof showSuccessMessage === 'function') window.showSuccessMessage = showSuccessMessage;
-    if (typeof showErrorMessage === 'function') window.showErrorMessage = showErrorMessage;
-    if (typeof showWarningMessage === 'function') window.showWarningMessage = showWarningMessage;
-    if (typeof showInfoMessage === 'function') window.showInfoMessage = showInfoMessage;
+    window.showSuccessMessage = showSuccessMessage;
+    window.showErrorMessage = showErrorMessage;
+    window.showWarningMessage = showWarningMessage;
+    window.showInfoMessage = showInfoMessage;
 })();

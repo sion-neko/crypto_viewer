@@ -14,10 +14,7 @@ class MessageManager {
      */
     show(message, type = 'success') {
         // 既存のトーストがあれば削除
-        const existingToast = document.querySelector('.simple-toast');
-        if (existingToast) {
-            existingToast.remove();
-        }
+        document.querySelector('.simple-toast')?.remove();
 
         // 新しいトースト作成
         const toast = document.createElement('div');
@@ -74,9 +71,7 @@ class MessageManager {
         setTimeout(() => {
             toast.style.transform = 'translateX(100%)';
             setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
+                toast.parentNode.removeChild(toast);
             }, 300);
         }, 4000);
     }
@@ -290,9 +285,6 @@ class TabManager {
                 }
 
                 coinNameContainer.appendChild(tabContent);
-
-            } catch (error) {
-                console.error(`❌ Error creating subtab for ${coinNameData?.coinName || 'unknown'}:`, error);
             }
         });
     }
