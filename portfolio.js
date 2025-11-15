@@ -831,8 +831,16 @@ function generateMobileTradingCards(portfolioData) {
 
 // 取引履歴テーブル生成
 function generateTradingHistoryTable(portfolioData) {
-    // rawTransactionsから直接取得（portfolioDataには保存しない）
-    const allTransactions = safeGetJSON('rawTransactions', []);
+    // portfolioData.coinsから全取引を収集
+    const allTransactions = [];
+    if (portfolioData && portfolioData.coins) {
+        for (const coinName in portfolioData.coins) {
+            const coinData = portfolioData.coins[coinName];
+            if (coinData.allTransactions) {
+                allTransactions.push(...coinData.allTransactions);
+            }
+        }
+    }
 
     // 日付順にソート
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
