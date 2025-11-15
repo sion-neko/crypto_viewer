@@ -441,6 +441,36 @@ function calculateUnrealizedProfit(holdingQty, currentPrice, avgPurchaseRate) {
 }
 
 /**
+ * portfolioDataから価格情報をクリア（永続化前の処理）
+ * 価格データは個別キャッシュ（price_btc など）から取得するため、
+ * portfolioDataには保存しない
+ * @param {object} portfolioData - ポートフォリオデータ
+ */
+function clearPriceDataFromPortfolio(portfolioData) {
+    if (!portfolioData || !portfolioData.summary) {
+        return;
+    }
+
+    // 各銘柄の価格情報をクリア
+    portfolioData.summary.forEach(item => {
+        item.currentPrice = 0;
+        item.currentValue = 0;
+        item.unrealizedProfit = 0;
+        item.totalProfit = item.realizedProfit; // 実現損益のみ
+    });
+
+    // 統計情報から含み損益をクリア
+    if (portfolioData.stats) {
+        portfolioData.stats.totalUnrealizedProfit = 0;
+        portfolioData.stats.totalProfit = portfolioData.stats.totalRealizedProfit; // 実現損益のみ
+        portfolioData.stats.totalProfitableCoinNames = portfolioData.summary.filter(s => s.realizedProfit > 0).length;
+        portfolioData.stats.totalLossCoinNames = portfolioData.summary.filter(s => s.realizedProfit < 0).length;
+        portfolioData.stats.overallTotalProfitMargin = portfolioData.stats.totalInvestment > 0 ?
+            (portfolioData.stats.totalRealizedProfit / portfolioData.stats.totalInvestment) * 100 : 0;
+    }
+}
+
+/**
  * Chart.jsインスタンスを安全に破棄
  * @param {string} canvasId - Canvas要素のID
  */
