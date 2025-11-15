@@ -838,11 +838,18 @@ class ChartService {
 
 /**
  * チャート関連のDOM要素IDを管理するクラス
- * (注: toggleButtonとtitleは削除されたため、getCanvas()のみ使用)
  */
 class ChartElementIds {
     static getCanvas() {
         return typeof isMobile === 'function' && isMobile() ? 'mobile-all-coinNames-profit-chart' : 'all-coinNames-profit-chart';
+    }
+
+    static getToggleButton() {
+        return typeof isMobile === 'function' && isMobile() ? 'mobile-chart-mode-toggle' : 'chart-mode-toggle';
+    }
+
+    static getTitle() {
+        return typeof isMobile === 'function' && isMobile() ? 'mobile-chart-title' : 'chart-title';
     }
 }
 
