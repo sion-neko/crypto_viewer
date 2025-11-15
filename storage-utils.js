@@ -130,16 +130,14 @@ class CacheService {
 
         // 価格関連のキーを特定
         for (let key in this.storage) {
-            if (this.storage.hasOwnProperty(key)) {
-                if (key.includes('_price_history_') ||
-                    key.includes('prices_') ||      // 旧形式（セット単位）
-                    key.startsWith('price_') ||     // 新形式（個別銘柄）
-                    key.includes('chart_') ||
-                    key === 'currentPrices' ||
-                    key === 'lastPriceUpdate' ||
-                    key === 'cache_metadata') {
-                    keysToDelete.push(key);
-                }
+            if (key.includes('_price_history_') ||
+                key.includes('prices_') ||      // 旧形式（セット単位）
+                key.startsWith('price_') ||     // 新形式（個別銘柄）
+                key.includes('chart_') ||
+                key === 'currentPrices' ||
+                key === 'lastPriceUpdate' ||
+                key === 'cache_metadata') {
+                keysToDelete.push(key);
             }
         }
 
@@ -163,11 +161,9 @@ class CacheService {
 
         // 旧形式の prices_BTC_ETH_... 形式のキーを特定
         for (let key in this.storage) {
-            if (this.storage.hasOwnProperty(key)) {
-                // prices_ で始まり、アンダースコアが複数含まれる = 複数銘柄セット
-                if (key.startsWith('prices_') && (key.match(/_/g) || []).length > 1) {
-                    keysToDelete.push(key);
-                }
+            // prices_ で始まり、アンダースコアが複数含まれる = 複数銘柄セット
+            if (key.startsWith('prices_') && (key.match(/_/g) || []).length > 1) {
+                keysToDelete.push(key);
             }
         }
 
@@ -224,18 +220,16 @@ class CacheService {
         let portfolioDataSize = 0;
 
         for (let key in this.storage) {
-            if (this.storage.hasOwnProperty(key)) {
-                const size = this.storage[key].length;
-                totalSize += size;
+            const size = this.storage[key].length;
+            totalSize += size;
 
-                if (key.includes('_price_') || key.includes('prices_') || key.includes('chart_')) {
-                    priceDataCount++;
-                    priceDataSize += size;
-                }
+            if (key.includes('_price_') || key.includes('prices_') || key.includes('chart_')) {
+                priceDataCount++;
+                priceDataSize += size;
+            }
 
-                if (key === 'portfolioData' || key === 'rawTransactions') {
-                    portfolioDataSize += size;
-                }
+            if (key === 'portfolioData' || key === 'rawTransactions') {
+                portfolioDataSize += size;
             }
         }
 
@@ -266,9 +260,7 @@ class CacheService {
     _checkUsage() {
         let totalSize = 0;
         for (let key in this.storage) {
-            if (this.storage.hasOwnProperty(key)) {
-                totalSize += this.storage[key].length;
-            }
+            totalSize += this.storage[key].length;
         }
         const ratio = totalSize / CACHE_DURATIONS.MAX_STORAGE_SIZE;
         if (ratio > CACHE_DURATIONS.CLEANUP_THRESHOLD) {

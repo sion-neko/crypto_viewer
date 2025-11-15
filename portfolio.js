@@ -94,24 +94,10 @@ window.portfolioDataService = new PortfolioDataService();
 
 /**
  * ポートフォリオ表示を更新（共通処理）
- * @param {object|string} portfolioDataOrMessage - ポートフォリオデータ（省略可）または成功メッセージ（後方互換性のため）
+ * @param {object} portfolioData - ポートフォリオデータ（省略可）
  * @param {string} message - 成功メッセージ（省略可）
  */
-function refreshPortfolioDisplay(portfolioDataOrMessage = null, message = null) {
-    // 引数の型に応じて処理を分岐（後方互換性のため）
-    let portfolioData;
-    let msg;
-
-    if (typeof portfolioDataOrMessage === 'string') {
-        // 旧形式: refreshPortfolioDisplay(message)
-        portfolioData = null;
-        msg = portfolioDataOrMessage;
-    } else {
-        // 新形式: refreshPortfolioDisplay(portfolioData, message)
-        portfolioData = portfolioDataOrMessage;
-        msg = message;
-    }
-
+function refreshPortfolioDisplay(portfolioData = null, message = null) {
     // ポートフォリオデータが渡された場合、PortfolioDataServiceを更新
     if (portfolioData) {
         portfolioDataService.updateData(portfolioData);
@@ -120,11 +106,6 @@ function refreshPortfolioDisplay(portfolioDataOrMessage = null, message = null) 
     // PortfolioDataServiceから現在のデータとソート状態を取得
     const currentData = portfolioDataService.getData();
     const sortState = portfolioDataService.getSortState();
-
-    if (!currentData) {
-        console.warn('ポートフォリオデータが存在しません');
-        return;
-    }
 
     // 現在のソート順を維持してテーブル再描画
     sortPortfolioData(sortState.field, sortState.direction);
@@ -138,14 +119,12 @@ function refreshPortfolioDisplay(portfolioDataOrMessage = null, message = null) 
     updateDataStatus(currentData);
 
     // 成功メッセージ表示
-    if (msg && typeof showSuccessMessage === 'function') {
-        showSuccessMessage(msg);
+    if (message) {
+        showSuccessMessage(message);
     }
 
     // 価格ステータス更新
-    if (typeof updatePriceStatus === 'function') {
-        updatePriceStatus();
-    }
+    updatePriceStatus();
 }
 
 // ===================================================================
