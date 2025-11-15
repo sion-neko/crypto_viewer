@@ -199,80 +199,6 @@ function showWarningMessage(message) {
 }
 
 // ===================================================================
-// SIMPLE TOAST SYSTEM (FALLBACK)
-// ===================================================================
-
-// シンプルなトースト表示関数（フォールバック）
-function showSimpleToast(message, type = 'success') {
-    // 既存のトーストがあれば削除
-    const existingToast = document.querySelector('.simple-toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-
-    // 新しいトースト作成
-    const toast = document.createElement('div');
-    toast.className = 'simple-toast';
-
-    const colors = {
-        success: '#28a745',
-        error: '#dc3545',
-        warning: '#ffc107',
-        info: '#17a2b8'
-    };
-
-    const icons = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️',
-        info: 'ℹ️'
-    };
-
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${colors[type] || colors.success};
-        color: white;
-        padding: 16px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 99999;
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        font-size: 14px;
-        max-width: 350px;
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        line-height: 1.4;
-    `;
-
-    toast.innerHTML = `
-        <span>${icons[type] || icons.success}</span>
-        <span style="white-space: pre-line;">${message}</span>
-    `;
-
-    document.body.appendChild(toast);
-
-    // 表示アニメーション
-    setTimeout(() => {
-        toast.style.transform = 'translateX(0)';
-    }, 100);
-
-    // 自動削除
-    setTimeout(() => {
-        toast.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 300);
-    }, 4000);
-}
-
-// ===================================================================
 // FILE MANAGEMENT FUNCTIONS
 // ===================================================================
 
@@ -313,9 +239,7 @@ function clearPriceData() {
         const clearedCount = window.cache.clearPriceCache();
 
         // 価格ステータス更新
-        if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus('価格データクリア済み');
-        }
+        updatePriceStatus('価格データクリア済み');
 
         // サイドバーの価格データ状況を更新
         updatePriceDataStatusDisplay();
@@ -372,15 +296,6 @@ function updatePriceDataStatusDisplay() {
         console.error('価格データ状況更新エラー:', error);
         statusElement.innerHTML = '<div style="color: #dc3545;">状態取得エラー</div>';
     }
-}
-
-// 古い価格データの自動クリーンアップ
-// 注: CacheServiceが自動的に期限切れキャッシュを管理するため、この関数は不要
-// 互換性のため残していますが、実際の処理はCacheServiceに委譲されます
-function autoCleanupOldPriceData() {
-    // CacheServiceが自動的に期限切れキャッシュを削除するため、特に処理は不要
-    console.log('自動クリーンアップはCacheServiceが管理します');
-    return 0;
 }
 
 // ===================================================================
@@ -557,14 +472,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 起動時に旧形式の価格キャッシュをクリーンアップ
     setTimeout(() => {
-        if (window.cache && typeof window.cache.cleanupLegacyPriceCache === 'function') {
-            window.cache.cleanupLegacyPriceCache();
-        }
-
+        window.cache.cleanupLegacyPriceCache();
         // 旧チャートキャッシュのクリーンアップ（chart_* → price_history統合）
-        if (window.cache && typeof window.cache.cleanupLegacyChartCache === 'function') {
-            window.cache.cleanupLegacyChartCache();
-        }
+        window.cache.cleanupLegacyChartCache();
     }, 1000);
 
     // 価格データ状況を初期表示
@@ -629,18 +539,17 @@ async function renderCoinProfitChart(coinName) {
 
 // グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
 (function () {
-    // 関数が定義されているか確認してからグローバルに設定
-    if (typeof showPage === 'function') window.showPage = showPage;
-    if (typeof switchTab === 'function') window.switchTab = switchTab;
-    if (typeof switchSubtab === 'function') window.switchSubtab = switchSubtab;
-    if (typeof clearAllData === 'function') window.clearAllData = clearAllData;
-    if (typeof clearPriceData === 'function') window.clearPriceData = clearPriceData;
-    if (typeof showPriceDataStatus === 'function') window.showPriceDataStatus = showPriceDataStatus;
-    if (typeof updatePriceDataStatusDisplay === 'function') window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
-    if (typeof renderCoinProfitChart === 'function') window.renderCoinProfitChart = renderCoinProfitChart;
+    window.showPage = showPage;
+    window.switchTab = switchTab;
+    window.switchSubtab = switchSubtab;
+    window.clearAllData = clearAllData;
+    window.clearPriceData = clearPriceData;
+    window.showPriceDataStatus = showPriceDataStatus;
+    window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
+    window.renderCoinProfitChart = renderCoinProfitChart;
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
-    if (typeof showSuccessMessage === 'function') window.showSuccessMessage = showSuccessMessage;
-    if (typeof showErrorMessage === 'function') window.showErrorMessage = showErrorMessage;
-    if (typeof showWarningMessage === 'function') window.showWarningMessage = showWarningMessage;
-    if (typeof showInfoMessage === 'function') window.showInfoMessage = showInfoMessage;
+    window.showSuccessMessage = showSuccessMessage;
+    window.showErrorMessage = showErrorMessage;
+    window.showWarningMessage = showWarningMessage;
+    window.showInfoMessage = showInfoMessage;
 })();
