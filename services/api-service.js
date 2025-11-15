@@ -66,30 +66,40 @@ class APIService {
 
         // 3. まだキャッシュにない銘柄はAPI呼び出し
         if (uncachedCoins.length > 0) {
-            const coingeckoIds = uncachedCoins.map(coinName => this.config.coinGeckoMapping[coinName]).join(',');
-            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
+            try {
+                const coingeckoIds = uncachedCoins.map(coinName => this.config.coinGeckoMapping[coinName]).join(',');
+                const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
 
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status}`);
-            }
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (response.status === 429) {
+                        console.warn('API制限に達しました (429) - キャッシュデータを使用します');
+                        // 429エラーの場合は例外をスローせず、キャッシュデータのみで続行
+                    } else {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                } else {
+                    const data = await response.json();
 
-            const data = await response.json();
+                    // データを整理して個別にキャッシュ
+                    for (const coinName of uncachedCoins) {
+                        const coingeckoId = this.config.coinGeckoMapping[coinName];
+                        if (data[coingeckoId]) {
+                            const priceData = {
+                                price_jpy: data[coingeckoId].jpy,
+                                last_updated: data[coingeckoId].last_updated_at
+                            };
+                            prices[coinName] = priceData;
 
-            // データを整理して個別にキャッシュ
-            for (const coinName of uncachedCoins) {
-                const coingeckoId = this.config.coinGeckoMapping[coinName];
-                if (data[coingeckoId]) {
-                    const priceData = {
-                        price_jpy: data[coingeckoId].jpy,
-                        last_updated: data[coingeckoId].last_updated_at
-                    };
-                    prices[coinName] = priceData;
-
-                    // 個別銘柄ごとにキャッシュ保存（30分有効）
-                    const cacheKey = this.cacheKeys.currentPrice(coinName);
-                    this.cache.set(cacheKey, priceData, this.config.cacheDurations.CURRENT_PRICES);
+                            // 個別銘柄ごとにキャッシュ保存（30分有効）
+                            const cacheKey = this.cacheKeys.currentPrice(coinName);
+                            this.cache.set(cacheKey, priceData, this.config.cacheDurations.CURRENT_PRICES);
+                        }
+                    }
                 }
+            } catch (error) {
+                console.error('現在価格取得エラー:', error.message);
+                // エラーが発生してもキャッシュデータで続行
             }
         }
 
@@ -205,27 +215,67 @@ class APIService {
     }
 
     /**
-     * 複数銘柄の価格履歴を並列取得
+     * 複数銘柄の価格履歴を順次取得（API制限対策）
      * @param {string[]} coinNames - 銘柄シンボルの配列
      * @param {object} options - オプション設定（fetchPriceHistoryと同じ）
      * @returns {Promise<object>} 銘柄別の価格履歴データ {BTC: [...], ETH: [...], ...}
      */
     async fetchMultiplePriceHistories(coinNames, options = {}) {
         const results = {};
-        const promises = coinNames.map(async (coinName) => {
+
+        // 直列実行でAPI制限を回避（リクエスト間に300ms待機）
+        for (let i = 0; i < coinNames.length; i++) {
+            const coinName = coinNames[i];
             try {
                 const priceHistory = await this.fetchPriceHistory(coinName, options);
                 results[coinName] = priceHistory;
+
+                // 次のリクエストまで300ms待機（最後のリクエスト後は待機不要）
+                if (i < coinNames.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
             } catch (error) {
-                // トーストでエラー表示
-                window.uiService.showWarning(`${coinName}の価格履歴取得失敗: ${error.message}`);
-                
+                console.warn(`${coinName}の価格履歴取得失敗:`, error.message);
+
+                // 429エラーの場合、期限切れキャッシュも利用を試みる
+                if (error.message.includes('429')) {
+                    const staleCache = this._getStaleCache(coinName, options);
+                    if (staleCache) {
+                        console.log(`${coinName}: 期限切れキャッシュを使用`);
+                        results[coinName] = staleCache;
+                        continue;
+                    }
+                }
+
                 results[coinName] = null;
             }
-        });
+        }
 
-        await Promise.all(promises);
         return results;
+    }
+
+    /**
+     * 期限切れキャッシュを取得（429エラー時のフォールバック用）
+     * @private
+     * @param {string} coinName - 銘柄シンボル
+     * @param {object} options - オプション設定
+     * @returns {array|null} キャッシュデータ（なければnull）
+     */
+    _getStaleCache(coinName, options = {}) {
+        const { days = 30 } = options;
+        const cacheKey = window.cacheKeys.priceHistory(coinName, days);
+
+        try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return parsed.data || null;
+            }
+        } catch (error) {
+            console.error('期限切れキャッシュ取得エラー:', error);
+        }
+
+        return null;
     }
 
 
