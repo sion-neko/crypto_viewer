@@ -501,6 +501,15 @@
         <header>
             <h1>🔍 Cache Viewer</h1>
             <p>開発用 - localStorageキャッシュ状態確認</p>
+            <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px; font-size: 13px;">
+                <strong>📂 種類について:</strong>
+                <ul style="margin: 8px 0 0 20px; line-height: 1.8;">
+                    <li><strong>価格:</strong> 現在価格・価格履歴（損益計算や表示に使用）</li>
+                    <li><strong>チャート:</strong> グラフ描画専用のデータ（Chart.js用に最適化）</li>
+                    <li><strong>ポートフォリオ:</strong> 取引履歴・保有状況・分析結果</li>
+                    <li><strong>その他:</strong> 設定・メタ情報など</li>
+                </ul>
+            </div>
         </header>
 
         <div class="stats" id="stats"></div>
@@ -600,15 +609,15 @@
                 if (match) {
                     const coinName = match[1].toUpperCase();
                     const days = match[2];
-                    return `${coinName}の過去${days}日間の価格履歴`;
+                    return `${coinName}の過去${days}日間の価格データ（損益計算用、24時間キャッシュ）`;
                 }
-                return '銘柄の価格履歴データ';
+                return '銘柄の価格履歴データ（損益計算用）';
             }
 
             // 現在価格
             if (key.startsWith('prices_')) {
                 const coins = key.replace('prices_', '').split('_').map(c => c.toUpperCase()).join('、');
-                return `${coins}の現在価格`;
+                return `${coins}の現在価格（30分キャッシュ）`;
             }
 
             // チャートデータ
@@ -617,29 +626,29 @@
                 if (match) {
                     const coinName = match[1];
                     const days = match[2];
-                    return `${coinName}の${days}日チャートデータ`;
+                    return `${coinName}のグラフ表示用データ（${days}日分、6時間キャッシュ）`;
                 }
-                return 'チャート表示用データ';
+                return 'グラフ表示用データ（Chart.js専用）';
             }
 
             // ポートフォリオデータ
-            if (key === 'portfolioData') return 'ポートフォリオ分析データ（保有状況、損益計算）';
-            if (key === 'rawTransactions') return '全取引履歴（重複検出用）';
-            if (key === 'loadedFileNames') return '読み込み済みCSVファイル名リスト';
+            if (key === 'portfolioData') return '保有状況・損益計算の分析結果';
+            if (key === 'rawTransactions') return 'アップロードした全取引データ（重複チェック用）';
+            if (key === 'loadedFileNames') return '読み込み済みCSVファイルのリスト';
 
             // 設定データ
-            if (key === 'portfolioChartMode') return 'チャート表示モード設定（combined/individual）';
-            if (key === 'cache_metadata') return 'キャッシュのメタ情報（有効期限など）';
+            if (key === 'portfolioChartMode') return 'グラフの表示モード（合計 or 個別）';
+            if (key === 'cache_metadata') return 'キャッシュの有効期限などの管理情報';
 
             // キー名から推測
-            if (key.includes('transaction')) return '取引関連データ';
-            if (key.includes('price')) return '価格関連データ';
-            if (key.includes('config') || key.includes('setting')) return '設定データ';
-            if (key.includes('metadata')) return 'メタデータ';
-            if (key.includes('user')) return 'ユーザーデータ';
+            if (key.includes('transaction')) return '取引に関するデータ';
+            if (key.includes('price')) return '価格に関するデータ';
+            if (key.includes('config') || key.includes('setting')) return 'アプリの設定データ';
+            if (key.includes('metadata')) return '管理用のメタ情報';
+            if (key.includes('user')) return 'ユーザー情報';
 
             // 不明な場合はキー名をそのまま説明として使用
-            return `データ（${key}）`;
+            return `${key}のデータ`;
         }
 
         function getCacheMetadata(key, value) {
