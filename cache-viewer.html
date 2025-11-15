@@ -602,6 +602,7 @@
                     const days = match[2];
                     return `${coinName}の過去${days}日間の価格履歴`;
                 }
+                return '銘柄の価格履歴データ';
             }
 
             // 現在価格
@@ -618,6 +619,7 @@
                     const days = match[2];
                     return `${coinName}の${days}日チャートデータ`;
                 }
+                return 'チャート表示用データ';
             }
 
             // ポートフォリオデータ
@@ -627,10 +629,17 @@
 
             // 設定データ
             if (key === 'portfolioChartMode') return 'チャート表示モード設定（combined/individual）';
-            if (key === 'cache_metadata') return 'キャッシュメタデータ';
+            if (key === 'cache_metadata') return 'キャッシュのメタ情報（有効期限など）';
 
-            // その他
-            return 'キャッシュデータ';
+            // キー名から推測
+            if (key.includes('transaction')) return '取引関連データ';
+            if (key.includes('price')) return '価格関連データ';
+            if (key.includes('config') || key.includes('setting')) return '設定データ';
+            if (key.includes('metadata')) return 'メタデータ';
+            if (key.includes('user')) return 'ユーザーデータ';
+
+            // 不明な場合はキー名をそのまま説明として使用
+            return `データ（${key}）`;
         }
 
         function getCacheMetadata(key, value) {
