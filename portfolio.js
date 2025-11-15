@@ -563,7 +563,7 @@ function updateDataStatus(portfolioData) {
 
 // 銘柄別サブタブ生成（サービスクラスへの委譲版）
 function createCoinNameSubtabs(portfolioData) {
-    window.uiService.createCoinSubTabs(portfolioData);
+    window.uiService.createCoinSubTabs(portfolioData, window.uiService);
 }
 
 // ===================================================================
