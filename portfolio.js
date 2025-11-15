@@ -697,34 +697,10 @@ function generatePortfolioTable(portfolioData) {
                     <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
                 </div>
 
-                <!-- 投資額 -->
-                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">投資額</div>
-                    <div style="font-size: 15px; font-weight: 600; color: #374151;">¥${Math.abs(stats.totalInvestment).toLocaleString()}</div>
-                </div>
-
-                <!-- 実現損益 -->
-                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">実現損益</div>
-                    <div style="font-size: 15px; font-weight: 600; color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}</div>
-                </div>
-
-                <!-- 含み損益 -->
-                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">含み損益</div>
-                    <div style="font-size: 15px; font-weight: 600; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</div>
-                </div>
-
                 <!-- 損益状況 -->
                 <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
                     <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">損益状況</div>
                     <div style="font-size: 15px; font-weight: 600; color: #374151;">利益${stats.totalProfitableCoinNames || 0}・損失${stats.totalLossCoinNames || 0}</div>
-                </div>
-
-                <!-- 手数料 -->
-                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">手数料</div>
-                    <div style="font-size: 15px; font-weight: 600; color: #374151;">¥${stats.totalFees.toLocaleString()}</div>
                 </div>
             </div>
 
@@ -735,16 +711,19 @@ function generatePortfolioTable(portfolioData) {
                     <div style="font-size: 13px; font-weight: 600; color: #374151;">現在価格</div>
                     <div style="font-size: 11px; color: #6b7280;">CoinGecko API</div>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
                     ${coinsWithPrice.map(item => {
                         const priceChange = item.currentPrice && item.averagePurchaseRate ?
                             ((item.currentPrice - item.averagePurchaseRate) / item.averagePurchaseRate * 100) : 0;
                         const isPositive = priceChange >= 0;
+                        const bgColor = isPositive ? '#f0fdf4' : '#fef2f2';
+                        const borderColor = isPositive ? '#86efac' : '#fca5a5';
                         return `
-                            <div style="padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.backgroundColor='#f3f4f6'; this.style.borderColor='#3b82f6'" onmouseout="this.style.backgroundColor='#f9fafb'; this.style.borderColor='#e5e7eb'">
+                            <div style="padding: 12px; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.backgroundColor='${isPositive ? '#dcfce7' : '#fee2e2'}'; this.style.borderColor='#3b82f6'" onmouseout="this.style.backgroundColor='${bgColor}'; this.style.borderColor='${borderColor}'">
                                 <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">${item.coinName}</div>
-                                <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
-                                <div style="font-size: 10px; font-weight: 500; color: ${isPositive ? '#059669' : '#dc2626'};">
+                                <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 2px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
+                                <div style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">平均 ¥${item.averagePurchaseRate.toLocaleString()}</div>
+                                <div style="font-size: 11px; font-weight: 600; color: ${isPositive ? '#059669' : '#dc2626'};">
                                     ${isPositive ? '▲' : '▼'} ${isPositive ? '+' : ''}${priceChange.toFixed(2)}%
                                 </div>
                             </div>
@@ -781,7 +760,7 @@ function generatePortfolioTable(portfolioData) {
             <thead>
                 <tr style="background-color: #f9fafb;">
                     <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #374151;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
-                    <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 700; font-size: 0.95rem; color: #1f2937; background: #f3f4f6; border-left: 2px solid #3b82f6;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
+                    <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
                     <th onclick="sortTable('averagePurchaseRate')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
                     <th onclick="sortTable('currentValue')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
                     <th onclick="sortTable('heldInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">保有分購入額 <span id="sort-heldInvestment">${getSortIcon('heldInvestment')}</span></th>
@@ -801,7 +780,7 @@ function generatePortfolioTable(portfolioData) {
         html += `
             <tr style="transition: all 0.2s ease; ${profitBg ? `background-color: ${profitBg};` : ''}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${profitBg ? profitBg : 'transparent'}'">
                 <td onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" style="padding: 12px; font-weight: 600; color: #3b82f6; border-bottom: 1px solid #e5e7eb; cursor: pointer;" title="クリックして${item.coinName}の詳細を表示">${item.coinName}</td>
-                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: #111827; background: #f9fafb; border-left: 2px solid #3b82f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
+                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">¥${item.averagePurchaseRate.toLocaleString()}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">${item.currentValue > 0 ? '¥' + item.currentValue.toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">¥${item.currentHoldingInvestment.toLocaleString()}</td>
@@ -815,6 +794,19 @@ function generatePortfolioTable(portfolioData) {
 
     html += `
             </tbody>
+            <tfoot>
+                <tr style="background-color: #f3f4f6; font-weight: 600; border-top: 2px solid #3b82f6;">
+                    <td style="padding: 15px 12px; text-align: left; font-weight: 700; color: #1f2937; border-bottom: 1px solid #e5e7eb;">合計</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: #374151;">¥${Math.abs(stats.totalInvestment).toLocaleString()}</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</td>
+                </tr>
+            </tfoot>
         </table>
         </div>
     `;
