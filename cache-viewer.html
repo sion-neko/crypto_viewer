@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache Viewer - 開発用</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .cache-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .cache-item {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .cache-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .cache-header:hover {
+            background: #e9ecef;
+        }
+
+        .cache-key {
+            font-weight: bold;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .cache-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .cache-content {
+            display: none;
+            padding: 15px;
+            max-height: 500px;
+            overflow: auto;
+        }
+
+        .cache-content.expanded {
+            display: block;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .filter-group {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .filter-group label {
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            width: 300px;
+            font-size: 14px;
+        }
+
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        /* テーブル表示用スタイル */
+        .cache-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        th:hover {
+            background: #e9ecef;
+        }
+
+        th.sortable::after {
+            content: ' ⇅';
+            color: #ccc;
+            font-size: 10px;
+        }
+
+        th.sort-asc::after {
+            content: ' ↑';
+            color: #007bff;
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            color: #007bff;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .table-key {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #333;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .table-type {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .type-price {
+            background: #e7f3ff;
+            color: #0066cc;
+        }
+
+        .type-portfolio {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .type-chart {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .type-other {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .view-mode-toggle {
+            display: flex;
+            gap: 0;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-left: auto;
+        }
+
+        .view-mode-btn {
+            padding: 8px 16px;
+            background: white;
+            color: #007bff;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .view-mode-btn.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .view-mode-btn:hover:not(.active) {
+            background: #e7f3ff;
+        }
+
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 800px;
+            max-height: 80vh;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow: auto;
+            flex: 1;
+        }
+
+        .modal-actions {
+            padding: 15px 20px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* データテーブル */
+        .data-table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table td {
+            padding: 6px 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .view-toggle button {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .json-view {
+            display: none;
+        }
+
+        .table-view {
+            display: none;
+        }
+
+        .table-view.active {
+            display: block;
+        }
+
+        .json-view.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Cache Viewer</h1>
+            <p>開発用 - localStorageキャッシュ状態確認</p>
+            <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px; font-size: 13px;">
+                <strong>📂 種類について:</strong>
+                <ul style="margin: 8px 0 0 20px; line-height: 1.8;">
+                    <li><strong>価格:</strong> 現在価格・価格履歴（損益計算や表示に使用）</li>
+                    <li><strong>チャート:</strong> グラフ描画専用のデータ（Chart.js用に最適化）</li>
+                    <li><strong>ポートフォリオ:</strong> 取引履歴・保有状況・分析結果</li>
+                    <li><strong>その他:</strong> 設定・メタ情報など</li>
+                </ul>
+            </div>
+        </header>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="controls">
+            <button class="btn-primary" onclick="refreshData()">🔄 更新</button>
+            <button class="btn-danger" onclick="clearAllCache()">🗑️ すべてクリア</button>
+            <button class="btn-danger" onclick="clearPriceCache()">💰 価格データクリア</button>
+        </div>
+
+        <div class="filter-group">
+            <label>🔎 フィルター:</label>
+            <input type="text" id="filterInput" placeholder="キー名で検索..." oninput="filterCache()">
+            <label style="margin-left: 20px;">種類:</label>
+            <select id="typeFilter" onchange="filterCache()">
+                <option value="all">すべて</option>
+                <option value="price">価格データ</option>
+                <option value="portfolio">ポートフォリオ</option>
+                <option value="chart">チャート</option>
+                <option value="other">その他</option>
+            </select>
+        </div>
+
+        <div class="cache-list" id="cacheList"></div>
+    </div>
+
+    <!-- モーダル -->
+    <div class="modal" id="detailModal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle"></div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="view-toggle" id="viewToggle" style="display: none;">
+                    <button class="btn-primary btn-small" onclick="switchDataView('table')">📊 表形式</button>
+                    <button class="btn-warning btn-small" onclick="switchDataView('json')">📝 JSON</button>
+                </div>
+                <div id="tableView" class="table-view"></div>
+                <pre id="modalContent" class="json-view"></pre>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary btn-small" onclick="copyModalContent()">📋 コピー</button>
+                <button class="btn-danger btn-small" onclick="deleteFromModal()">🗑️ 削除</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allCacheData = [];
+        let currentModalKey = null;
+        let lastScrollPosition = 0; // スクロール位置を記録
+        let currentSortField = null; // 現在のソートフィールド
+        let currentSortDirection = 'asc'; // 'asc' or 'desc'
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(timestamp);
+            return date.toLocaleString('ja-JP');
+        }
+
+        function getTimeRemaining(expiresAt) {
+            if (!expiresAt) return null;
+            const now = Date.now();
+            const remaining = expiresAt - now;
+            if (remaining <= 0) return 'expired';
+
+            const minutes = Math.floor(remaining / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) return `${days}日`;
+            if (hours > 0) return `${hours}時間`;
+            return `${minutes}分`;
+        }
+
+        function getCacheType(key) {
+            if (key.startsWith('prices_')) return 'price';
+            if (key.includes('_price_history_')) return 'price';
+            if (key.startsWith('chart_')) return 'chart';
+            if (key === 'portfolioData' || key === 'rawTransactions' || key === 'loadedFileNames') return 'portfolio';
+            return 'other';
+        }
+
+        function getCacheDescription(key) {
+            // 価格履歴
+            if (key.includes('_price_history_')) {
+                const match = key.match(/^([a-z]+)_price_history_(\d+)d$/i);
+                if (match) {
+                    const coinName = match[1].toUpperCase();
+                    const days = match[2];
+                    return `${coinName}の過去${days}日間の価格データ（損益計算用、24時間キャッシュ）`;
+                }
+                return '銘柄の価格履歴データ（損益計算用）';
+            }
+
+            // 現在価格
+            if (key.startsWith('prices_')) {
+                const coins = key.replace('prices_', '').split('_').map(c => c.toUpperCase()).join('、');
+                return `${coins}の現在価格（30分キャッシュ）`;
+            }
+
+            // チャートデータ
+            if (key.startsWith('chart_')) {
+                const match = key.match(/^chart_([A-Z]+)_(\d+)days$/);
+                if (match) {
+                    const coinName = match[1];
+                    const days = match[2];
+                    return `${coinName}のグラフ表示用データ（${days}日分、6時間キャッシュ）`;
+                }
+                return 'グラフ表示用データ（Chart.js専用）';
+            }
+
+            // ポートフォリオデータ
+            if (key === 'portfolioData') return '保有状況・損益計算の分析結果';
+            if (key === 'rawTransactions') return 'アップロードした全取引データ（重複チェック用）';
+            if (key === 'loadedFileNames') return '読み込み済みCSVファイルのリスト';
+
+            // 設定データ
+            if (key === 'portfolioChartMode') return 'グラフの表示モード（合計 or 個別）';
+            if (key === 'cache_metadata') return 'キャッシュの有効期限などの管理情報';
+
+            // キー名から推測
+            if (key.includes('transaction')) return '取引に関するデータ';
+            if (key.includes('price')) return '価格に関するデータ';
+            if (key.includes('config') || key.includes('setting')) return 'アプリの設定データ';
+            if (key.includes('metadata')) return '管理用のメタ情報';
+            if (key.includes('user')) return 'ユーザー情報';
+
+            // 不明な場合はキー名をそのまま説明として使用
+            return `${key}のデータ`;
+        }
+
+        function getCacheMetadata(key, value) {
+            let metadata = {
+                size: new Blob([value]).size,
+                type: getCacheType(key),
+                expiresAt: null,
+                cachedAt: null
+            };
+
+            try {
+                const parsed = JSON.parse(value);
+                if (parsed && typeof parsed === 'object') {
+                    if (parsed.expiresAt) metadata.expiresAt = parsed.expiresAt;
+                    if (parsed.cachedAt) metadata.cachedAt = parsed.cachedAt;
+                    if (parsed.timestamp) metadata.cachedAt = parsed.timestamp;
+                }
+            } catch (e) {
+                // JSON以外の値
+            }
+
+            return metadata;
+        }
+
+        function loadCacheData() {
+            allCacheData = [];
+            let totalSize = 0;
+            let validCount = 0;
+            let expiredCount = 0;
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                const metadata = getCacheMetadata(key, value);
+
+                totalSize += metadata.size;
+
+                const timeRemaining = getTimeRemaining(metadata.expiresAt);
+                if (timeRemaining === 'expired') {
+                    expiredCount++;
+                } else if (metadata.expiresAt) {
+                    validCount++;
+                }
+
+                allCacheData.push({
+                    key,
+                    value,
+                    metadata
+                });
+            }
+
+            // 統計情報を更新
+            updateStats({
+                totalItems: allCacheData.length,
+                totalSize,
+                validCount,
+                expiredCount
+            });
+
+            return allCacheData;
+        }
+
+        function updateStats(stats) {
+            const statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-label">総キャッシュ数</div>
+                    <div class="stat-value">${stats.totalItems}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">総サイズ</div>
+                    <div class="stat-value">${formatBytes(stats.totalSize)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">有効なキャッシュ</div>
+                    <div class="stat-value">${stats.validCount}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">期限切れ</div>
+                    <div class="stat-value" style="color: #dc3545;">${stats.expiredCount}</div>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHtml;
+        }
+
+        function sortCacheData(data, field, direction) {
+            return [...data].sort((a, b) => {
+                let aVal, bVal;
+
+                switch(field) {
+                    case 'key':
+                        aVal = a.key.toLowerCase();
+                        bVal = b.key.toLowerCase();
+                        break;
+                    case 'description':
+                        aVal = getCacheDescription(a.key);
+                        bVal = getCacheDescription(b.key);
+                        break;
+                    case 'type':
+                        aVal = a.metadata.type;
+                        bVal = b.metadata.type;
+                        break;
+                    case 'size':
+                        aVal = a.metadata.size;
+                        bVal = b.metadata.size;
+                        break;
+                    case 'cachedAt':
+                        aVal = a.metadata.cachedAt || 0;
+                        bVal = b.metadata.cachedAt || 0;
+                        break;
+                    case 'status':
+                        const aRemaining = getTimeRemaining(a.metadata.expiresAt);
+                        const bRemaining = getTimeRemaining(b.metadata.expiresAt);
+
+                        // 期限切れは最後
+                        if (aRemaining === 'expired' && bRemaining !== 'expired') return 1;
+                        if (aRemaining !== 'expired' && bRemaining === 'expired') return -1;
+                        if (aRemaining === 'expired' && bRemaining === 'expired') return 0;
+
+                        // 期限なし（null）も考慮
+                        if (!aRemaining && bRemaining) return 1;
+                        if (aRemaining && !bRemaining) return -1;
+                        if (!aRemaining && !bRemaining) return 0;
+
+                        // 残り時間で比較（expiresAtの値で）
+                        aVal = a.metadata.expiresAt || 0;
+                        bVal = b.metadata.expiresAt || 0;
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function handleSort(field) {
+            // 同じフィールドをクリックした場合は方向を反転
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDirection = 'asc';
+            }
+
+            filterCache();
+        }
+
+        function renderCacheList(cacheData) {
+            // スクロール位置を保存
+            lastScrollPosition = window.scrollY || document.documentElement.scrollTop;
+
+            // ソートが有効な場合はソート実行
+            if (currentSortField) {
+                cacheData = sortCacheData(cacheData, currentSortField, currentSortDirection);
+            }
+
+            renderTableView(cacheData);
+
+            // スクロール位置を復元（次のフレームで実行）
+            requestAnimationFrame(() => {
+                window.scrollTo(0, lastScrollPosition);
+            });
+        }
+
+        function renderTableView(cacheData) {
+            const container = document.getElementById('cacheList');
+
+            if (cacheData.length === 0) {
+                container.innerHTML = '<div class="empty-state">キャッシュデータがありません</div>';
+                return;
+            }
+
+            const typeLabels = {
+                'price': '価格',
+                'portfolio': 'ポートフォリオ',
+                'chart': 'チャート',
+                'other': 'その他'
+            };
+
+            const rows = cacheData.map(item => {
+                const { key, metadata } = item;
+                const timeRemaining = getTimeRemaining(metadata.expiresAt);
+                const description = getCacheDescription(key);
+
+                let status = '-';
+                let statusClass = '';
+                if (timeRemaining === 'expired') {
+                    status = '期限切れ';
+                    statusClass = 'badge-danger';
+                } else if (timeRemaining) {
+                    status = `残り ${timeRemaining}`;
+                    statusClass = 'badge-success';
+                }
+
+                const escapedKey = key.replace(/'/g, "\\'");
+
+                return `
+                    <tr onclick="openModal('${escapedKey}')">
+                        <td><div class="table-key" title="${key}">${key}</div></td>
+                        <td>${description}</td>
+                        <td><span class="table-type type-${metadata.type}">${typeLabels[metadata.type]}</span></td>
+                        <td>${formatBytes(metadata.size)}</td>
+                        <td>${formatDate(metadata.cachedAt)}</td>
+                        <td>${status ? `<span class="badge ${statusClass}">${status}</span>` : '-'}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-primary btn-small" onclick="event.stopPropagation(); copyToClipboard('${escapedKey}')">📋</button>
+                                <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteCache('${escapedKey}')">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            const getSortClass = (field) => {
+                if (currentSortField === field) {
+                    return currentSortDirection === 'asc' ? 'sort-asc' : 'sort-desc';
+                }
+                return 'sortable';
+            };
+
+            container.innerHTML = `
+                <div class="cache-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="${getSortClass('key')}" onclick="handleSort('key')">キー</th>
+                                <th class="${getSortClass('description')}" onclick="handleSort('description')">説明</th>
+                                <th class="${getSortClass('type')}" onclick="handleSort('type')">種類</th>
+                                <th class="${getSortClass('size')}" onclick="handleSort('size')">サイズ</th>
+                                <th class="${getSortClass('cachedAt')}" onclick="handleSort('cachedAt')">キャッシュ時刻</th>
+                                <th class="${getSortClass('status')}" onclick="handleSort('status')">状態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openModal(key) {
+            currentModalKey = key;
+            const value = localStorage.getItem(key);
+
+            let prettyValue;
+            let parsedData = null;
+            let hasTableData = false;
+
+            try {
+                parsedData = JSON.parse(value);
+                prettyValue = JSON.stringify(parsedData, null, 2);
+
+                // テーブル表示可能なデータがあるかチェック
+                hasTableData = detectTableData(parsedData);
+            } catch (e) {
+                prettyValue = value;
+            }
+
+            document.getElementById('modalTitle').textContent = key;
+            document.getElementById('modalContent').textContent = prettyValue;
+
+            // テーブル表示可能な場合、切り替えボタンとテーブルを表示
+            if (hasTableData) {
+                document.getElementById('viewToggle').style.display = 'flex';
+                renderTableData(parsedData);
+                switchDataView('table'); // デフォルトで表形式を表示
+            } else {
+                document.getElementById('viewToggle').style.display = 'none';
+                document.getElementById('tableView').innerHTML = '';
+                document.getElementById('modalContent').classList.add('active');
+                document.getElementById('tableView').classList.remove('active');
+            }
+
+            document.getElementById('detailModal').classList.add('show');
+        }
+
+        function detectTableData(data) {
+            if (!data) return false;
+
+            // 直接配列の場合
+            if (Array.isArray(data) && data.length > 0) {
+                return true;
+            }
+
+            // オブジェクトの中に配列がある場合
+            if (typeof data === 'object') {
+                // data.data, data.prices, data.summary などよくあるパターン
+                if (data.data && Array.isArray(data.data) && data.data.length > 0) return true;
+                if (data.prices && Array.isArray(data.prices) && data.prices.length > 0) return true;
+                if (data.summary && Array.isArray(data.summary) && data.summary.length > 0) return true;
+                if (data.allTransactions && Array.isArray(data.allTransactions) && data.allTransactions.length > 0) return true;
+                if (data.buyTransactions && Array.isArray(data.buyTransactions) && data.buyTransactions.length > 0) return true;
+                if (data.sellTransactions && Array.isArray(data.sellTransactions) && data.sellTransactions.length > 0) return true;
+
+                // 汎用：最初に見つかった配列
+                for (const key in data) {
+                    if (Array.isArray(data[key]) && data[key].length > 0) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        function renderTableData(data) {
+            const container = document.getElementById('tableView');
+            let html = '';
+
+            if (Array.isArray(data)) {
+                html = generateTable(data, 'データ');
+            } else if (typeof data === 'object') {
+                // オブジェクトの各配列プロパティをテーブル化
+                for (const key in data) {
+                    if (Array.isArray(data[key]) && data[key].length > 0) {
+                        html += `<h4 style="margin: 15px 0 10px 0; color: #333;">${key}</h4>`;
+                        html += generateTable(data[key], key);
+                    }
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        function generateTable(array, title) {
+            if (!array || array.length === 0) return '';
+
+            const firstItem = array[0];
+
+            // プリミティブ型の配列の場合
+            if (typeof firstItem !== 'object') {
+                const rows = array.map((item, index) =>
+                    `<tr><td>${index}</td><td>${item}</td></tr>`
+                ).join('');
+
+                return `
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Index</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            // オブジェクト配列の場合
+            const keys = Object.keys(firstItem);
+            const headers = keys.map(key => `<th>${key}</th>`).join('');
+
+            const rows = array.map((item, index) => {
+                const cells = keys.map(key => {
+                    let value = item[key];
+
+                    // ネストされたオブジェクトや配列は JSON として表示
+                    if (typeof value === 'object' && value !== null) {
+                        value = JSON.stringify(value);
+                    }
+
+                    // 長い文字列は省略
+                    if (typeof value === 'string' && value.length > 100) {
+                        value = value.substring(0, 100) + '...';
+                    }
+
+                    return `<td>${value !== null && value !== undefined ? value : '-'}</td>`;
+                }).join('');
+
+                return `<tr>${cells}</tr>`;
+            }).join('');
+
+            return `
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>${headers}</tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <div style="padding: 10px; color: #666; font-size: 12px;">
+                        全 ${array.length} 件
+                    </div>
+                </div>
+            `;
+        }
+
+        function switchDataView(view) {
+            const tableView = document.getElementById('tableView');
+            const jsonView = document.getElementById('modalContent');
+
+            if (view === 'table') {
+                tableView.classList.add('active');
+                jsonView.classList.remove('active');
+            } else {
+                tableView.classList.remove('active');
+                jsonView.classList.add('active');
+            }
+        }
+
+        function closeModal(event) {
+            if (!event || event.target.id === 'detailModal' || event.target.className === 'modal-close') {
+                document.getElementById('detailModal').classList.remove('show');
+                currentModalKey = null;
+            }
+        }
+
+        function copyModalContent() {
+            if (currentModalKey) {
+                copyToClipboard(currentModalKey);
+            }
+        }
+
+        function deleteFromModal() {
+            if (currentModalKey) {
+                deleteCache(currentModalKey);
+                closeModal();
+            }
+        }
+
+        function filterCache() {
+            const filterText = document.getElementById('filterInput').value.toLowerCase();
+            const typeFilter = document.getElementById('typeFilter').value;
+
+            const filtered = allCacheData.filter(item => {
+                const matchesText = item.key.toLowerCase().includes(filterText);
+                const matchesType = typeFilter === 'all' || item.metadata.type === typeFilter;
+                return matchesText && matchesType;
+            });
+
+            renderCacheList(filtered);
+        }
+
+        function copyToClipboard(key) {
+            const value = localStorage.getItem(key);
+            navigator.clipboard.writeText(value).then(() => {
+                alert(`"${key}" をクリップボードにコピーしました`);
+            });
+        }
+
+        function deleteCache(key) {
+            if (confirm(`"${key}" を削除しますか?`)) {
+                localStorage.removeItem(key);
+                refreshData();
+            }
+        }
+
+        function clearAllCache() {
+            if (confirm('すべてのキャッシュを削除しますか?\n\n警告: ポートフォリオデータも削除されます!')) {
+                localStorage.clear();
+                refreshData();
+            }
+        }
+
+        function clearPriceCache() {
+            if (confirm('価格データとチャートデータをすべて削除しますか?')) {
+                const keysToDelete = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const type = getCacheType(key);
+                    if (type === 'price' || type === 'chart') {
+                        keysToDelete.push(key);
+                    }
+                }
+                keysToDelete.forEach(key => localStorage.removeItem(key));
+                refreshData();
+            }
+        }
+
+        function refreshData() {
+            loadCacheData();
+            filterCache();
+        }
+
+        // 初期化
+        refreshData();
+
+        // キーボードショートカット
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
