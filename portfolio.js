@@ -653,85 +653,86 @@ function generatePortfolioTable(portfolioData) {
     const hasPriceData = coinsWithPrice.length > 0;
 
     let html = `
-        <!-- 現在価格一覧カード（最優先表示） -->
-        ${hasPriceData ? `
+        <!-- ポートフォリオサマリー（統合版） -->
         <div style="margin-bottom: 25px; background: #ffffff; border: 1px solid #d1d5db; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
             <div style="margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
-                <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1f2937;">現在価格</h3>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">CoinGecko API</p>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
-                ${coinsWithPrice.map(item => {
-                    const priceChange = item.currentPrice && item.averagePurchaseRate ?
-                        ((item.currentPrice - item.averagePurchaseRate) / item.averagePurchaseRate * 100) : 0;
-                    const isPositive = priceChange >= 0;
-                    return `
-                        <div style="padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.backgroundColor='#f3f4f6'; this.style.borderColor='#3b82f6'" onmouseout="this.style.backgroundColor='#f9fafb'; this.style.borderColor='#e5e7eb'">
-                            <div style="font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">${item.coinName}</div>
-                            <div style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
-                            <div style="font-size: 11px; font-weight: 500; color: ${isPositive ? '#059669' : '#dc2626'};">
-                                ${isPositive ? '▲' : '▼'} ${isPositive ? '+' : ''}${priceChange.toFixed(2)}%
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        </div>
-        ` : `
-        <div style="margin-bottom: 25px; background: #fffbeb; border: 1px solid #fbbf24; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 20px;">
-            <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 6px;">価格データがありません</div>
-            <div style="font-size: 13px; color: #78350f; margin-bottom: 14px;">価格更新ボタンをクリックして最新価格を取得してください</div>
-            <button onclick="fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-                価格を更新
-            </button>
-        </div>
-        `}
-
-        <!-- ポートフォリオサマリー -->
-        <div style="margin-bottom: 25px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;">
-            <div style="text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📊 ポートフォリオサマリー（${stats.coinNameCount}銘柄）</h3>
+                <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1f2937;">ポートフォリオサマリー（${stats.coinNameCount}銘柄）</h3>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-                <!-- 総合損益（最優先表示） -->
-                <div style="text-align: center; padding: 12px; background: ${stats.totalProfit >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${stats.totalProfit >= 0 ? '#10b981' : '#ef4444'};">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">総合損益</div>
-                    <div style="font-size: 18px; font-weight: 800; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
-                    <div style="font-size: 10px; color: #64748b; margin-top: 1px; font-weight: 500;">実現+含み損益</div>
+            <!-- 統計情報 -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
+                <!-- 総合損益 -->
+                <div style="text-align: center; padding: 12px; background: ${stats.totalProfit >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 6px; border: 1px solid ${stats.totalProfit >= 0 ? '#86efac' : '#fca5a5'};">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">総合損益</div>
+                    <div style="font-size: 17px; font-weight: 700; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</div>
+                    <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
                 </div>
 
                 <!-- 投資額 -->
-                <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">投資額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${Math.abs(stats.totalInvestment).toLocaleString()}</div>
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">投資額</div>
+                    <div style="font-size: 15px; font-weight: 600; color: #374151;">¥${Math.abs(stats.totalInvestment).toLocaleString()}</div>
                 </div>
 
                 <!-- 実現損益 -->
-                <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid ${stats.totalRealizedProfit >= 0 ? '#10b981' : '#ef4444'};">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">実現損益</div>
-                    <div style="font-size: 16px; font-weight: 700; color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}</div>
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">実現損益</div>
+                    <div style="font-size: 15px; font-weight: 600; color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}</div>
                 </div>
 
                 <!-- 含み損益 -->
-                <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">含み損益</div>
-                    <div style="font-size: 16px; font-weight: 700; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</div>
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">含み損益</div>
+                    <div style="font-size: 15px; font-weight: 600; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</div>
                 </div>
 
-                <!-- 総合損益の銘柄数 -->
-                <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #6366f1;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">損益状況</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">利益${stats.totalProfitableCoinNames || 0}・損失${stats.totalLossCoinNames || 0}</div>
+                <!-- 損益状況 -->
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">損益状況</div>
+                    <div style="font-size: 15px; font-weight: 600; color: #374151;">利益${stats.totalProfitableCoinNames || 0}・損失${stats.totalLossCoinNames || 0}</div>
                 </div>
 
                 <!-- 手数料 -->
-                <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #64748b;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">手数料</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #475569;">¥${stats.totalFees.toLocaleString()}</div>
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">手数料</div>
+                    <div style="font-size: 15px; font-weight: 600; color: #374151;">¥${stats.totalFees.toLocaleString()}</div>
                 </div>
             </div>
+
+            ${hasPriceData ? `
+            <!-- 現在価格一覧 -->
+            <div>
+                <div style="margin-bottom: 10px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #374151;">現在価格</div>
+                    <div style="font-size: 11px; color: #6b7280;">CoinGecko API</div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+                    ${coinsWithPrice.map(item => {
+                        const priceChange = item.currentPrice && item.averagePurchaseRate ?
+                            ((item.currentPrice - item.averagePurchaseRate) / item.averagePurchaseRate * 100) : 0;
+                        const isPositive = priceChange >= 0;
+                        return `
+                            <div style="padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.backgroundColor='#f3f4f6'; this.style.borderColor='#3b82f6'" onmouseout="this.style.backgroundColor='#f9fafb'; this.style.borderColor='#e5e7eb'">
+                                <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">${item.coinName}</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
+                                <div style="font-size: 10px; font-weight: 500; color: ${isPositive ? '#059669' : '#dc2626'};">
+                                    ${isPositive ? '▲' : '▼'} ${isPositive ? '+' : ''}${priceChange.toFixed(2)}%
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+            ` : `
+            <!-- 価格データなし -->
+            <div style="padding: 16px; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px;">
+                <div style="font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 4px;">価格データがありません</div>
+                <div style="font-size: 12px; color: #78350f; margin-bottom: 10px;">価格更新ボタンをクリックして最新価格を取得してください</div>
+                <button onclick="fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                    価格を更新
+                </button>
+            </div>
+            `}
         </div>
 
         <!-- 銘柄別詳細テーブル -->
