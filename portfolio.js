@@ -118,6 +118,13 @@ function refreshPortfolioDisplay(portfolioData = null, message = null) {
     // サマリー部分も更新（総合損益反映のため）
     updateDataStatus(currentData);
 
+    // 銘柄別サブタブを再生成（価格データを反映）
+    try {
+        createCoinNameSubtabs(currentData);
+    } catch (error) {
+        console.error('❌ Error in createCoinNameSubtabs:', error);
+    }
+
     // 成功メッセージ表示
     if (message) {
         showSuccessMessage(message);
@@ -676,10 +683,28 @@ function generatePortfolioTable(portfolioData) {
                     <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
                 </div>
 
-                <!-- 損益状況 -->
+                <!-- 投資額 -->
                 <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">損益状況</div>
-                    <div style="font-size: 15px; font-weight: 600; color: #374151;">利益${stats.totalProfitableCoinNames || 0}・損失${stats.totalLossCoinNames || 0}</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">投資額</div>
+                    <div style="font-size: 15px; font-weight: 600; color: #374151;">¥${Math.abs(stats.totalInvestment).toLocaleString()}</div>
+                </div>
+
+                <!-- 実現損益 -->
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">実現損益</div>
+                    <div style="font-size: 15px; font-weight: 600; color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}</div>
+                </div>
+
+                <!-- 含み損益 -->
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">含み損益</div>
+                    <div style="font-size: 15px; font-weight: 600; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</div>
+                </div>
+
+                <!-- 手数料 -->
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">手数料</div>
+                    <div style="font-size: 15px; font-weight: 600; color: #374151;">¥${stats.totalFees.toLocaleString()}</div>
                 </div>
             </div>
 

@@ -92,15 +92,15 @@
                 <!-- タブコンテンツエリア（データがある時に表示） -->
                 <div class="tab-container" id="tabContainer" style="display: none;">
                     <div class="tab-nav">
-                        <button class="tab-button active" onclick="switchTab('portfolio')">ポートフォリオ</button>
-                        <button class="tab-button" onclick="switchTab('trading')">取引履歴</button>
+                        <button class="tab-button active" onclick="switchTab('portfolio')" title="Ctrl+1">ポートフォリオ</button>
+                        <button class="tab-button" onclick="switchTab('trading')" title="Ctrl+2">取引履歴</button>
                     </div>
 
                     <!-- ポートフォリオタブ -->
                     <div class="tab-content active" id="tab-portfolio">
                         <!-- サブタブナビゲーション -->
                         <div class="subtab-nav" id="subtab-nav">
-                            <button class="subtab-button active" onclick="switchSubtab('summary')" id="subtab-summary">サマリー</button>
+                            <button class="subtab-button active" onclick="switchSubtab('summary')" id="subtab-summary" title="Ctrl+S (サマリー) | Ctrl+← (前へ) | Ctrl+→ (次へ)">サマリー</button>
                             <!-- 銘柄別サブタブはJSで動的生成 -->
                         </div>
 
@@ -118,17 +118,6 @@
                                 </div>
                                 <div id="price-update-status" style="font-size: 0.85rem; color: #6c757d;">
                                     価格データなし
-                                </div>
-                            </div>
-
-                            <!-- キーボードショートカット説明 -->
-                            <div class="keyboard-shortcuts" style="margin-bottom: 20px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
-                                <div style="font-size: 0.9rem; color: #856404; margin-bottom: 8px;">
-                                    <strong>キーボードショートカット</strong>
-                                </div>
-                                <div style="font-size: 0.8rem; color: #6c757d; line-height: 1.4;">
-                                    <strong>タブ切り替え:</strong> Ctrl+1 (ポートフォリオ) / Ctrl+2 (取引履歴)<br>
-                                    <strong>サブタブ:</strong> Ctrl+S (サマリー) / Ctrl+← (前) / Ctrl+→ (次)
                                 </div>
                             </div>
 

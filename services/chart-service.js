@@ -193,6 +193,39 @@ class ChartService {
                 throw new Error('有効なデータポイントがありません');
             }
 
+            // チャートタイプを判定（ポートフォリオ全体 vs 個別銘柄）
+            const isPortfolioChart = canvasId.includes('all-coinNames-profit-chart');
+
+            // データセット生成
+            let datasets;
+            if (isPortfolioChart) {
+                // ポートフォリオサマリーチャート: 総合損益のみ
+                datasets = [
+                    {
+                        label: '総合損益 (¥)',
+                        data: profitData.map(d => Math.round(d.totalProfit || d.profit || 0)),
+                        borderColor: profitData[profitData.length - 1].totalProfit >= 0 ? '#28a745' : '#dc3545',
+                        backgroundColor: profitData[profitData.length - 1].totalProfit >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.1
+                    }
+                ];
+            } else {
+                // 個別銘柄チャート: 含み損益のみ
+                datasets = [
+                    {
+                        label: '含み損益 (¥)',
+                        data: profitData.map(d => Math.round(d.unrealizedProfit || 0)),
+                        borderColor: profitData[profitData.length - 1].unrealizedProfit >= 0 ? '#10b981' : '#ef4444',
+                        backgroundColor: profitData[profitData.length - 1].unrealizedProfit >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.1
+                    }
+                ];
+            }
+
             // Chart.jsでチャートを作成
             this.chartInstances[canvasId] = new Chart(ctx, {
                 type: 'line',
@@ -201,37 +234,7 @@ class ChartService {
                         const date = d.date instanceof Date ? d.date : new Date(d.date);
                         return date.toLocaleDateString('ja-JP');
                     }),
-                    datasets: [
-                        {
-                            label: '総合損益 (¥)',
-                            data: profitData.map(d => Math.round(d.totalProfit || d.profit || 0)),
-                            borderColor: profitData[profitData.length - 1].totalProfit >= 0 ? '#28a745' : '#dc3545',
-                            backgroundColor: profitData[profitData.length - 1].totalProfit >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
-                            borderWidth: 3,
-                            fill: true,
-                            tension: 0.1
-                        },
-                        {
-                            label: '実現損益 (¥)',
-                            data: profitData.map(d => Math.round(d.realizedProfit || d.profit || 0)),
-                            borderColor: '#17a2b8',
-                            backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.1,
-                            borderDash: [5, 5]
-                        },
-                        {
-                            label: '含み損益 (¥)',
-                            data: profitData.map(d => Math.round(d.unrealizedProfit || 0)),
-                            borderColor: '#ffc107',
-                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.1,
-                            borderDash: [2, 2]
-                        }
-                    ]
+                    datasets: datasets
                 },
                 options: this._createProfitChartOptions(title, profitData, canvasId)
             });
