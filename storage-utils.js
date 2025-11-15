@@ -15,11 +15,30 @@ function getPriceHistoryCacheKey(coinName) {
 }
 
 /**
-* 現在価格データのキャッシュキーを生成
-* @param {string[]} coinNames - 銘柄シンボルの配列 (例: ['BTC', 'ETH'])
+* 現在価格データのキャッシュキーを生成（個別銘柄）
+* @param {string} coinName - 銘柄シンボル (例: 'BTC')
+* @returns {string} キャッシュキー
+*/
+function getCurrentPriceCacheKey(coinName) {
+  return `price_${coinName.toLowerCase()}`;
+}
+
+/**
+* 現在価格データのキャッシュキーを生成（複数銘柄）- 非推奨
+* @deprecated 個別銘柄キャッシュ (getCurrentPriceCacheKey) を使用してください
+* @param {string|string[]} coinNames - 銘柄シンボル（配列または単一）
 * @returns {string} キャッシュキー
 */
 function getCurrentPricesCacheKey(coinNames) {
+  // 後方互換性: 単一銘柄の場合は個別キャッシュキーを返す
+  if (typeof coinNames === 'string') {
+    return getCurrentPriceCacheKey(coinNames);
+  }
+  // 配列の場合も個別キャッシュに誘導するため、最初の銘柄のキーを返す
+  if (Array.isArray(coinNames) && coinNames.length === 1) {
+    return getCurrentPriceCacheKey(coinNames[0]);
+  }
+  // 互換性のため、従来形式も維持（将来削除予定）
   return `prices_${coinNames.sort().join('_')}`;
 }
 
@@ -42,7 +61,8 @@ window.CACHE_DURATIONS = CACHE_DURATIONS;
 // キャッシュキー生成関数をオブジェクトにまとめてグローバルに公開
 window.cacheKeys = {
     priceHistory: getPriceHistoryCacheKey,
-    currentPrices: getCurrentPricesCacheKey,
+    currentPrice: getCurrentPriceCacheKey,        // 新: 個別銘柄キャッシュ（推奨）
+    currentPrices: getCurrentPricesCacheKey,      // 旧: 複数銘柄キャッシュ（非推奨）
     chartData: getChartDataCacheKey
 };
 
@@ -121,7 +141,8 @@ class CacheService {
         for (let key in this.storage) {
             if (this.storage.hasOwnProperty(key)) {
                 if (key.includes('_price_history_') ||
-                    key.includes('prices_') ||
+                    key.includes('prices_') ||      // 旧形式（セット単位）
+                    key.startsWith('price_') ||     // 新形式（個別銘柄）
                     key.includes('chart_') ||
                     key === 'currentPrices' ||
                     key === 'lastPriceUpdate' ||
@@ -136,6 +157,38 @@ class CacheService {
             this.storage.removeItem(key);
             clearedCount++;
         });
+
+        return clearedCount;
+    }
+
+    /**
+     * 旧形式の価格キャッシュ（複数銘柄セット）を削除
+     * 新形式の個別銘柄キャッシュは保持
+     * @returns {number} 削除したキャッシュ数
+     */
+    cleanupLegacyPriceCache() {
+        let clearedCount = 0;
+        const keysToDelete = [];
+
+        // 旧形式の prices_BTC_ETH_... 形式のキーを特定
+        for (let key in this.storage) {
+            if (this.storage.hasOwnProperty(key)) {
+                // prices_ で始まり、アンダースコアが複数含まれる = 複数銘柄セット
+                if (key.startsWith('prices_') && (key.match(/_/g) || []).length > 1) {
+                    keysToDelete.push(key);
+                }
+            }
+        }
+
+        // 旧形式キャッシュを削除
+        keysToDelete.forEach(key => {
+            this.storage.removeItem(key);
+            clearedCount++;
+        });
+
+        if (clearedCount > 0) {
+            console.log(`旧形式の価格キャッシュを${clearedCount}件削除しました`);
+        }
 
         return clearedCount;
     }

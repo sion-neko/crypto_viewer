@@ -191,7 +191,7 @@ function updatePortfolioWithPrices(portfolioData, prices) {
         (portfolioData.stats.totalProfit / portfolioData.stats.totalInvestment) * 100 : 0;
 }
 
-// 価格更新ステータス表示（CacheService使用版）
+// 価格更新ステータス表示（個別銘柄キャッシュ対応版）
 function updatePriceStatus(message = null) {
     const statusElement = document.getElementById('price-update-status');
     if (!statusElement) return;
@@ -211,16 +211,36 @@ function updatePriceStatus(message = null) {
     }
 
     const coinNames = portfolioData.summary.map(item => item.coinName);
-    const cacheKey = cacheKeys.currentPrices(coinNames);
-    const cachedPrices = cache.get(cacheKey);
 
-    if (cachedPrices && cachedPrices._metadata) {
-        const lastUpdate = new Date(cachedPrices._metadata.lastUpdate);
-        const validCoinNames = cachedPrices._metadata.coinNames || [];
+    // 個別銘柄キャッシュを確認（最も古いキャッシュのタイムスタンプを取得）
+    let oldestUpdateTime = null;
+    let cachedCount = 0;
+
+    for (const coinName of coinNames) {
+        const cacheKey = cacheKeys.currentPrice(coinName);
+        const rawCacheData = localStorage.getItem(cacheKey);
+
+        if (rawCacheData) {
+            try {
+                const cacheData = JSON.parse(rawCacheData);
+                if (cacheData.timestamp) {
+                    cachedCount++;
+                    if (!oldestUpdateTime || cacheData.timestamp < oldestUpdateTime) {
+                        oldestUpdateTime = cacheData.timestamp;
+                    }
+                }
+            } catch (e) {
+                // キャッシュ読み込みエラー
+            }
+        }
+    }
+
+    if (cachedCount > 0 && oldestUpdateTime) {
+        const lastUpdate = new Date(oldestUpdateTime);
         const timeStr = lastUpdate.toLocaleString('ja-JP');
-        const ageMinutes = Math.round((Date.now() - lastUpdate.getTime()) / 1000 / 60);
+        const ageMinutes = Math.round((Date.now() - oldestUpdateTime) / 1000 / 60);
 
-        statusElement.textContent = `${validCoinNames.length}銘柄 | ${timeStr} (${ageMinutes}分前)`;
+        statusElement.textContent = `${cachedCount}/${coinNames.length}銘柄 | ${timeStr} (${ageMinutes}分前)`;
 
         // 30分以上古い場合は警告色
         if (ageMinutes >= 30) {

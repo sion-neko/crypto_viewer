@@ -555,13 +555,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDataStatus(null);
     }
 
-    // 起動時に古い価格データを自動クリーンアップ
+    // 起動時に旧形式の価格キャッシュをクリーンアップ
     setTimeout(() => {
-        const cleanedCount = autoCleanupOldPriceData();
-        if (cleanedCount > 0) {
+        if (window.cache && typeof window.cache.cleanupLegacyPriceCache === 'function') {
+            window.cache.cleanupLegacyPriceCache();
         }
-
-    }, 2000);
+    }, 1000);
 
     // 価格データ状況を初期表示
     setTimeout(() => {

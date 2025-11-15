@@ -22,7 +22,7 @@ class APIService {
     // ===================================================================
 
     /**
-     * 複数銘柄の現在価格を取得（キャッシュ優先）
+     * 複数銘柄の現在価格を取得（キャッシュ優先、個別銘柄キャッシュ）
      * @param {string[]} coinNames - 銘柄シンボルの配列 ['BTC', 'ETH', ...]
      * @returns {Promise<object>} 価格データ {BTC: {price_jpy: 1000000, last_updated: 123456}, ...}
      * @throws {Error} API呼び出しエラー
@@ -35,52 +35,71 @@ class APIService {
             throw new Error('対応銘柄が見つかりません');
         }
 
-        // まず価格履歴キャッシュから現在価格を取得を試行（API効率化）
-        const pricesFromHistory = await this._tryGetPricesFromHistory(validCoinNames);
-        if (pricesFromHistory && Object.keys(pricesFromHistory).length === validCoinNames.length) {
-            return pricesFromHistory;
-        }
-
-        // 永続化キャッシュキーを生成
-        const cacheKey = this.cacheKeys.currentPrices(validCoinNames);
-
-        // 永続化キャッシュチェック（30分有効）
-        const cachedPrices = this.cache.get(cacheKey);
-        if (cachedPrices) {
-            return cachedPrices;
-        }
-
-        // API呼び出し
-        const coingeckoIds = validCoinNames.map(coinName => this.config.coinGeckoMapping[coinName]).join(',');
-        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        // データを整理
         const prices = {};
+        const uncachedCoins = [];
+
+        // 1. 個別銘柄キャッシュから取得
         for (const coinName of validCoinNames) {
-            const coingeckoId = this.config.coinGeckoMapping[coinName];
-            if (data[coingeckoId]) {
-                prices[coinName] = {
-                    price_jpy: data[coingeckoId].jpy,
-                    last_updated: data[coingeckoId].last_updated_at
-                };
+            const cacheKey = this.cacheKeys.currentPrice(coinName);
+            const cachedPrice = this.cache.get(cacheKey);
+
+            if (cachedPrice) {
+                prices[coinName] = cachedPrice;
+            } else {
+                uncachedCoins.push(coinName);
+            }
+        }
+
+        // 2. キャッシュにない銘柄は価格履歴から取得を試行
+        if (uncachedCoins.length > 0) {
+            const pricesFromHistory = await this._tryGetPricesFromHistory(uncachedCoins);
+
+            if (pricesFromHistory) {
+                for (const coinName in pricesFromHistory) {
+                    if (coinName !== '_metadata') {
+                        prices[coinName] = pricesFromHistory[coinName];
+                        uncachedCoins.splice(uncachedCoins.indexOf(coinName), 1);
+                    }
+                }
+            }
+        }
+
+        // 3. まだキャッシュにない銘柄はAPI呼び出し
+        if (uncachedCoins.length > 0) {
+            const coingeckoIds = uncachedCoins.map(coinName => this.config.coinGeckoMapping[coinName]).join(',');
+            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // データを整理して個別にキャッシュ
+            for (const coinName of uncachedCoins) {
+                const coingeckoId = this.config.coinGeckoMapping[coinName];
+                if (data[coingeckoId]) {
+                    const priceData = {
+                        price_jpy: data[coingeckoId].jpy,
+                        last_updated: data[coingeckoId].last_updated_at
+                    };
+                    prices[coinName] = priceData;
+
+                    // 個別銘柄ごとにキャッシュ保存（30分有効）
+                    const cacheKey = this.cacheKeys.currentPrice(coinName);
+                    this.cache.set(cacheKey, priceData, this.config.cacheDurations.CURRENT_PRICES);
+                }
             }
         }
 
         // メタデータ追加
         prices._metadata = {
             lastUpdate: Date.now(),
-            coinNames: validCoinNames
+            coinNames: validCoinNames,
+            cachedCount: validCoinNames.length - uncachedCoins.length,
+            apiCallCount: uncachedCoins.length
         };
-
-        // 永続化キャッシュに保存（30分有効）
-        this.cache.set(cacheKey, prices, this.config.cacheDurations.CURRENT_PRICES);
 
         return prices;
     }
