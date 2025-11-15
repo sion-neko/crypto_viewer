@@ -283,9 +283,8 @@ class TabManager {
                 tabContent.className = 'subtab-content';
                 tabContent.id = `subtab-content-${coinNameData.coinName.toLowerCase()}`;
 
-                const coinNameDetailData = portfolioData.coins[coinNameData.coinName];
-                if (coinNameDetailData && tableRenderer) {
-                    tabContent.innerHTML = tableRenderer.renderCoinDetailPage(coinNameData, coinNameDetailData);
+                if (tableRenderer) {
+                    tabContent.innerHTML = tableRenderer.renderCoinDetailPage(coinNameData);
                 } else {
                     tabContent.innerHTML = `<div>詳細データが見つかりません: ${coinNameData.coinName}</div>`;
                 }
@@ -336,7 +335,7 @@ class TableRenderer {
      * @param {object} coinDetailData - 銘柄詳細データ
      * @returns {string} HTMLマークアップ
      */
-    renderCoinDetailPage(coinSummary, coinDetailData) {
+    renderCoinDetailPage(coinSummary) {
         const profitColor = coinSummary.realizedProfit >= 0 ? '#27ae60' : '#e74c3c';
         const profitIcon = coinSummary.realizedProfit > 0 ? '📈' : coinSummary.realizedProfit < 0 ? '📉' : '➖';
 
@@ -417,7 +416,13 @@ class TableRenderer {
 
             <!-- 取引履歴テーブル -->
             <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinSummary.coinName} 全取引履歴（${coinDetailData.allTransactions.length}件）</h4>
+        `;
+
+        // rawTransactionsから該当銘柄の取引を取得
+        const transactions = getTransactionsByCoin(coinSummary.coinName);
+
+        html += `
+                <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
@@ -434,7 +439,7 @@ class TableRenderer {
         `;
 
         // 取引履歴を日付順に並び替え（新しい順）
-        const sortedTransactions = [...coinDetailData.allTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const sortedTransactions = [...transactions.all].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         sortedTransactions.forEach(tx => {
             const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
@@ -557,8 +562,8 @@ class UIService {
         return this.tableRenderer.renderTradingHistoryTable(portfolioData, isMobile);
     }
 
-    renderCoinDetailPage(coinSummary, coinDetailData) {
-        return this.tableRenderer.renderCoinDetailPage(coinSummary, coinDetailData);
+    renderCoinDetailPage(coinSummary) {
+        return this.tableRenderer.renderCoinDetailPage(coinSummary);
     }
 }
 

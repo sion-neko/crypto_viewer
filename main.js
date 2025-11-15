@@ -590,12 +590,17 @@ async function renderCoinProfitChart(coinName) {
     try {
         // ポートフォリオデータを取得
         const portfolioData = window.cache.getPortfolioData();
-        if (!portfolioData || !portfolioData.coins || !portfolioData.coins[coinName]) {
-            throw new Error(`${coinName}のデータが見つかりません`);
+        if (!portfolioData) {
+            throw new Error('ポートフォリオデータが見つかりません');
         }
 
-        const coinData = portfolioData.coins[coinName];
         const canvasId = `${coinName.toLowerCase()}-profit-chart`;
+
+        // rawTransactionsから該当銘柄の取引を取得
+        const transactions = getTransactionsByCoin(coinName);
+        if (!transactions || transactions.all.length === 0) {
+            throw new Error(`${coinName}の取引データが見つかりません`);
+        }
 
         // 価格履歴を取得
         showInfoMessage(`${coinName}の価格履歴を取得中...`);
@@ -603,7 +608,7 @@ async function renderCoinProfitChart(coinName) {
 
         // 損益推移データを生成
         const profitData = generateHistoricalProfitTimeSeries(
-            coinData.allTransactions,
+            transactions.all,
             priceHistory
         );
 

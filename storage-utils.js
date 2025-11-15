@@ -471,6 +471,21 @@ function clearPriceDataFromPortfolio(portfolioData) {
 }
 
 /**
+ * rawTransactionsから特定銘柄の取引を取得
+ * 取引データはportfolioDataに保存せず、rawTransactionsから動的に取得
+ * @param {string} coinName - 銘柄シンボル
+ * @returns {object} {all, buy, sell} 取引配列
+ */
+function getTransactionsByCoin(coinName) {
+    const rawTransactions = safeGetJSON('rawTransactions', []);
+    const all = rawTransactions.filter(tx => tx.coinName === coinName);
+    const buy = all.filter(tx => tx.type === '買');
+    const sell = all.filter(tx => tx.type === '売');
+
+    return { all, buy, sell };
+}
+
+/**
  * Chart.jsインスタンスを安全に破棄
  * @param {string} canvasId - Canvas要素のID
  */
