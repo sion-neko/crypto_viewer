@@ -441,6 +441,51 @@ function calculateUnrealizedProfit(holdingQty, currentPrice, avgPurchaseRate) {
 }
 
 /**
+ * portfolioDataから価格情報をクリア（永続化前の処理）
+ * 価格データは個別キャッシュ（price_btc など）から取得するため、
+ * portfolioDataには保存しない
+ * @param {object} portfolioData - ポートフォリオデータ
+ */
+function clearPriceDataFromPortfolio(portfolioData) {
+    if (!portfolioData || !portfolioData.summary) {
+        return;
+    }
+
+    // 各銘柄の価格情報をクリア
+    portfolioData.summary.forEach(item => {
+        item.currentPrice = 0;
+        item.currentValue = 0;
+        item.unrealizedProfit = 0;
+        item.totalProfit = item.realizedProfit; // 実現損益のみ
+    });
+
+    // 統計情報から含み損益をクリア
+    if (portfolioData.stats) {
+        portfolioData.stats.totalUnrealizedProfit = 0;
+        portfolioData.stats.totalProfit = portfolioData.stats.totalRealizedProfit; // 実現損益のみ
+        portfolioData.stats.totalProfitableCoinNames = portfolioData.summary.filter(s => s.realizedProfit > 0).length;
+        portfolioData.stats.totalLossCoinNames = portfolioData.summary.filter(s => s.realizedProfit < 0).length;
+        portfolioData.stats.overallTotalProfitMargin = portfolioData.stats.totalInvestment > 0 ?
+            (portfolioData.stats.totalRealizedProfit / portfolioData.stats.totalInvestment) * 100 : 0;
+    }
+}
+
+/**
+ * rawTransactionsから特定銘柄の取引を取得
+ * 取引データはportfolioDataに保存せず、rawTransactionsから動的に取得
+ * @param {string} coinName - 銘柄シンボル
+ * @returns {object} {all, buy, sell} 取引配列
+ */
+function getTransactionsByCoin(coinName) {
+    const rawTransactions = safeGetJSON('rawTransactions', []);
+    const all = rawTransactions.filter(tx => tx.coinName === coinName);
+    const buy = all.filter(tx => tx.type === '買');
+    const sell = all.filter(tx => tx.type === '売');
+
+    return { all, buy, sell };
+}
+
+/**
  * Chart.jsインスタンスを安全に破棄
  * @param {string} canvasId - Canvas要素のID
  */

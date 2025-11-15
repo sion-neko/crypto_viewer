@@ -51,11 +51,12 @@ class ChartService {
             // 各銘柄の損益推移データを生成
             const allProfitData = {};
             validCoinNames.forEach(coinName => {
-                const coinNameData = portfolioData.coins[coinName];
+                // rawTransactionsから取引データを取得
+                const transactions = getTransactionsByCoin(coinName);
 
-                if (coinNameData && coinNameData.allTransactions) {
+                if (transactions && transactions.all.length > 0) {
                     const profitData = this._generateHistoricalProfitTimeSeries(
-                        coinNameData.allTransactions,
+                        transactions.all,
                         priceHistories[coinName]
                     );
                     if (profitData && profitData.length > 0) {

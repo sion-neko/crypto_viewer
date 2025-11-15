@@ -39,7 +39,12 @@ class PortfolioDataService {
     updateData(portfolioData) {
         if (portfolioData) {
             this.currentData = portfolioData;
-            safeSetJSON('portfolioData', portfolioData);
+
+            // 保存用のコピーを作成して価格情報をクリア
+            // （価格は個別キャッシュ price_btc などから取得するため、永続化不要）
+            const dataToSave = JSON.parse(JSON.stringify(portfolioData));
+            clearPriceDataFromPortfolio(dataToSave);
+            safeSetJSON('portfolioData', dataToSave);
         }
     }
 
@@ -158,27 +163,26 @@ function analyzePortfolioData(transactions) {
                 totalSellAmount: 0,
                 totalQuantity: 0,
                 totalFees: 0,
-                buyTransactions: [],
-                sellTransactions: [],
                 totalBuyQuantity: 0,
                 totalSellQuantity: 0,
                 weightedRateSum: 0,
-                allTransactions: []
+                // 取引配列は保存しない（rawTransactionsから取得）
+                buyTransactionCount: 0,
+                sellTransactionCount: 0
             };
         }
 
         const data = coinNameData[tx.coinName];
-        data.allTransactions.push(tx);
 
         if (tx.type === '買') {
             data.totalBuyAmount += tx.amount;
             data.totalBuyQuantity += tx.quantity;
             data.weightedRateSum += tx.rate * tx.quantity;
-            data.buyTransactions.push(tx);
+            data.buyTransactionCount++;
         } else if (tx.type === '売') {
             data.totalSellAmount += tx.amount;
             data.totalSellQuantity += tx.quantity;
-            data.sellTransactions.push(tx);
+            data.sellTransactionCount++;
         }
 
         data.totalQuantity += tx.type === '買' ? tx.quantity : -tx.quantity;
@@ -219,8 +223,8 @@ function analyzePortfolioData(transactions) {
             currentHoldingInvestment,
             averagePurchaseRate,
             totalFees: data.totalFees,
-            buyTransactionCount: data.buyTransactions.length,
-            sellTransactionCount: data.sellTransactions.length,
+            buyTransactionCount: data.buyTransactionCount,
+            sellTransactionCount: data.sellTransactionCount,
             totalSellAmount: data.totalSellAmount,
             realizedProfit,
             investmentEfficiency,
@@ -455,35 +459,53 @@ function displayDashboard(portfolioData) {
 
     // キャッシュに価格データがある場合は自動的に復元
     const coinNames = portfolioData.summary.map(item => item.coinName);
-    const cacheKey = window.cacheKeys.currentPrices(coinNames);
-    const cachedPrices = window.cache.get(cacheKey);
 
-    if (cachedPrices && cachedPrices._metadata) {
-        // キャッシュから価格データを復元
-        updatePortfolioWithPrices(portfolioData, cachedPrices);
+    // 個別銘柄のキャッシュからタイムスタンプを収集
+    const cacheTimestamps = [];
+    const cachedPriceData = {};
 
-        // PortfolioDataServiceを更新
+    for (const coinName of coinNames) {
+        const cacheKey = window.cacheKeys.currentPrice(coinName);
+        const cached = window.cache.get(cacheKey);
+        if (cached) {
+            const rawData = window.cache.storage.getItem(cacheKey);
+            if (rawData) {
+                const parsedData = JSON.parse(rawData);
+                cacheTimestamps.push(parsedData.timestamp);
+                cachedPriceData[coinName] = cached;
+            }
+        }
+    }
+
+    // キャッシュされた価格データがある場合
+    if (Object.keys(cachedPriceData).length > 0) {
+        // キャッシュから価格を復元
+        const pricesObject = {};
+        for (const [coinName, priceData] of Object.entries(cachedPriceData)) {
+            pricesObject[coinName] = priceData;
+        }
+        pricesObject._metadata = { lastUpdate: Math.min(...cacheTimestamps) };
+
+        updatePortfolioWithPrices(portfolioData, pricesObject);
         portfolioDataService.updateData(portfolioData);
-
-        // テーブルを再描画（含み損益を反映）
         const updatedData = portfolioDataService.getData();
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
+        // portfolioDataの保存はupdateData()内で実行済み（価格情報はクリアして保存）
 
-        // ポートフォリオデータをlocalStorageに保存
-        safeSetJSON('portfolioData', portfolioData);
-
-        const lastUpdate = new Date(cachedPrices._metadata.lastUpdate);
-        const timeStr = lastUpdate.toLocaleString('ja-JP', {
+        // 最も古いキャッシュのタイムスタンプを表示
+        const oldestTimestamp = Math.min(...cacheTimestamps);
+        const oldestDate = new Date(oldestTimestamp);
+        const timeStr = oldestDate.toLocaleString('ja-JP', {
             month: 'numeric',
             day: 'numeric',
             hour: 'numeric',
             minute: 'numeric'
         });
         if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus(`${coinNames.length}銘柄 | ${timeStr}保存`);
+            updatePriceStatus(`${Object.keys(cachedPriceData).length}銘柄 | ${timeStr}のキャッシュ`);
         }
     } else {
-        // キャッシュがない場合は手動更新を促す
+        // キャッシュが全くない場合
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus('価格データなし - 手動更新してください');
         }
@@ -809,10 +831,8 @@ function generateMobileTradingCards(portfolioData) {
 
 // 取引履歴テーブル生成
 function generateTradingHistoryTable(portfolioData) {
-    const allTransactions = [];
-    Object.values(portfolioData.coins).forEach(coinNameData => {
-        allTransactions.push(...coinNameData.buyTransactions, ...coinNameData.sellTransactions);
-    });
+    // rawTransactionsから直接取得（portfolioDataには保存しない）
+    const allTransactions = safeGetJSON('rawTransactions', []);
 
     // 日付順にソート
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -945,7 +965,13 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
 
         <!-- 取引履歴テーブル -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinNameSummary.coinName} 全取引履歴（${coinNameData.allTransactions.length}件）</h4>
+    `;
+
+    // rawTransactionsから該当銘柄の取引を取得
+    const transactions = getTransactionsByCoin(coinNameSummary.coinName);
+
+    html += `
+            <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinNameSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
             <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
                 <table style="width: 100%; min-width: 600px; border-collapse: collapse;">
                     <thead>
@@ -962,7 +988,7 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
     `;
 
     // 取引履歴を日付順に並び替え（新しい順）
-    const sortedTransactions = [...coinNameData.allTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sortedTransactions = [...transactions.all].sort((a, b) => new Date(b.date) - new Date(a.date));
 
     sortedTransactions.forEach(tx => {
         const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
