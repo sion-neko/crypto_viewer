@@ -484,10 +484,17 @@ function displayDashboard(portfolioData) {
             updatePriceStatus(`${Object.keys(cachedPriceData).length}銘柄 | ${timeStr}のキャッシュ`);
         }
     } else {
-        // キャッシュが全くない場合
+        // キャッシュが全くない場合は自動的に価格を取得
         if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus('価格データなし - 手動更新してください');
+            updatePriceStatus('価格データ取得中...');
         }
+
+        // 自動的に価格を取得
+        setTimeout(() => {
+            if (typeof fetchCurrentPrices === 'function') {
+                fetchCurrentPrices();
+            }
+        }, 1000);
     }
 
     // 取引履歴テーブル表示
@@ -795,11 +802,10 @@ function generatePortfolioTable(portfolioData) {
 
 // モバイル用取引履歴カード生成
 function generateMobileTradingCards(portfolioData) {
-    const allTransactions = [];
-    Object.values(portfolioData.coins).forEach(coinNameData => {
-        allTransactions.push(...coinNameData.buyTransactions, ...coinNameData.sellTransactions);
-    });
+    // rawTransactionsから全取引を取得
+    const allTransactions = safeGetJSON('rawTransactions', []);
 
+    // 日付順にソート（新しい順）
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     let html = '';
@@ -841,23 +847,15 @@ function generateMobileTradingCards(portfolioData) {
 
 // 取引履歴テーブル生成
 function generateTradingHistoryTable(portfolioData) {
-    // portfolioData.coinsから全取引を収集
-    const allTransactions = [];
-    if (portfolioData && portfolioData.coins) {
-        for (const coinName in portfolioData.coins) {
-            const coinData = portfolioData.coins[coinName];
-            if (coinData.allTransactions) {
-                allTransactions.push(...coinData.allTransactions);
-            }
-        }
-    }
+    // rawTransactionsから全取引を取得
+    const allTransactions = safeGetJSON('rawTransactions', []);
 
-    // 日付順にソート
+    // 日付順にソート（新しい順）
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     let html = `
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">全取引履歴（新しい順）</h4>
+            <h4 style="color: #2c3e50; margin-bottom: 20px;">全取引履歴（新しい順） - 全${allTransactions.length}件</h4>
             <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
                 <table class="trading-history-table" style="width: 100%; min-width: 700px; border-collapse: collapse;">
                     <thead>

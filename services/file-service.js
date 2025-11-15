@@ -110,7 +110,7 @@ class FileService {
      */
     _processCSVData(data, fileName) {
         const transactions = [];
-        const selectedExchange = document.querySelector('input[name="exchange"]:checked')?.value || 'AUTO';
+        const selectedExchange = 'AUTO'; // 常に自動判定
 
         data.forEach(row => {
             // 空行をスキップ
