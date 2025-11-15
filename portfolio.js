@@ -484,10 +484,17 @@ function displayDashboard(portfolioData) {
             updatePriceStatus(`${Object.keys(cachedPriceData).length}銘柄 | ${timeStr}のキャッシュ`);
         }
     } else {
-        // キャッシュが全くない場合
+        // キャッシュが全くない場合は自動的に価格を取得
         if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus('価格データなし - 手動更新してください');
+            updatePriceStatus('価格データ取得中...');
         }
+
+        // 自動的に価格を取得
+        setTimeout(() => {
+            if (typeof fetchCurrentPrices === 'function') {
+                fetchCurrentPrices();
+            }
+        }, 1000);
     }
 
     // 取引履歴テーブル表示
