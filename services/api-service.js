@@ -125,16 +125,20 @@ class APIService {
         let successCount = 0;
 
         for (const coinName of coinNames) {
-            const cacheKey = this.cacheKeys.priceHistory(coinName);
-            const historyValue = this.cache.get(cacheKey);
+            try {
+                const cacheKey = this.cacheKeys.priceHistory(coinName);
+                const historyValue = this.cache.get(cacheKey);
 
-            if (historyValue && historyValue.length > 0) {
-                const latestPrice = historyValue[historyValue.length - 1].price;
-                prices[coinName] = {
-                    price_jpy: latestPrice,
-                    last_updated_at: Date.now() / 1000
-                };
-                successCount++;
+                if (historyValue && historyValue.length > 0) {
+                    const latestPrice = historyValue[historyValue.length - 1].price;
+                    prices[coinName] = {
+                        price_jpy: latestPrice,
+                        last_updated_at: Date.now() / 1000
+                    };
+                    successCount++;
+                }
+            } catch (error) {
+                // スキップ
             }
         }
 
