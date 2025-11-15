@@ -721,9 +721,9 @@ function generatePortfolioTable(portfolioData) {
                         return `
                             <div style="padding: 12px; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.backgroundColor='${isPositive ? '#dcfce7' : '#fee2e2'}'; this.style.borderColor='#3b82f6'" onmouseout="this.style.backgroundColor='${bgColor}'; this.style.borderColor='${borderColor}'">
                                 <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">${item.coinName}</div>
-                                <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 2px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
-                                <div style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">平均 ¥${item.averagePurchaseRate.toLocaleString()}</div>
-                                <div style="font-size: 11px; font-weight: 600; color: ${isPositive ? '#059669' : '#dc2626'};">
+                                <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
+                                <div style="font-size: 13px; color: #6b7280; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb;">平均 ¥${item.averagePurchaseRate.toLocaleString()}</div>
+                                <div style="font-size: 12px; font-weight: 600; color: ${isPositive ? '#059669' : '#dc2626'};">
                                     ${isPositive ? '▲' : '▼'} ${isPositive ? '+' : ''}${priceChange.toFixed(2)}%
                                 </div>
                             </div>
@@ -795,7 +795,7 @@ function generatePortfolioTable(portfolioData) {
     html += `
             </tbody>
             <tfoot>
-                <tr style="background-color: #f3f4f6; font-weight: 600; border-top: 2px solid #3b82f6;">
+                <tr style="background-color: #f3f4f6; font-weight: 600; border-top: 2px solid #d1d5db;">
                     <td style="padding: 15px 12px; text-align: left; font-weight: 700; color: #1f2937; border-bottom: 1px solid #e5e7eb;">合計</td>
                     <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
                     <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
