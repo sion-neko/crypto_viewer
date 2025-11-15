@@ -455,35 +455,53 @@ function displayDashboard(portfolioData) {
 
     // キャッシュに価格データがある場合は自動的に復元
     const coinNames = portfolioData.summary.map(item => item.coinName);
-    const cacheKey = window.cacheKeys.currentPrices(coinNames);
-    const cachedPrices = window.cache.get(cacheKey);
 
-    if (cachedPrices && cachedPrices._metadata) {
-        // キャッシュから価格データを復元
-        updatePortfolioWithPrices(portfolioData, cachedPrices);
+    // 個別銘柄のキャッシュからタイムスタンプを収集
+    const cacheTimestamps = [];
+    const cachedPriceData = {};
 
-        // PortfolioDataServiceを更新
+    for (const coinName of coinNames) {
+        const cacheKey = window.cacheKeys.currentPrice(coinName);
+        const cached = window.cache.get(cacheKey);
+        if (cached) {
+            const rawData = window.cache.storage.getItem(cacheKey);
+            if (rawData) {
+                const parsedData = JSON.parse(rawData);
+                cacheTimestamps.push(parsedData.timestamp);
+                cachedPriceData[coinName] = cached;
+            }
+        }
+    }
+
+    // キャッシュされた価格データがある場合
+    if (Object.keys(cachedPriceData).length > 0) {
+        // キャッシュから価格を復元
+        const pricesObject = {};
+        for (const [coinName, priceData] of Object.entries(cachedPriceData)) {
+            pricesObject[coinName] = priceData;
+        }
+        pricesObject._metadata = { lastUpdate: Math.min(...cacheTimestamps) };
+
+        updatePortfolioWithPrices(portfolioData, pricesObject);
         portfolioDataService.updateData(portfolioData);
-
-        // テーブルを再描画（含み損益を反映）
         const updatedData = portfolioDataService.getData();
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
-
-        // ポートフォリオデータをlocalStorageに保存
         safeSetJSON('portfolioData', portfolioData);
 
-        const lastUpdate = new Date(cachedPrices._metadata.lastUpdate);
-        const timeStr = lastUpdate.toLocaleString('ja-JP', {
+        // 最も古いキャッシュのタイムスタンプを表示
+        const oldestTimestamp = Math.min(...cacheTimestamps);
+        const oldestDate = new Date(oldestTimestamp);
+        const timeStr = oldestDate.toLocaleString('ja-JP', {
             month: 'numeric',
             day: 'numeric',
             hour: 'numeric',
             minute: 'numeric'
         });
         if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus(`${coinNames.length}銘柄 | ${timeStr}保存`);
+            updatePriceStatus(`${Object.keys(cachedPriceData).length}銘柄 | ${timeStr}のキャッシュ`);
         }
     } else {
-        // キャッシュがない場合は手動更新を促す
+        // キャッシュが全くない場合
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus('価格データなし - 手動更新してください');
         }
