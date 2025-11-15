@@ -192,30 +192,15 @@
                     <div class="upload-zone" id="uploadZone">
                         <div class="upload-text">CSVファイルをドラッグ&ドロップ</div>
                         <div class="upload-subtext">または下のボタンをクリックしてファイルを選択</div>
-                        
-                        <!-- 取引所選択 -->
-                        <div style="margin: 20px 0;">
-                            <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50;">取引所を選択:</label>
-                            <div style="display: flex; justify-content: center; gap: 20px;">
-                                <label style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="radio" name="exchange" value="GMO" checked style="margin-right: 8px;">
-                                    <span>GMO コイン</span>
-                                </label>
-                                <label style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="radio" name="exchange" value="OKJ" style="margin-right: 8px;">
-                                    <span>OKCoin Japan</span>
-                                </label>
-                                <label style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="radio" name="exchange" value="AUTO" style="margin-right: 8px;">
-                                    <span>自動判定</span>
-                                </label>
-                            </div>
-                        </div>
-                        
+
                         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
                             ファイルを選択
                         </button>
                         <input type="file" id="fileInput" class="file-input" accept=".csv" multiple>
+
+                        <div style="margin-top: 15px; font-size: 0.9rem; color: #6c757d;">
+                            取引所は自動判定されます（GMOコイン / OKCoin Japan）
+                        </div>
                     </div>
                 </div>
 
