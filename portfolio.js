@@ -603,6 +603,12 @@ function generateMobilePortfolioCards(portfolioData) {
                             ${totalProfit >= 0 ? '+' : ''}¥${Math.round(totalProfit).toLocaleString()}
                         </span>
                     </div>
+                    ${row.currentPrice ? `
+                        <div class="card-row" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 12px; margin: -8px -8px 8px -8px; border-radius: 8px; border: 2px solid #3b82f6;">
+                            <span class="card-label" style="color: #1e40af; font-weight: 700; font-size: 0.95rem;">💰 現在価格</span>
+                            <span class="card-value" style="color: #1e40af; font-weight: 900; font-size: 1.15rem; font-family: 'Courier New', monospace;">¥${row.currentPrice.toLocaleString()}</span>
+                        </div>
+                    ` : ''}
                     <div class="card-row">
                         <span class="card-label">保有量</span>
                         <span class="card-value">${parseFloat(row.holdingQuantity || 0).toFixed(6)}</span>
@@ -629,12 +635,6 @@ function generateMobilePortfolioCards(portfolioData) {
                             ${profitMargin >= 0 ? '+' : ''}${profitMargin.toFixed(1)}%
                         </span>
                     </div>
-                    ${row.currentPrice ? `
-                        <div class="card-row">
-                            <span class="card-label">現在価格</span>
-                            <span class="card-value">¥${row.currentPrice.toLocaleString()}</span>
-                        </div>
-                    ` : ''}
                 </div>
             `;
         });
@@ -648,7 +648,51 @@ function generatePortfolioTable(portfolioData) {
     const stats = portfolioData.stats;
     const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
 
+    // 現在価格が設定されている銘柄のみフィルタ
+    const coinsWithPrice = portfolioData.summary.filter(item => item.currentPrice > 0);
+    const hasPriceData = coinsWithPrice.length > 0;
+
     let html = `
+        <!-- 現在価格一覧カード（最優先表示） -->
+        ${hasPriceData ? `
+        <div style="margin-bottom: 25px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 3px solid #3b82f6; border-radius: 12px; padding: 20px; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);">
+            <div style="text-align: center; margin-bottom: 18px;">
+                <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #1e40af; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span style="font-size: 24px;">💰</span>
+                    <span>現在価格</span>
+                    <span style="font-size: 24px;">💰</span>
+                </h3>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #64748b; font-weight: 500;">リアルタイム市場価格（CoinGecko API）</p>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px;">
+                ${coinsWithPrice.map(item => {
+                    const priceChange = item.currentPrice && item.averagePurchaseRate ?
+                        ((item.currentPrice - item.averagePurchaseRate) / item.averagePurchaseRate * 100) : 0;
+                    const isPositive = priceChange >= 0;
+                    return `
+                        <div style="text-align: center; padding: 16px; background: white; border-radius: 10px; border: 2px solid ${isPositive ? '#10b981' : '#ef4444'}; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'">
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">${item.coinName}</div>
+                            <div style="font-size: 22px; font-weight: 900; color: #3b82f6; margin-bottom: 4px; font-family: 'Courier New', monospace;">¥${item.currentPrice.toLocaleString()}</div>
+                            <div style="font-size: 12px; font-weight: 600; color: ${isPositive ? '#059669' : '#dc2626'}; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                <span>${isPositive ? '▲' : '▼'}</span>
+                                <span>${isPositive ? '+' : ''}${priceChange.toFixed(2)}%</span>
+                            </div>
+                            <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">購入平均比</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        ` : `
+        <div style="margin-bottom: 25px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 12px; padding: 20px; text-align: center;">
+            <div style="font-size: 18px; font-weight: 600; color: #92400e; margin-bottom: 8px;">⚠️ 価格データがありません</div>
+            <div style="font-size: 14px; color: #78350f; margin-bottom: 12px;">「価格更新」ボタンをクリックして最新価格を取得してください</div>
+            <button onclick="fetchCurrentPrices()" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'">
+                💰 価格を更新
+            </button>
+        </div>
+        `}
+
         <!-- ポートフォリオサマリー -->
         <div style="margin-bottom: 25px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;">
             <div style="text-align: center; margin-bottom: 15px;">
@@ -713,7 +757,7 @@ function generatePortfolioTable(portfolioData) {
             <thead>
                 <tr style="background-color: #e8f5e8;">
                     <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
-                    <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
+                    <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 700; font-size: 1rem; color: #1e40af; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 3px solid #3b82f6; border-right: 3px solid #3b82f6;">💰 現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
                     <th onclick="sortTable('averagePurchaseRate')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
                     <th onclick="sortTable('currentValue')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
                     <th onclick="sortTable('heldInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #2c3e50;">保有分購入額 <span id="sort-heldInvestment">${getSortIcon('heldInvestment')}</span></th>
@@ -733,7 +777,7 @@ function generatePortfolioTable(portfolioData) {
         html += `
             <tr style="transition: all 0.2s ease; ${profitBg ? `background-color: ${profitBg};` : ''}" onmouseover="this.style.backgroundColor='rgba(74, 144, 226, 0.08)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.backgroundColor='${profitBg}'; this.style.transform=''">
                 <td onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" style="padding: 12px; font-weight: bold; color: #2196F3; border-bottom: 1px solid #f1f3f4; cursor: pointer; text-decoration: underline;" title="クリックして${item.coinName}の詳細を表示">${item.coinName}</td>
-                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
+                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 1.05rem; font-weight: 800; color: #1e40af; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 3px solid #3b82f6; border-right: 3px solid #3b82f6; font-family: 'Courier New', monospace;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">¥${item.averagePurchaseRate.toLocaleString()}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentValue > 0 ? '¥' + item.currentValue.toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">¥${item.currentHoldingInvestment.toLocaleString()}</td>
