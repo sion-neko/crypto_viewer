@@ -471,17 +471,9 @@ function displayDashboard(portfolioData) {
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
         // portfolioDataの保存はupdateData()内で実行済み（価格情報はクリアして保存）
 
-        // 最も古いキャッシュのタイムスタンプを表示
-        const oldestTimestamp = Math.min(...cacheTimestamps);
-        const oldestDate = new Date(oldestTimestamp);
-        const timeStr = oldestDate.toLocaleString('ja-JP', {
-            month: 'numeric',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric'
-        });
+        // 価格ステータスを更新（実際のキャッシュ状態を表示）
         if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus(`${Object.keys(cachedPriceData).length}銘柄 | ${timeStr}のキャッシュ`);
+            updatePriceStatus();
         }
     } else {
         // キャッシュが全くない場合は自動的に価格を取得
