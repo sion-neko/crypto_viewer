@@ -633,7 +633,7 @@ function generateMobilePortfolioCards(portfolioData) {
             const profitMargin = row.totalInvestment !== 0 ? ((totalProfit / Math.abs(row.totalInvestment)) * 100) : 0;
 
             html += `
-                <div class="table-card">
+                <div class="table-card" onclick="window.uiService.switchSubTab('${row.coinName.toLowerCase()}')" style="cursor: pointer;" title="タップして${row.coinName}の詳細を表示">
                     <div class="card-header" style="color: ${totalProfit >= 0 ? '#059669' : '#dc2626'};">
                         ${row.coinName}
                         <span style="float: right; font-size: 0.9rem;">
@@ -769,7 +769,7 @@ function generatePortfolioTable(portfolioData) {
 
         html += `
             <tr style="transition: all 0.2s ease; ${profitBg ? `background-color: ${profitBg};` : ''}" onmouseover="this.style.backgroundColor='rgba(74, 144, 226, 0.08)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.backgroundColor='${profitBg}'; this.style.transform=''">
-                <td style="padding: 12px; font-weight: bold; color: #2196F3; border-bottom: 1px solid #f1f3f4;">${item.coinName}</td>
+                <td onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" style="padding: 12px; font-weight: bold; color: #2196F3; border-bottom: 1px solid #f1f3f4; cursor: pointer; text-decoration: underline;" title="クリックして${item.coinName}の詳細を表示">${item.coinName}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">¥${item.averagePurchaseRate.toLocaleString()}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f3f4; font-size: 0.9rem;">${item.currentValue > 0 ? '¥' + item.currentValue.toLocaleString() : '-'}</td>
