@@ -11,11 +11,21 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- ハンバーガーメニューボタン（モバイルのみ） -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="メニュー">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- オーバーレイ（モバイルのみ） -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- ホバートリガーエリア -->
     <div class="sidebar-trigger"></div>
 
     <!-- サイドバー -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h1>ポートフォリオビューアー</h1>
             <p style="font-size: 0.9rem; color: #7f8c8d; margin: 0;">暗号資産分析ツール</p>

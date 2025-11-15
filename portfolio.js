@@ -682,9 +682,6 @@ function generateMobilePortfolioCards(portfolioData) {
 
 // ポートフォリオテーブル生成（損益計算版）
 function generatePortfolioTable(portfolioData) {
-    if (isMobile()) {
-        return generateMobilePortfolioCards(portfolioData);
-    }
     const stats = portfolioData.stats;
     const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
 
@@ -737,17 +734,18 @@ function generatePortfolioTable(portfolioData) {
         </div>
 
         <!-- 銘柄別詳細テーブル -->
-        <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; margin-bottom: 30px; width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; table-layout: fixed;">
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 30px;">
+            <table class="portfolio-table" border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; min-width: 800px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
             <colgroup>
-                <col style="width: 8%;">  <!-- 銘柄 -->
-                <col style="width: 10%;">  <!-- 現在価格 -->
-                <col style="width: 14%;">  <!-- 平均購入レート -->
-                <col style="width: 10%;">  <!-- 評価額 -->
-                <col style="width: 12%;">  <!-- 保有分購入額 -->
-                <col style="width: 11%;">  <!-- 合計購入額 -->
-                <col style="width: 11%;">  <!-- 含み損益 -->
-                <col style="width: 11%;">  <!-- 実現損益 -->
-                <col style="width: 13%;">  <!-- 総合損益 -->
+                <col style="width: 100px;">  <!-- 銘柄 -->
+                <col style="width: 120px;">  <!-- 現在価格 -->
+                <col style="width: 140px;">  <!-- 平均購入レート -->
+                <col style="width: 120px;">  <!-- 評価額 -->
+                <col style="width: 130px;">  <!-- 保有分購入額 -->
+                <col style="width: 120px;">  <!-- 合計購入額 -->
+                <col style="width: 120px;">  <!-- 含み損益 -->
+                <col style="width: 120px;">  <!-- 実現損益 -->
+                <col style="width: 130px;">  <!-- 総合損益 -->
             </colgroup>
             <thead>
                 <tr style="background-color: #e8f5e8;">
@@ -787,6 +785,7 @@ function generatePortfolioTable(portfolioData) {
     html += `
             </tbody>
         </table>
+        </div>
     `;
 
     return html;
@@ -840,9 +839,6 @@ function generateMobileTradingCards(portfolioData) {
 
 // 取引履歴テーブル生成
 function generateTradingHistoryTable(portfolioData) {
-    if (isMobile()) {
-        return generateMobileTradingCards(portfolioData);
-    }
     const allTransactions = [];
     Object.values(portfolioData.coins).forEach(coinNameData => {
         allTransactions.push(...coinNameData.buyTransactions, ...coinNameData.sellTransactions);
@@ -854,8 +850,8 @@ function generateTradingHistoryTable(portfolioData) {
     let html = `
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
             <h4 style="color: #2c3e50; margin-bottom: 20px;">全取引履歴（新しい順）</h4>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
+            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                <table class="trading-history-table" style="width: 100%; min-width: 700px; border-collapse: collapse;">
                     <thead>
                         <tr style="background-color: #f8f9fa;">
                             <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
@@ -980,8 +976,8 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
         <!-- 取引履歴テーブル -->
         <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
             <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinNameSummary.coinName} 全取引履歴（${coinNameData.allTransactions.length}件）</h4>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
+            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                <table style="width: 100%; min-width: 600px; border-collapse: collapse;">
                     <thead>
                         <tr style="background-color: #f8f9fa;">
                             <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>

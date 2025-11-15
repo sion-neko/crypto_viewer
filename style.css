@@ -433,24 +433,97 @@ body {
     font-weight: 400;
 }
 
+/* ハンバーガーメニュー用のトグルボタン（モバイルのみ） */
+.sidebar-toggle {
+    display: none;
+}
+
 /* レスポンシブデザイン */
 @media (max-width: 768px) {
     body {
-        flex-direction: column;
+        display: block; /* flexを解除 */
         padding: 0;
         margin: 0;
     }
 
+    /* ハンバーガーメニューボタン */
+    .sidebar-toggle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1002;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        transition: all 0.3s ease;
+        padding: 0;
+    }
+
+    .sidebar-toggle:active {
+        transform: scale(0.95);
+    }
+
+    .sidebar-toggle span {
+        display: block;
+        width: 20px;
+        height: 2.5px;
+        background: white;
+        transition: all 0.3s ease;
+        border-radius: 2px;
+    }
+
+    /* ハンバーガーメニューが開いている時のアイコン変化 */
+    .sidebar-toggle.active {
+        gap: 0; /* ×印を作るときはgapを0に */
+    }
+
+    .sidebar-toggle.active span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin: 0;
+    }
+
+    .sidebar-toggle.active span:nth-child(1) {
+        transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .sidebar-toggle.active span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .sidebar-toggle.active span:nth-child(3) {
+        transform: translate(-50%, -50%) rotate(-45deg);
+    }
+
+    /* サイドバー - モバイル版 */
     .sidebar {
-        position: relative;
-        width: 100%;
-        height: auto;
-        margin-bottom: 15px;
-        padding: 10px;
-        border-right: none;
-        border-bottom: 1px solid #e2e8f0;
+        position: fixed !important; /* 確実に固定配置 */
+        width: 280px;
+        height: 100vh;
+        padding: 60px 20px 20px 20px;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: none;
+        left: -280px !important; /* 確実に画面外 */
+        top: 0 !important;
+        transition: left 0.3s ease;
+        z-index: 1001;
+        background: #ffffff;
+        overflow-y: auto;
+    }
+
+    .sidebar.mobile-open {
         left: 0 !important;
-        transition: none;
     }
 
     .sidebar::before,
@@ -458,73 +531,129 @@ body {
         display: none;
     }
 
+    /* オーバーレイ */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    .sidebar-trigger {
+        display: none;
+    }
+
     .main-content {
         margin-left: 0;
+        padding: 70px 12px 12px 12px;
+        width: 100%;
+    }
+
+    .sidebar-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
     }
 
     .sidebar-header h1 {
-        font-size: 1.25rem;
+        font-size: 1.2rem;
         margin-bottom: 5px;
     }
 
     .sidebar-header p {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
     }
 
-    .main-content {
-        margin-left: 0;
-        padding: 10px;
+    /* ヘッダー - よりコンパクトに */
+    .header {
+        padding: 25px 20px;
+        margin-bottom: 20px;
     }
 
     .header h1 {
-        font-size: 1.5rem;
-        margin-bottom: 10px;
+        font-size: 1.4rem;
+        margin-bottom: 8px;
+    }
+
+    .header p {
+        font-size: 0.9rem;
     }
 
     .upload-area, .info-section {
-        padding: 20px;
+        padding: 20px 15px;
         margin-bottom: 15px;
     }
 
     .upload-zone {
-        padding: 30px 15px;
+        padding: 25px 15px;
         font-size: 0.9rem;
     }
 
-    /* タブナビゲーション */
+    /* タブナビゲーション - 横スクロール対応 */
     .tab-nav {
-        flex-direction: column;
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
         gap: 0;
         margin-bottom: 0;
     }
 
+    .tab-nav::-webkit-scrollbar {
+        display: none;
+    }
+
     .tab-button {
-        width: 100%;
-        padding: 12px 15px;
-        font-size: 0.95rem;
+        flex: 1;
+        min-width: 140px;
+        padding: 14px 20px;
+        font-size: 1rem;
         border-radius: 0;
         margin: 0;
         border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
     }
 
-    /* サブタブナビゲーション */
+    .tab-content {
+        padding: 20px 15px;
+    }
+
+    /* サブタブナビゲーション - 横スクロール対応 */
     .subtab-nav {
-        flex-wrap: wrap;
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
         gap: 8px;
         margin-bottom: 15px;
+        padding-bottom: 5px;
+        flex-wrap: nowrap;
+    }
+
+    .subtab-nav::-webkit-scrollbar {
+        display: none;
     }
 
     .subtab-button {
-        padding: 8px 12px;
-        font-size: 0.85rem;
-        min-width: 80px;
-        flex: 1;
-        max-width: calc(50% - 4px);
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        min-width: 90px;
+        flex-shrink: 0;
+        white-space: nowrap;
     }
 
     /* テーブル対応 */
     .portfolio-table, .trading-history-table {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         display: block;
         overflow-x: auto;
         white-space: nowrap;
@@ -536,11 +665,11 @@ body {
     .portfolio-table td,
     .trading-history-table th,
     .trading-history-table td {
-        padding: 8px 4px;
-        min-width: 60px;
+        padding: 10px 6px;
+        min-width: 70px;
     }
 
-    /* カード形式のテーブル表示 */
+    /* カード形式のテーブル表示 - 改善版 */
     .mobile-card-table {
         display: block;
     }
@@ -551,50 +680,65 @@ body {
 
     .table-card {
         background: white;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 10px;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 12px;
         border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .table-card:active {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
 
     .card-header {
         font-weight: 600;
-        font-size: 1rem;
-        margin-bottom: 8px;
+        font-size: 1.05rem;
+        margin-bottom: 10px;
         color: #1a202c;
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 5px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 8px;
     }
 
     .card-row {
         display: flex;
         justify-content: space-between;
-        padding: 3px 0;
-        font-size: 0.875rem;
+        padding: 6px 0;
+        font-size: 0.9rem;
+        line-height: 1.5;
     }
 
     .card-label {
         color: #64748b;
-        font-weight: 400;
+        font-weight: 500;
+        flex-shrink: 0;
+        margin-right: 10px;
     }
 
     .card-value {
         font-weight: 600;
         text-align: right;
+        word-break: break-word;
     }
 
     /* 価格更新セクション */
     #price-update-section {
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
         text-align: center;
-        padding: 12px;
+        padding: 15px;
     }
 
     #price-update-section button {
         width: 100%;
-        padding: 12px;
-        font-size: 0.95rem;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    #price-update-section span {
+        font-size: 0.85rem !important;
     }
 
     /* キーボードショートカット説明 */
@@ -604,16 +748,22 @@ body {
 
     /* チャート調整 */
     .chart-container {
-        height: 250px !important;
+        height: 280px !important;
         margin-bottom: 15px;
     }
 
-    /* ボタン類 */
+    /* ボタン類 - タッチフレンドリー */
     button {
-        padding: 10px 15px;
-        font-size: 0.9rem;
+        padding: 12px 16px;
+        font-size: 0.95rem;
         border-radius: 8px;
-        min-height: 44px; /* タッチフレンドリー */
+        min-height: 44px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    button:active {
+        transform: scale(0.98);
     }
 
     /* フォーム要素 */
@@ -708,37 +858,194 @@ body {
 
     /* ナビゲーション */
     .nav-item {
+        padding: 14px 16px;
+        font-size: 1rem;
+        margin-bottom: 8px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* データ管理セクション */
+    #data-management {
+        margin-top: 15px;
+    }
+
+    #data-management button {
+        font-size: 0.9rem;
+    }
+
+    /* ポートフォリオサマリー */
+    .portfolio-summary {
+        padding: 20px 15px;
+    }
+
+    .portfolio-summary h3 {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+
+    .summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .summary-value {
+        font-size: 1.3rem;
+    }
+
+    .summary-label {
+        font-size: 0.85rem;
+    }
+
+    /* 情報セクション */
+    .info-list li {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin-bottom: 10px;
+    }
+
+    /* 読み込み済みファイル表示 */
+    #upload-files-section {
+        margin-top: 15px;
+        margin-bottom: 20px;
+    }
+
+    #upload-files-list {
+        font-size: 0.9rem;
+    }
+
+    /* トースト通知 - モバイル調整 */
+    .toast-container {
+        top: 70px;
+        right: 10px;
+        left: 10px;
+    }
+
+    .toast-item {
+        min-width: auto;
+        max-width: none;
+        font-size: 0.85rem;
         padding: 12px 15px;
-        font-size: 0.95rem;
-        margin-bottom: 5px;
     }
 }
 
 /* より小さいスマホ画面 */
 @media (max-width: 480px) {
+    /* ヘッダー調整 */
     .sidebar-header h1 {
         font-size: 1.1rem;
     }
 
+    .header {
+        padding: 20px 15px;
+    }
+
+    .header h1 {
+        font-size: 1.3rem;
+    }
+
+    .header p {
+        font-size: 0.85rem;
+    }
+
+    /* メインコンテンツ */
     .main-content {
-        padding: 8px;
+        padding: 65px 10px 10px 10px;
     }
 
+    /* タブコンテンツ */
+    .tab-content {
+        padding: 15px 10px;
+    }
+
+    /* サブタブボタン */
     .subtab-button {
-        max-width: 100%;
-        margin-bottom: 5px;
+        padding: 9px 14px;
+        font-size: 0.85rem;
+        min-width: 80px;
     }
 
+    /* テーブル */
     .portfolio-table, .trading-history-table {
-        font-size: 0.75rem;
+        font-size: 0.8rem;
     }
 
+    .portfolio-table th,
+    .portfolio-table td,
+    .trading-history-table th,
+    .trading-history-table td {
+        padding: 8px 4px;
+        min-width: 65px;
+    }
+
+    /* タブボタン */
     .tab-button {
-        padding: 10px 12px;
-        font-size: 0.9rem;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+        min-width: 120px;
     }
 
+    /* チャート */
     .chart-container {
-        height: 200px !important;
+        height: 240px !important;
+    }
+
+    /* カード */
+    .table-card {
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .card-header {
+        font-size: 1rem;
+    }
+
+    .card-row {
+        font-size: 0.85rem;
+        padding: 5px 0;
+    }
+
+    /* アップロードエリア */
+    .upload-area, .info-section {
+        padding: 15px 10px;
+    }
+
+    .upload-zone {
+        padding: 20px 12px;
+    }
+
+    /* サマリーグリッド */
+    .summary-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .summary-value {
+        font-size: 1.2rem;
+    }
+
+    .summary-label {
+        font-size: 0.8rem;
+    }
+
+    /* ボタン */
+    button {
+        font-size: 0.9rem;
+        padding: 11px 14px;
+    }
+
+    /* サイドバートグルボタン */
+    .sidebar-toggle {
+        top: 12px;
+        left: 12px;
+        width: 40px;
+        height: 40px;
+        gap: 4px;
+    }
+
+    .sidebar-toggle span {
+        width: 18px;
+        height: 2px;
     }
 }
