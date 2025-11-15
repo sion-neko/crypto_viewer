@@ -522,11 +522,12 @@ async function renderCoinProfitChart(coinName) {
             priceHistory
         );
 
-        // チャートを描画
+        // チャートを描画（含み損益のみ）
         displayProfitChart(
             canvasId,
             profitData,
-            `${coinName} 損益推移（過去1か月）`
+            `${coinName} 含み損益推移（過去1か月）`,
+            'coin'
         );
 
         showSuccessMessage(`${coinName}の損益チャートを表示しました`);
