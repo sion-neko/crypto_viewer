@@ -682,9 +682,6 @@ function generateMobilePortfolioCards(portfolioData) {
 
 // ポートフォリオテーブル生成（損益計算版）
 function generatePortfolioTable(portfolioData) {
-    if (isMobile()) {
-        return generateMobilePortfolioCards(portfolioData);
-    }
     const stats = portfolioData.stats;
     const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
 
