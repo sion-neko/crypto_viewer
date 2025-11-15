@@ -593,6 +593,46 @@
             return 'other';
         }
 
+        function getCacheDescription(key) {
+            // 価格履歴
+            if (key.includes('_price_history_')) {
+                const match = key.match(/^([a-z]+)_price_history_(\d+)d$/i);
+                if (match) {
+                    const coinName = match[1].toUpperCase();
+                    const days = match[2];
+                    return `${coinName}の過去${days}日間の価格履歴`;
+                }
+            }
+
+            // 現在価格
+            if (key.startsWith('prices_')) {
+                const coins = key.replace('prices_', '').split('_').map(c => c.toUpperCase()).join('、');
+                return `${coins}の現在価格`;
+            }
+
+            // チャートデータ
+            if (key.startsWith('chart_')) {
+                const match = key.match(/^chart_([A-Z]+)_(\d+)days$/);
+                if (match) {
+                    const coinName = match[1];
+                    const days = match[2];
+                    return `${coinName}の${days}日チャートデータ`;
+                }
+            }
+
+            // ポートフォリオデータ
+            if (key === 'portfolioData') return 'ポートフォリオ分析データ（保有状況、損益計算）';
+            if (key === 'rawTransactions') return '全取引履歴（重複検出用）';
+            if (key === 'loadedFileNames') return '読み込み済みCSVファイル名リスト';
+
+            // 設定データ
+            if (key === 'portfolioChartMode') return 'チャート表示モード設定（combined/individual）';
+            if (key === 'cache_metadata') return 'キャッシュメタデータ';
+
+            // その他
+            return 'キャッシュデータ';
+        }
+
         function getCacheMetadata(key, value) {
             let metadata = {
                 size: new Blob([value]).size,
@@ -684,6 +724,10 @@
                         aVal = a.key.toLowerCase();
                         bVal = b.key.toLowerCase();
                         break;
+                    case 'description':
+                        aVal = getCacheDescription(a.key);
+                        bVal = getCacheDescription(b.key);
+                        break;
                     case 'type':
                         aVal = a.metadata.type;
                         bVal = b.metadata.type;
@@ -771,6 +815,7 @@
             const rows = cacheData.map(item => {
                 const { key, metadata } = item;
                 const timeRemaining = getTimeRemaining(metadata.expiresAt);
+                const description = getCacheDescription(key);
 
                 let status = '-';
                 let statusClass = '';
@@ -787,6 +832,7 @@
                 return `
                     <tr onclick="openModal('${escapedKey}')">
                         <td><div class="table-key" title="${key}">${key}</div></td>
+                        <td>${description}</td>
                         <td><span class="table-type type-${metadata.type}">${typeLabels[metadata.type]}</span></td>
                         <td>${formatBytes(metadata.size)}</td>
                         <td>${formatDate(metadata.cachedAt)}</td>
@@ -814,6 +860,7 @@
                         <thead>
                             <tr>
                                 <th class="${getSortClass('key')}" onclick="handleSort('key')">キー</th>
+                                <th class="${getSortClass('description')}" onclick="handleSort('description')">説明</th>
                                 <th class="${getSortClass('type')}" onclick="handleSort('type')">種類</th>
                                 <th class="${getSortClass('size')}" onclick="handleSort('size')">サイズ</th>
                                 <th class="${getSortClass('cachedAt')}" onclick="handleSort('cachedAt')">キャッシュ時刻</th>
