@@ -331,11 +331,7 @@ class ChartService {
     destroyChart(canvasId) {
         const chart = this.chartInstances[canvasId];
         if (chart) {
-            try {
-                chart.destroy();
-            } catch (error) {
-                console.warn(`チャート破棄エラー (${canvasId}):`, error);
-            }
+            chart.destroy();
             delete this.chartInstances[canvasId];
         }
     }
