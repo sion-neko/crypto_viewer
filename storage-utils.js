@@ -42,16 +42,6 @@ function getCurrentPricesCacheKey(coinNames) {
   return `prices_${coinNames.sort().join('_')}`;
 }
 
-/**
-* チャートデータのキャッシュキーを生成
-* @param {string} coinName - 銘柄シンボル
-* @param {number} days - 日数 (例: 30)
-* @returns {string} キャッシュキー
-*/
-function getChartDataCacheKey(coinName, days = 30) {
-  return `chart_${coinName}_${days}days`;
-}
-
 // キャッシュの有効期限設定を AppConfig から取得
 const CACHE_DURATIONS = AppConfig.cacheDurations;
 
@@ -62,8 +52,8 @@ window.CACHE_DURATIONS = CACHE_DURATIONS;
 window.cacheKeys = {
     priceHistory: getPriceHistoryCacheKey,
     currentPrice: getCurrentPriceCacheKey,        // 新: 個別銘柄キャッシュ（推奨）
-    currentPrices: getCurrentPricesCacheKey,      // 旧: 複数銘柄キャッシュ（非推奨）
-    chartData: getChartDataCacheKey
+    currentPrices: getCurrentPricesCacheKey       // 旧: 複数銘柄キャッシュ（非推奨）
+    // chartData は price_history に統合されたため削除
 };
 
 
@@ -188,6 +178,35 @@ class CacheService {
 
         if (clearedCount > 0) {
             console.log(`旧形式の価格キャッシュを${clearedCount}件削除しました`);
+        }
+
+        return clearedCount;
+    }
+
+    /**
+     * 旧チャートキャッシュ（chart_*）をクリーンアップ
+     * price_historyへの統合により不要になったチャートキャッシュを削除
+     * @returns {number} クリアしたキャッシュ数
+     */
+    cleanupLegacyChartCache() {
+        let clearedCount = 0;
+        const keysToDelete = [];
+
+        // chart_ で始まる旧キャッシュキーを検出
+        for (let key in this.storage) {
+            if (this.storage.hasOwnProperty(key) && key.startsWith('chart_')) {
+                keysToDelete.push(key);
+            }
+        }
+
+        // 旧キャッシュを削除
+        keysToDelete.forEach(key => {
+            this.storage.removeItem(key);
+            clearedCount++;
+        });
+
+        if (clearedCount > 0) {
+            console.log(`旧チャートキャッシュ ${clearedCount} 件をクリーンアップしました（chart_* → price_history に統合済み）`);
         }
 
         return clearedCount;

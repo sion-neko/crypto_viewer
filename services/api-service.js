@@ -228,51 +228,6 @@ class APIService {
         return results;
     }
 
-    /**
-     * チャート用の価格履歴を取得（簡易フォーマット）
-     * @param {string} coinName - 銘柄シンボル
-     * @param {number} days - 日数（デフォルト: 30）
-     * @returns {Promise<Array>} チャート用データ [{x: Date, y: number}, ...]
-     */
-    async fetchChartData(coinName, days = 30) {
-        const coingeckoId = this.config.coinGeckoMapping[coinName];
-        if (!coingeckoId) {
-            throw new Error(`${coinName}はサポートされていません`);
-        }
-
-        // キャッシュキーを生成
-        const cacheKey = this.cacheKeys.chartData(coinName, days);
-
-        // キャッシュチェック
-        const cachedData = this.cache.get(cacheKey);
-        if (cachedData) {
-            return cachedData;
-        }
-
-        // API呼び出し
-        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=${days}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (!data.prices || data.prices.length === 0) {
-            return [];
-        }
-
-        const chartData = data.prices.map(([timestamp, price]) => ({
-            x: new Date(timestamp),
-            y: price
-        }));
-
-        // キャッシュに保存（6時間）
-        this.cache.set(cacheKey, chartData, this.config.cacheDurations.CHART_DATA);
-
-        return chartData;
-    }
 
     // ===================================================================
     // 内部メソッド

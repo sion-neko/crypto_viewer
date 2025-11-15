@@ -102,13 +102,20 @@ class ChartService {
         this._showLoadingMessage(canvas, coinName);
 
         try {
-            // チャートデータを取得
-            const chartData = await this.apiService.fetchChartData(coinName, 30);
+            // 価格履歴を取得（chartDataではなくpriceHistoryを使用）
+            const priceHistory = await this.apiService.fetchPriceHistory(coinName, { days: 30 });
 
             // データ検証
-            if (!Array.isArray(chartData) || chartData.length === 0) {
+            if (!Array.isArray(priceHistory) || priceHistory.length === 0) {
                 throw new Error('価格データを取得できませんでした');
             }
+
+            // priceHistory形式 [{date: Date, price: number}, ...] を
+            // Chart.js形式 [{x: Date, y: number}, ...] に変換
+            const chartData = priceHistory.map(point => ({
+                x: point.date,
+                y: point.price
+            }));
 
             // ローディング表示を削除
             this._removeLoadingMessage(canvas);

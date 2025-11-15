@@ -560,6 +560,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.cache && typeof window.cache.cleanupLegacyPriceCache === 'function') {
             window.cache.cleanupLegacyPriceCache();
         }
+
+        // 旧チャートキャッシュのクリーンアップ（chart_* → price_history統合）
+        if (window.cache && typeof window.cache.cleanupLegacyChartCache === 'function') {
+            window.cache.cleanupLegacyChartCache();
+        }
     }, 1000);
 
     // 価格データ状況を初期表示

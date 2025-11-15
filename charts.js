@@ -778,47 +778,6 @@ async function displayCoinNameChart(coinName) {
     }
 }
 
-// 銘柄別履歴データ取得 (using CacheService)
-async function fetchCoinNameHistoricalData(coinName) {
-    // AppConfig から銘柄マッピングを取得
-    const coingeckoId = AppConfig.coinGeckoMapping[coinName];
 
-    if (!coingeckoId) {
-        throw new Error(`${coinName}はサポートされていません`);
-    }
-
-    // キャッシュキーを生成
-    const cacheKey = cacheKeys.chartData(coinName, 30);
-
-    // キャッシュチェック
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-        return cachedData;
-    }
-
-    try {
-        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=jpy&days=30`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.prices) {
-            const chartData = data.prices.map(([timestamp, price]) => ({
-                x: new Date(timestamp),
-                y: price
-            }));
-
-            // キャッシュに保存（6時間）
-            cache.set(cacheKey, chartData, PRICE_CACHE_CONFIG.CHART_DATA);
-
-            return chartData;
-        }
-
-        return [];
-    } catch (error) {
-        console.error(`${coinName}履歴データ取得エラー:`, error);
-        return [];
-    }
-}
 // 関数を即座にグローバルに登録
 window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;
