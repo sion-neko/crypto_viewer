@@ -24,37 +24,13 @@ function getCurrentPriceCacheKey(coinName) {
   return `price_${coinName.toLowerCase()}`;
 }
 
-/**
-* 現在価格データのキャッシュキーを生成（複数銘柄）- 非推奨
-* @deprecated 個別銘柄キャッシュ (getCurrentPriceCacheKey) を使用してください
-* @param {string|string[]} coinNames - 銘柄シンボル（配列または単一）
-* @returns {string} キャッシュキー
-*/
-function getCurrentPricesCacheKey(coinNames) {
-  // 後方互換性: 単一銘柄の場合は個別キャッシュキーを返す
-  if (typeof coinNames === 'string') {
-    return getCurrentPriceCacheKey(coinNames);
-  }
-  // 配列の場合も個別キャッシュに誘導するため、最初の銘柄のキーを返す
-  if (Array.isArray(coinNames) && coinNames.length === 1) {
-    return getCurrentPriceCacheKey(coinNames[0]);
-  }
-  // 互換性のため、従来形式も維持（将来削除予定）
-  return `prices_${coinNames.sort().join('_')}`;
-}
-
 // キャッシュの有効期限設定を AppConfig から取得
 const CACHE_DURATIONS = AppConfig.cacheDurations;
-
-// 後方互換性のため、グローバルにも公開
-window.CACHE_DURATIONS = CACHE_DURATIONS;
 
 // キャッシュキー生成関数をオブジェクトにまとめてグローバルに公開
 window.cacheKeys = {
     priceHistory: getPriceHistoryCacheKey,
-    currentPrice: getCurrentPriceCacheKey,        // 新: 個別銘柄キャッシュ（推奨）
-    currentPrices: getCurrentPricesCacheKey       // 旧: 複数銘柄キャッシュ（非推奨）
-    // chartData は price_history に統合されたため削除
+    currentPrice: getCurrentPriceCacheKey
 };
 
 
@@ -305,9 +281,6 @@ class CacheService {
 
 // シングルトンインスタンスを作成してグローバルに公開
 window.cache = new CacheService();
-
-// 後方互換性のためのエイリアス
-window.CacheService = CacheService;
 
 // ===================================================================
 // LOCALSTORAGE UTILITY FUNCTIONS

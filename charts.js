@@ -764,20 +764,5 @@ function displayMultiCoinNameProfitChart(canvasId, allProfitData, title) {
 
 }
 
-// ===================================================================
-// COIN_NAME CHART FUNCTIONS
-// ===================================================================
-
-// 銘柄別チャート描画（サービスクラスへの委譲版）
-async function displayCoinNameChart(coinName) {
-    try {
-        // ChartServiceを使用してチャートを描画
-        await window.chartService.renderCoinChart(coinName);
-    } catch (error) {
-        console.error(`${coinName}チャート描画エラー:`, error);
-    }
-}
-
-
 // 関数を即座にグローバルに登録
 window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;
