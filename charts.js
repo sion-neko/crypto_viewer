@@ -529,7 +529,7 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画（サービスクラスへの委譲版）
-async function renderAllCoinNamesProfitChart(chartMode, portfolioData = null) {
+async function renderAllCoinNamesProfitChart(portfolioData = null, chartMode = 'combined') {
     try {
         // portfolioDataが渡されなければ取得
         const data = portfolioData || window.portfolioDataService.getData();
