@@ -39,7 +39,12 @@ class PortfolioDataService {
     updateData(portfolioData) {
         if (portfolioData) {
             this.currentData = portfolioData;
-            safeSetJSON('portfolioData', portfolioData);
+
+            // 保存用のコピーを作成して価格情報をクリア
+            // （価格は個別キャッシュ price_btc などから取得するため、永続化不要）
+            const dataToSave = JSON.parse(JSON.stringify(portfolioData));
+            clearPriceDataFromPortfolio(dataToSave);
+            safeSetJSON('portfolioData', dataToSave);
         }
     }
 
@@ -486,7 +491,7 @@ function displayDashboard(portfolioData) {
         portfolioDataService.updateData(portfolioData);
         const updatedData = portfolioDataService.getData();
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
-        safeSetJSON('portfolioData', portfolioData);
+        // portfolioDataの保存はupdateData()内で実行済み（価格情報はクリアして保存）
 
         // 最も古いキャッシュのタイムスタンプを表示
         const oldestTimestamp = Math.min(...cacheTimestamps);
