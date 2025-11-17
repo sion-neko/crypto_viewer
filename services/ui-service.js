@@ -345,10 +345,9 @@ class TableRenderer {
                 // 1円以上は整数表示
                 return '¥' + Math.round(price).toLocaleString();
             } else if (price > 0) {
-                // 1円未満は科学的記数法
-                const exponent = Math.floor(Math.log10(price));
-                const mantissa = (price / Math.pow(10, exponent)).toFixed(1);
-                return `¥${mantissa}×10<sup>${exponent}</sup>`;
+                // 1円未満は10^-3単位で表示
+                const mantissa = (price * 1000).toFixed(3);
+                return `¥${mantissa}×10<sup>-3</sup>`;
             }
             return '取得中...';
         };
