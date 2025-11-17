@@ -498,9 +498,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===================================================================
 
 /**
- * 価格履歴蓄積の初期化（起動時に自動実行）
- * キャッシュがある場合のみ自動更新、ない場合は手動実行が必要
- * 保有銘柄の価格履歴を差分取得してマージ（直列実行でAPI制限対策）
+ * 価格履歴蓄積の初期化
+ * - 自動更新: 30日分取得（軽量・高速）
+ * - 手動取得: 365日分取得（初回や過去データ蓄積用）
+ * - キャッシュがない場合は手動実行が必要
+ * @param {boolean} isManualTrigger - 手動トリガーかどうか
  */
 async function initializePriceHistoryAccumulation(isManualTrigger = false) {
     const portfolioData = window.cache.getPortfolioData();
@@ -533,9 +535,10 @@ async function initializePriceHistoryAccumulation(isManualTrigger = false) {
     }
 
     // fetchMultiplePriceHistoriesを使用（直列実行でAPI制限対策）
-    // 初回取得: 1500ms待機、差分更新: 300ms待機
-    const delayMs = hasCache ? 300 : 1500;
-    const results = await window.apiService.fetchMultiplePriceHistories(coinNames, { delayMs });
+    // 手動取得: 365日・1500ms待機、自動更新: 30日・300ms待機
+    const days = isManualTrigger ? 365 : 30;
+    const delayMs = isManualTrigger ? 1500 : 300;
+    const results = await window.apiService.fetchMultiplePriceHistories(coinNames, { days, delayMs });
 
     // 成功・失敗をカウント
     let successCount = 0;

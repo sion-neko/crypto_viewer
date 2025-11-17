@@ -168,6 +168,7 @@ class APIService {
      * 単一銘柄の価格履歴を取得（蓄積データ優先、差分更新）
      * @param {string} coinName - 銘柄シンボル
      * @param {object} options - オプション設定
+     * @param {number} options.days - 取得日数（デフォルト: 30、最大: 365）
      * @param {string} options.vsCurrency - 通貨単位（デフォルト: 'jpy'）
      * @param {string} options.interval - 間隔（デフォルト: 'daily'）
      * @param {number} options.timeoutMs - タイムアウト（デフォルト: 10000）
@@ -176,6 +177,7 @@ class APIService {
      */
     async fetchPriceHistory(coinName, options = {}) {
         const {
+            days = 30,
             vsCurrency = 'jpy',
             interval = 'daily',
             timeoutMs = 10000
@@ -198,8 +200,8 @@ class APIService {
             return existing.data;
         }
 
-        // 差分取得日数を計算
-        const daysToFetch = this._calculateDaysToFetch(existing);
+        // 差分取得日数を計算（指定されたdaysを上限とする）
+        const daysToFetch = this._calculateDaysToFetch(existing, days);
 
         // API呼び出し
         const data = await this._executePriceHistoryApi(coingeckoId, {
@@ -368,19 +370,21 @@ class APIService {
      * 差分取得日数を計算
      * @private
      * @param {object} existing - 既存の蓄積データ
-     * @returns {number} 取得すべき日数（最大365）
+     * @param {number} maxDays - 最大取得日数（デフォルト: 30）
+     * @returns {number} 取得すべき日数
      */
-    _calculateDaysToFetch(existing) {
+    _calculateDaysToFetch(existing, maxDays = 30) {
         if (!existing || !existing.metadata || !existing.metadata.lastDate) {
-            return 365; // 初回は365日分取得
+            // 初回は指定されたmaxDays分取得
+            return maxDays;
         }
 
         const lastDate = new Date(existing.metadata.lastDate);
         const today = new Date();
         const daysDiff = Math.ceil((today - lastDate) / (24 * 60 * 60 * 1000));
 
-        // 差分が365日超の場合は365日のみ取得（欠損発生）
-        return Math.min(daysDiff, 365);
+        // 差分とmaxDaysの小さい方を取得（欠損を最小化しつつ上限を守る）
+        return Math.min(daysDiff, maxDays);
     }
 
     /**
