@@ -202,7 +202,7 @@ function updatePriceStatus(message = null) {
     }
 
     // ポートフォリオデータから銘柄リストを取得
-    const portfolioData = cache.getPortfolioData();
+    const portfolioData = window.portfolioDataService.getData();
     if (!portfolioData || !portfolioData.summary) {
         statusElement.textContent = '価格データなし';
         statusElement.style.color = '#6c757d';

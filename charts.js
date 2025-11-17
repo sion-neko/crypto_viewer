@@ -529,10 +529,13 @@ function generateCombinedProfitTimeSeries(allProfitData) {
 }
 
 // 全銘柄の総合損益推移チャートを描画（サービスクラスへの委譲版）
-async function renderAllCoinNamesProfitChart(portfolioData, chartMode) {
+async function renderAllCoinNamesProfitChart(portfolioData = null, chartMode = 'combined') {
     try {
+        // portfolioDataが渡されなければ取得
+        const data = portfolioData || window.portfolioDataService.getData();
+
         // ChartServiceを使用してチャートを描画
-        const result = await window.chartService.renderPortfolioProfitChart(portfolioData, chartMode);
+        const result = await window.chartService.renderPortfolioProfitChart(data, chartMode);
 
         if (result.success) {
             showSuccessMessage(`${result.coinCount}銘柄の損益推移チャートを表示しました`);

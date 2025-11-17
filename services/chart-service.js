@@ -619,7 +619,7 @@ class ChartService {
     }
 
     _createProfitChartOptions(title, profitData, canvasId) {
-        const coinNameMatch = canvasId ? canvasId.match(/^([a-z]+)-profit-chart$/) : null;
+        const coinNameMatch = canvasId ? canvasId.match(/^([a-z]+)-profit-chart$/i) : null;
         const coinName = coinNameMatch ? coinNameMatch[1].toUpperCase() : 'COIN_NAME';
 
         return {

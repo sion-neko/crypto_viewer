@@ -58,7 +58,10 @@ class APIService {
                 for (const coinName in pricesFromHistory) {
                     if (coinName !== '_metadata') {
                         prices[coinName] = pricesFromHistory[coinName];
-                        uncachedCoins.splice(uncachedCoins.indexOf(coinName), 1);
+                        const index = uncachedCoins.indexOf(coinName);
+                        if (index !== -1) {
+                            uncachedCoins.splice(index, 1);
+                        }
                     }
                 }
             }
@@ -87,7 +90,7 @@ class APIService {
                         if (data[coingeckoId]) {
                             const priceData = {
                                 price_jpy: data[coingeckoId].jpy,
-                                last_updated: data[coingeckoId].last_updated_at
+                                last_updated_at: data[coingeckoId].last_updated_at
                             };
                             prices[coinName] = priceData;
 
@@ -269,7 +272,7 @@ class APIService {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const parsed = JSON.parse(cached);
-                return parsed.data || null;
+                return parsed.value || null;
             }
         } catch (error) {
             console.error('期限切れキャッシュ取得エラー:', error);

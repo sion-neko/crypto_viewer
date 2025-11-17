@@ -356,7 +356,7 @@ function getSortIcon(field) {
 function updateSortIndicators(activeField, direction) {
     const fields = ['coinName', 'holdingQuantity', 'averagePurchaseRate', 'totalInvestment',
         'currentPrice', 'currentValue', 'totalSellAmount', 'realizedProfit',
-        'unrealizedProfit', 'realizedProfit', 'totalProfit'];
+        'unrealizedProfit', 'totalProfit'];
 
     fields.forEach(field => {
         const indicator = document.getElementById(`sort-${field}`);
@@ -401,7 +401,7 @@ function displayDashboard(portfolioData) {
                     <div class="card-header">
                         <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
                         <div style="float: right;">
-                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                                 更新
                             </button>
                         </div>
@@ -418,7 +418,7 @@ function displayDashboard(portfolioData) {
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
                         <div>
-                            <button onclick="renderAllCoinNamesProfitChart(window.cache.getPortfolioData(), 'combined')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                            <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                                 チャート更新
                             </button>
                         </div>
@@ -471,17 +471,9 @@ function displayDashboard(portfolioData) {
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
         // portfolioDataの保存はupdateData()内で実行済み（価格情報はクリアして保存）
 
-        // 最も古いキャッシュのタイムスタンプを表示
-        const oldestTimestamp = Math.min(...cacheTimestamps);
-        const oldestDate = new Date(oldestTimestamp);
-        const timeStr = oldestDate.toLocaleString('ja-JP', {
-            month: 'numeric',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric'
-        });
+        // 価格ステータスを更新（実際のキャッシュ状態を表示）
         if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus(`${Object.keys(cachedPriceData).length}銘柄 | ${timeStr}のキャッシュ`);
+            updatePriceStatus();
         }
     } else {
         // キャッシュが全くない場合は自動的に価格を取得
@@ -802,7 +794,7 @@ function generatePortfolioTable(portfolioData) {
 
 // モバイル用取引履歴カード生成
 function generateMobileTradingCards(portfolioData) {
-    // rawTransactionsから全取引を取得
+    // rawTransactionsから全取引を取得（coinDataには取引配列を保存していない）
     const allTransactions = safeGetJSON('rawTransactions', []);
 
     // 日付順にソート（新しい順）
@@ -847,7 +839,7 @@ function generateMobileTradingCards(portfolioData) {
 
 // 取引履歴テーブル生成
 function generateTradingHistoryTable(portfolioData) {
-    // rawTransactionsから全取引を取得
+    // rawTransactionsから全取引を取得（coinDataには取引配列を保存していない）
     const allTransactions = safeGetJSON('rawTransactions', []);
 
     // 日付順にソート（新しい順）

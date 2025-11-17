@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function renderCoinProfitChart(coinName) {
     try {
         // ポートフォリオデータを取得
-        const portfolioData = window.cache.getPortfolioData();
+        const portfolioData = window.portfolioDataService.getData();
         if (!portfolioData) {
             throw new Error('ポートフォリオデータが見つかりません');
         }
