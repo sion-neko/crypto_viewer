@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * 価格履歴蓄積の初期化（起動時に自動実行）
- * 保有銘柄の価格履歴を差分取得してマージ
+ * 保有銘柄の価格履歴を差分取得してマージ（直列実行でAPI制限対策）
  */
 async function initializePriceHistoryAccumulation() {
     const portfolioData = window.cache.getPortfolioData();
@@ -514,21 +514,19 @@ async function initializePriceHistoryAccumulation() {
 
     console.log(`価格履歴の差分更新を開始します（${coinNames.length}銘柄）...`);
 
+    // fetchMultiplePriceHistoriesを使用（直列実行+300ms待機でAPI制限対策）
+    const results = await window.apiService.fetchMultiplePriceHistories(coinNames);
+
+    // 成功・失敗をカウント
     let successCount = 0;
     let errorCount = 0;
-
-    // 各銘柄について差分取得を実行（並列）
-    const promises = coinNames.map(async (coinName) => {
-        try {
-            await window.apiService.fetchPriceHistory(coinName);
+    for (const coinName in results) {
+        if (results[coinName]) {
             successCount++;
-        } catch (error) {
-            console.warn(`${coinName}の価格履歴更新失敗:`, error.message);
+        } else {
             errorCount++;
         }
-    });
-
-    await Promise.all(promises);
+    }
 
     console.log(`価格履歴の差分更新完了: 成功${successCount}件、失敗${errorCount}件`);
 
