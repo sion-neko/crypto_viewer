@@ -486,7 +486,56 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         updatePriceDataStatusDisplay();
     }, 30000);
+
+    // 価格履歴の自動更新（バックグラウンドで実行）
+    setTimeout(() => {
+        initializePriceHistoryAccumulation();
+    }, 1000);
 });
+
+// ===================================================================
+// PRICE HISTORY ACCUMULATION
+// ===================================================================
+
+/**
+ * 価格履歴蓄積の初期化（起動時に自動実行）
+ * 保有銘柄の価格履歴を差分取得してマージ
+ */
+async function initializePriceHistoryAccumulation() {
+    const portfolioData = window.cache.getPortfolioData();
+    if (!portfolioData || !portfolioData.summary) {
+        return;
+    }
+
+    const coinNames = portfolioData.summary.map(item => item.coinName);
+    if (coinNames.length === 0) {
+        return;
+    }
+
+    console.log(`価格履歴の差分更新を開始します（${coinNames.length}銘柄）...`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // 各銘柄について差分取得を実行（並列）
+    const promises = coinNames.map(async (coinName) => {
+        try {
+            await window.apiService.fetchPriceHistory(coinName);
+            successCount++;
+        } catch (error) {
+            console.warn(`${coinName}の価格履歴更新失敗:`, error.message);
+            errorCount++;
+        }
+    });
+
+    await Promise.all(promises);
+
+    console.log(`価格履歴の差分更新完了: 成功${successCount}件、失敗${errorCount}件`);
+
+    if (successCount > 0) {
+        window.uiService.showSuccess(`価格履歴を最新化しました（${successCount}/${coinNames.length}銘柄）`);
+    }
+}
 
 // ===================================================================
 // INDIVIDUAL COIN PROFIT CHART RENDERING

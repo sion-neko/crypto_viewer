@@ -6,13 +6,12 @@
 // ===================================================================
 
 /**
- * 価格履歴データのキャッシュキーを生成
+ * 蓄積価格履歴データのキャッシュキーを生成
  * @param {string} coinName - 銘柄シンボル (例: 'BTC', 'ETH')
- * @param {number} days - 取得日数（デフォルト: 30）
  * @returns {string} キャッシュキー
  */
-function getPriceHistoryCacheKey(coinName, days = 30) {
-  return `${coinName.toLowerCase()}_price_history_${days}d`;
+function getAccumulatedPriceHistoryCacheKey(coinName) {
+  return `${coinName.toLowerCase()}_accumulated_price_history`;
 }
 
 /**
@@ -51,10 +50,9 @@ window.CACHE_DURATIONS = CACHE_DURATIONS;
 
 // キャッシュキー生成関数をオブジェクトにまとめてグローバルに公開
 window.cacheKeys = {
-    priceHistory: getPriceHistoryCacheKey,
-    currentPrice: getCurrentPriceCacheKey,        // 新: 個別銘柄キャッシュ（推奨）
-    currentPrices: getCurrentPricesCacheKey       // 旧: 複数銘柄キャッシュ（非推奨）
-    // chartData は price_history に統合されたため削除
+    priceHistory: getAccumulatedPriceHistoryCacheKey,  // 蓄積データに統一
+    currentPrice: getCurrentPriceCacheKey,              // 新: 個別銘柄キャッシュ（推奨）
+    currentPrices: getCurrentPricesCacheKey             // 旧: 複数銘柄キャッシュ（非推奨）
 };
 
 

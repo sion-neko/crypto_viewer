@@ -35,9 +35,10 @@ async function fetchCoinNamePriceHistory(coinName) {
     const cacheKey = cacheKeys.priceHistory(coinName);
     const cachedData = cache.get(cacheKey);
 
-    // キャッシュがあれば返す
+    // キャッシュがあれば返す（蓄積データ形式対応）
     if (cachedData) {
-        return cachedData;
+        // 蓄積データ形式の場合はdataプロパティを返す
+        return cachedData.data || cachedData;
     }
 
     // キャッシュがない場合はAPIを実行してデータを取得
