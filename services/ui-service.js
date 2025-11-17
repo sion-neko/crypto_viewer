@@ -369,14 +369,13 @@ class TableRenderer {
                 </div>
 
                 <!-- 価格情報（やや強調） -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #e5e7eb;">
-                    <div style="text-align: center; padding: 16px; background: #fafbfc; border-radius: 8px; border: 1px solid #cbd5e1;">
-                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 5px; font-weight: 600;">現在価格</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #111827;">${coinSummary.currentPrice > 0 ? '¥' + coinSummary.currentPrice.toLocaleString() : '取得中...'}</div>
-                    </div>
-                    <div style="text-align: center; padding: 16px; background: #fafbfc; border-radius: 8px; border: 1px solid #cbd5e1;">
-                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 5px; font-weight: 600;">平均購入レート</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #111827;">¥${coinSummary.averagePurchaseRate.toLocaleString()}</div>
+                <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #e5e7eb;">
+                    <div style="text-align: center; padding: 20px; background: #fafbfc; border-radius: 8px; border: 1px solid #cbd5e1; max-width: 400px; margin: 0 auto;">
+                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">価格</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #111827; line-height: 1.4;">
+                            ${coinSummary.currentPrice > 0 ? '¥' + coinSummary.currentPrice.toLocaleString() : '取得中...'} <span style="color: #9ca3af; font-weight: 400;">/</span> ¥${coinSummary.averagePurchaseRate.toLocaleString()}
+                        </div>
+                        <div style="font-size: 10px; color: #9ca3af; margin-top: 6px; letter-spacing: 0.3px;">現在価格 / 平均購入価格</div>
                     </div>
                 </div>
 
