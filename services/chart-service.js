@@ -682,7 +682,9 @@ class ChartService {
                             if (Math.abs(value) >= 1000) return '¥' + (value / 1000).toFixed(0) + 'K';
                             return '¥' + value.toLocaleString();
                         }
-                    }
+                    },
+                    // Y軸の範囲に余白を追加
+                    grace: '15%'
                 }
             },
             interaction: {

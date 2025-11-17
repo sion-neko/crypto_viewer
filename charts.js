@@ -232,33 +232,8 @@ function createProfitChartOptions(title, profitData, canvasId = '', chartType = 
                         return formatProfitValue(value);
                     }
                 },
-                // Y軸の範囲を自動調整（異常値を除外）
-                beforeUpdate: function (scale) {
-                    if (profitData && profitData.length > 0) {
-                        const allValues = [];
-                        profitData.forEach(d => {
-                            allValues.push(d.totalProfit || 0);
-                            allValues.push(d.realizedProfit || 0);
-                            allValues.push(d.unrealizedProfit || 0);
-                        });
-
-                        // 異常値を除外（上位・下位5%を除く）
-                        allValues.sort((a, b) => a - b);
-                        const p5 = Math.floor(allValues.length * 0.05);
-                        const p95 = Math.floor(allValues.length * 0.95);
-                        const filteredValues = allValues.slice(p5, p95);
-
-                        if (filteredValues.length > 0) {
-                            const min = Math.min(...filteredValues);
-                            const max = Math.max(...filteredValues);
-                            const range = max - min;
-                            const padding = range * 0.1;
-
-                            scale.options.min = min - padding;
-                            scale.options.max = max + padding;
-                        }
-                    }
-                }
+                // Y軸の範囲に余白を追加
+                grace: '15%'
             }
         },
         interaction: {

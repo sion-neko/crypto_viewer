@@ -347,57 +347,74 @@ class TableRenderer {
                     <p style="margin: 5px 0 0 0; font-size: 14px; color: #64748b;">個別銘柄の取引履歴・統計・損益分析</p>
                 </div>
 
-                <!-- 損益カード -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                <!-- 重要指標（大きく表示） -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <!-- 総合損益 -->
-                    <div style="text-align: center; padding: 15px; background: ${coinSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : (coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? 'linear-gradient(135deg, #d4f1d4 0%, #a8e6a8 100%)' : 'linear-gradient(135deg, #fcd4d4 0%, #f8a8a8 100%)'}; border-radius: 8px; border: 3px solid ${coinSummary.totalSellAmount === 0 ? '#9ca3af' : (coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'};">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 700;">総合損益</div>
-                        <div style="font-size: 20px; font-weight: 900; color: ${coinSummary.totalSellAmount === 0 ? '#6b7280' : (coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#047857' : '#b91c1c'};">${coinSummary.totalSellAmount === 0 ? '⏳ 未確定' : profitIcon + ' ' + ((coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '+' : '') + '¥' + Math.round(coinSummary.totalProfit || coinSummary.realizedProfit).toLocaleString()}</div>
+                    <div style="text-align: center; padding: 20px; background: ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 10px; border: 2px solid ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#86efac' : '#fca5a5'}; box-shadow: 0 2px 6px ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};">
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">総合損益</div>
+                        <div style="font-size: 24px; font-weight: 800; color: ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${profitIcon} ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '+' : ''}¥${Math.round(coinSummary.totalProfit || coinSummary.realizedProfit).toLocaleString()}</div>
                     </div>
 
                     <!-- 実現損益 -->
-                    <div style="text-align: center; padding: 15px; background: ${coinSummary.totalSellAmount === 0 ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : coinSummary.realizedProfit >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${coinSummary.totalSellAmount === 0 ? '#9ca3af' : coinSummary.realizedProfit >= 0 ? '#10b981' : '#ef4444'};">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">実現損益</div>
-                        <div style="font-size: 18px; font-weight: 800; color: ${coinSummary.totalSellAmount === 0 ? '#6b7280' : coinSummary.realizedProfit >= 0 ? '#059669' : '#dc2626'};">${coinSummary.totalSellAmount === 0 ? '⏳ 未確定' : (coinSummary.realizedProfit >= 0 ? '+' : '') + '¥' + Math.round(coinSummary.realizedProfit).toLocaleString()}</div>
+                    <div style="text-align: center; padding: 20px; background: ${coinSummary.realizedProfit >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 10px; border: 2px solid ${coinSummary.realizedProfit >= 0 ? '#86efac' : '#fca5a5'}; box-shadow: 0 2px 6px ${coinSummary.realizedProfit >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};">
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">実現損益</div>
+                        <div style="font-size: 24px; font-weight: 800; color: ${coinSummary.realizedProfit >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${coinSummary.realizedProfit >= 0 ? '+' : ''}¥${Math.round(coinSummary.realizedProfit).toLocaleString()}</div>
                     </div>
 
                     <!-- 含み損益 -->
-                    <div style="text-align: center; padding: 15px; background: ${(coinSummary.unrealizedProfit || 0) >= 0 ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'}; border-radius: 8px; border: 2px solid ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#10b981' : '#ef4444'};">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;">含み損益</div>
-                        <div style="font-size: 18px; font-weight: 800; color: ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(coinSummary.unrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(coinSummary.unrealizedProfit || 0).toLocaleString()}</div>
+                    <div style="text-align: center; padding: 20px; background: ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 10px; border: 2px solid ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#86efac' : '#fca5a5'}; box-shadow: 0 2px 6px ${(coinSummary.unrealizedProfit || 0) >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};">
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">含み損益</div>
+                        <div style="font-size: 24px; font-weight: 800; color: ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${(coinSummary.unrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(coinSummary.unrealizedProfit || 0).toLocaleString()}</div>
                     </div>
                 </div>
 
-                <!-- 詳細統計 -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
-                    <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">保有数量</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${parseFloat(coinSummary.holdingQuantity.toFixed(8))}</div>
+                <!-- 価格情報（やや強調） -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #e5e7eb;">
+                    <div style="text-align: center; padding: 16px; background: #fafbfc; border-radius: 8px; border: 1px solid #cbd5e1;">
+                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 5px; font-weight: 600;">現在価格</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #111827;">${coinSummary.currentPrice > 0 ? '¥' + coinSummary.currentPrice.toLocaleString() : '取得中...'}</div>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">平均購入レート</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinSummary.averagePurchaseRate.toLocaleString()}</div>
+                    <div style="text-align: center; padding: 16px; background: #fafbfc; border-radius: 8px; border: 1px solid #cbd5e1;">
+                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 5px; font-weight: 600;">平均購入レート</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #111827;">¥${coinSummary.averagePurchaseRate.toLocaleString()}</div>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">総投資額</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinSummary.totalInvestment.toLocaleString()}</div>
+                </div>
+
+                <!-- その他の情報（控えめに表示） -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">現在評価額</div>
+                        <div style="font-size: 13px; font-weight: 600; color: #374151;">${coinSummary.currentValue > 0 ? '¥' + Math.round(coinSummary.currentValue).toLocaleString() : '計算中...'}</div>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #06b6d4;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">売却金額</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinSummary.totalSellAmount.toLocaleString()}</div>
+                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">保有数量</div>
+                        <div style="font-size: 13px; font-weight: 600; color: #374151;">${parseFloat(coinSummary.holdingQuantity.toFixed(8))}</div>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #84cc16;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">取引回数</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">買${coinSummary.buyTransactionCount}回・売${coinSummary.sellTransactionCount}回</div>
+                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">総投資額</div>
+                        <div style="font-size: 13px; font-weight: 600; color: #374151;">¥${coinSummary.totalInvestment.toLocaleString()}</div>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #ec4899;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在価格</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinSummary.currentPrice > 0 ? '¥' + coinSummary.currentPrice.toLocaleString() : '取得中...'}</div>
+                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">売却金額</div>
+                        <div style="font-size: 13px; font-weight: 600; color: #374151;">¥${coinSummary.totalSellAmount.toLocaleString()}</div>
                     </div>
-                    <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #14b8a6;">
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在評価額</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinSummary.currentValue > 0 ? '¥' + Math.round(coinSummary.currentValue).toLocaleString() : '計算中...'}</div>
+                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">取引回数</div>
+                        <div style="font-size: 13px; font-weight: 600; color: #374151;">買${coinSummary.buyTransactionCount}回・売${coinSummary.sellTransactionCount}回</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- 銘柄チャート -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ${coinSummary.coinName} 含み損益推移（過去1か月）</h3>
+                    <button onclick="renderCoinProfitChart('${coinSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                        チャート更新
+                    </button>
+                </div>
+                <div style="height: 350px; position: relative;">
+                    <canvas id="${coinSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 350px;"></canvas>
                 </div>
             </div>
 
@@ -447,19 +464,6 @@ class TableRenderer {
         html += `
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <!-- 銘柄チャート -->
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ${coinSummary.coinName} 含み損益推移（過去1か月）</h3>
-                    <button onclick="renderCoinProfitChart('${coinSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                        チャート更新
-                    </button>
-                </div>
-                <div style="height: 350px; position: relative;">
-                    <canvas id="${coinSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 350px;"></canvas>
                 </div>
             </div>
         `;
