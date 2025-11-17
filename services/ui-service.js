@@ -392,22 +392,19 @@ class TableRenderer {
                 <!-- 価格情報（やや強調） -->
                 <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #e5e7eb;">
                     <div style="text-align: center; padding: 20px; background: ${isHigher ? '#f0fdf4' : '#fef2f2'}; border-radius: 8px; border: 2px solid ${isHigher ? '#86efac' : '#fca5a5'}; max-width: 450px; margin: 0 auto;">
-                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">現在価格</div>
-                        <div style="font-size: 24px; font-weight: 800; color: ${isHigher ? '#059669' : '#dc2626'}; line-height: 1.2;">
-                            ${currentPrice > 0 ? formatPrice(currentPrice) : '取得中...'}
+                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">価格</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #111827; line-height: 1.4;">
+                            ${currentPrice > 0 ? formatPrice(currentPrice) : '取得中...'} <span style="color: #9ca3af; font-weight: 400;">/</span> ${formatPrice(avgPrice)}
                         </div>
+                        <div style="font-size: 10px; color: #9ca3af; margin-top: 6px; letter-spacing: 0.3px;">現在価格 / 平均購入価格</div>
                         ${currentPrice > 0 ? `
-                        <div style="margin: 12px 0; padding: 8px 0; border-top: 1px dashed ${isHigher ? '#86efac' : '#fca5a5'}; border-bottom: 1px dashed ${isHigher ? '#86efac' : '#fca5a5'};">
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed ${isHigher ? '#86efac' : '#fca5a5'};">
                             <div style="font-size: 14px; font-weight: 600; color: ${isHigher ? '#059669' : '#dc2626'};">
                                 ${isHigher ? '▲' : '▼'} ${isHigher ? '+' : ''}${diffPercent}%
                             </div>
                             <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">平均購入価格との差</div>
                         </div>
                         ` : ''}
-                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 600;">平均購入価格</div>
-                        <div style="font-size: 16px; font-weight: 600; color: #64748b; line-height: 1.3;">
-                            ${formatPrice(avgPrice)}
-                        </div>
                     </div>
                 </div>
 
