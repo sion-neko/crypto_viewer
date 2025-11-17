@@ -161,7 +161,7 @@ function createCoinNamePriceChartOptions() {
  * @param {string} canvasId - キャンバス要素のID（オプション）
  * @returns {object} Chart.jsのオプション設定オブジェクト
  */
-function createProfitChartOptions(title, profitData, canvasId = '') {
+function createProfitChartOptions(title, profitData, canvasId = '', chartType = 'summary') {
     // 銘柄名を取得（canvasIdが提供されている場合）
     const coinNameMatch = canvasId ? canvasId.match(/^([a-z]+)-profit-chart$/) : null;
     const coinName = coinNameMatch ? coinNameMatch[1].toUpperCase() : 'COIN_NAME';
@@ -179,8 +179,7 @@ function createProfitChartOptions(title, profitData, canvasId = '') {
                 }
             },
             legend: {
-                display: true,
-                position: 'top'
+                display: false  // 単一データセットなので凡例を非表示
             },
             tooltip: {
                 callbacks: {
@@ -188,28 +187,24 @@ function createProfitChartOptions(title, profitData, canvasId = '') {
                         const dataPoint = profitData[context.dataIndex];
                         const datasetLabel = context.dataset.label;
 
-                        if (datasetLabel === '総合損益 (¥)') {
-                            // 詳細情報を含むツールチップ
-                            if (dataPoint.holdingQuantity !== undefined && dataPoint.avgPrice !== undefined) {
-                                return [
-                                    `📅 ${(dataPoint.date instanceof Date ? dataPoint.date : new Date(dataPoint.date)).toLocaleDateString('ja-JP')}`,
-                                    `💰 総合損益: ¥${Math.round(dataPoint.totalProfit || dataPoint.profit || 0).toLocaleString()}`,
-                                    `　├ 実現損益: ¥${Math.round(dataPoint.realizedProfit || dataPoint.profit || 0).toLocaleString()}`,
-                                    `　└ 含み損益: ¥${Math.round(dataPoint.unrealizedProfit || 0).toLocaleString()}`,
-                                    `📊 保有量: ${dataPoint.holdingQuantity.toFixed(6)} ${coinName}`,
-                                    `📈 平均価格: ¥${Math.round(dataPoint.avgPrice).toLocaleString()}`,
-                                    `💹 その日の価格: ¥${Math.round(dataPoint.currentPrice || 0).toLocaleString()}`
-                                ];
-                            }
-                            // シンプルな表示
+                        if (chartType === 'summary' && datasetLabel === '総合損益 (¥)') {
+                            // サマリー: 総合損益のツールチップ
                             return [
                                 `${datasetLabel}: ${formatSignedProfitValue(dataPoint.totalProfit || 0)}`,
                                 `  実現: ${formatSignedProfitValue(dataPoint.realizedProfit || 0)}`,
                                 `  含み: ${formatSignedProfitValue(dataPoint.unrealizedProfit || 0)}`
                             ];
-                        } else if (datasetLabel === '実現損益 (¥)') {
-                            return `実現損益: ¥${Math.round(dataPoint.realizedProfit || dataPoint.profit || 0).toLocaleString()}`;
-                        } else if (datasetLabel === '含み損益 (¥)') {
+                        } else if (chartType === 'coin' && datasetLabel === '含み損益 (¥)') {
+                            // 各銘柄: 含み損益のツールチップ
+                            if (dataPoint.holdingQuantity !== undefined && dataPoint.avgPrice !== undefined) {
+                                return [
+                                    `📅 ${(dataPoint.date instanceof Date ? dataPoint.date : new Date(dataPoint.date)).toLocaleDateString('ja-JP')}`,
+                                    `💰 含み損益: ¥${Math.round(dataPoint.unrealizedProfit || 0).toLocaleString()}`,
+                                    `📊 保有量: ${dataPoint.holdingQuantity.toFixed(6)} ${coinName}`,
+                                    `📈 平均価格: ¥${Math.round(dataPoint.avgPrice).toLocaleString()}`,
+                                    `💹 その日の価格: ¥${Math.round(dataPoint.currentPrice || 0).toLocaleString()}`
+                                ];
+                            }
                             return `含み損益: ¥${Math.round(dataPoint.unrealizedProfit || 0).toLocaleString()}`;
                         }
 
@@ -597,7 +592,7 @@ function showChartError(canvasId, coinName, error, suggestions = []) {
 }
 
 // 損益チャートを描画
-function displayProfitChart(canvasId, profitData, title) {
+function displayProfitChart(canvasId, profitData, title, chartType = 'summary') {
 
     try {
         const canvas = document.getElementById(canvasId);
@@ -628,6 +623,35 @@ function displayProfitChart(canvasId, profitData, title) {
             throw new Error('有効なデータポイントがありません');
         }
 
+        // データセットをchartTypeに応じて生成
+        let datasets = [];
+        if (chartType === 'summary') {
+            // サマリー: 総合損益のみ
+            datasets = [
+                {
+                    label: '総合損益 (¥)',
+                    data: profitData.map(d => Math.round(d.totalProfit || d.profit || 0)),
+                    borderColor: profitData[profitData.length - 1].totalProfit >= 0 ? '#28a745' : '#dc3545',
+                    backgroundColor: profitData[profitData.length - 1].totalProfit >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.1
+                }
+            ];
+        } else if (chartType === 'coin') {
+            // 各銘柄: 含み損益のみ
+            datasets = [
+                {
+                    label: '含み損益 (¥)',
+                    data: profitData.map(d => Math.round(d.unrealizedProfit || 0)),
+                    borderColor: profitData[profitData.length - 1].unrealizedProfit >= 0 ? '#28a745' : '#dc3545',
+                    backgroundColor: profitData[profitData.length - 1].unrealizedProfit >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.1
+                }
+            ];
+        }
 
         // Chart.jsでチャートを作成
         window.chartInstances[canvasId] = new Chart(ctx, {
@@ -637,39 +661,9 @@ function displayProfitChart(canvasId, profitData, title) {
                     const date = d.date instanceof Date ? d.date : new Date(d.date);
                     return date.toLocaleDateString('ja-JP');
                 }),
-                datasets: [
-                    {
-                        label: '総合損益 (¥)',
-                        data: profitData.map(d => Math.round(d.totalProfit || d.profit || 0)),
-                        borderColor: profitData[profitData.length - 1].totalProfit >= 0 ? '#28a745' : '#dc3545',
-                        backgroundColor: profitData[profitData.length - 1].totalProfit >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.1
-                    },
-                    {
-                        label: '実現損益 (¥)',
-                        data: profitData.map(d => Math.round(d.realizedProfit || d.profit || 0)),
-                        borderColor: '#17a2b8',
-                        backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.1,
-                        borderDash: [5, 5]
-                    },
-                    {
-                        label: '含み損益 (¥)',
-                        data: profitData.map(d => Math.round(d.unrealizedProfit || 0)),
-                        borderColor: '#ffc107',
-                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.1,
-                        borderDash: [2, 2]
-                    }
-                ]
+                datasets: datasets
             },
-            options: createProfitChartOptions(title, profitData, canvasId)
+            options: createProfitChartOptions(title, profitData, canvasId, chartType)
         });
 
 

@@ -118,6 +118,13 @@ function refreshPortfolioDisplay(portfolioData = null, message = null) {
     // サマリー部分も更新（総合損益反映のため）
     updateDataStatus(currentData);
 
+    // 銘柄別サブタブを再生成（価格更新を反映）
+    try {
+        createCoinNameSubtabs(currentData);
+    } catch (error) {
+        console.error('❌ Error regenerating coin subtabs:', error);
+    }
+
     // 成功メッセージ表示
     if (message) {
         showSuccessMessage(message);
@@ -673,12 +680,6 @@ function generatePortfolioTable(portfolioData) {
                     <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">総合損益</div>
                     <div style="font-size: 17px; font-weight: 700; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</div>
                     <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
-                </div>
-
-                <!-- 損益状況 -->
-                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">損益状況</div>
-                    <div style="font-size: 15px; font-weight: 600; color: #374151;">利益${stats.totalProfitableCoinNames || 0}・損失${stats.totalLossCoinNames || 0}</div>
                 </div>
             </div>
 

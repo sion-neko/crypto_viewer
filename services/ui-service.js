@@ -340,19 +340,6 @@ class TableRenderer {
         const profitIcon = coinSummary.realizedProfit > 0 ? '📈' : coinSummary.realizedProfit < 0 ? '📉' : '➖';
 
         let html = `
-            <!-- 銘柄チャート -->
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ${coinSummary.coinName} 損益推移（過去1か月）</h3>
-                    <button onclick="renderCoinProfitChart('${coinSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                        チャート更新
-                    </button>
-                </div>
-                <div style="height: 350px; position: relative;">
-                    <canvas id="${coinSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 350px;"></canvas>
-                </div>
-            </div>
-
             <!-- 銘柄サマリーカード -->
             <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <div style="text-align: center; margin-bottom: 15px;">
@@ -460,6 +447,19 @@ class TableRenderer {
         html += `
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- 銘柄チャート -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ${coinSummary.coinName} 含み損益推移（過去1か月）</h3>
+                    <button onclick="renderCoinProfitChart('${coinSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                        チャート更新
+                    </button>
+                </div>
+                <div style="height: 350px; position: relative;">
+                    <canvas id="${coinSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 350px;"></canvas>
                 </div>
             </div>
         `;
