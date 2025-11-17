@@ -118,6 +118,13 @@ function refreshPortfolioDisplay(portfolioData = null, message = null) {
     // サマリー部分も更新（総合損益反映のため）
     updateDataStatus(currentData);
 
+    // 銘柄別サブタブを再生成（価格更新を反映）
+    try {
+        createCoinNameSubtabs(currentData);
+    } catch (error) {
+        console.error('❌ Error regenerating coin subtabs:', error);
+    }
+
     // 成功メッセージ表示
     if (message) {
         showSuccessMessage(message);
@@ -674,12 +681,6 @@ function generatePortfolioTable(portfolioData) {
                     <div style="font-size: 17px; font-weight: 700; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</div>
                     <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
                 </div>
-
-                <!-- 損益状況 -->
-                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">損益状況</div>
-                    <div style="font-size: 15px; font-weight: 600; color: #374151;">利益${stats.totalProfitableCoinNames || 0}・損失${stats.totalLossCoinNames || 0}</div>
-                </div>
             </div>
 
             ${hasPriceData ? `
@@ -726,14 +727,13 @@ function generatePortfolioTable(portfolioData) {
             <table class="portfolio-table" border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; min-width: 800px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
             <colgroup>
                 <col style="width: 100px;">  <!-- 銘柄 -->
-                <col style="width: 120px;">  <!-- 現在価格 -->
+                <col style="width: 130px;">  <!-- 現在価格 -->
                 <col style="width: 140px;">  <!-- 平均購入レート -->
                 <col style="width: 120px;">  <!-- 評価額 -->
-                <col style="width: 130px;">  <!-- 保有分購入額 -->
-                <col style="width: 120px;">  <!-- 合計購入額 -->
-                <col style="width: 120px;">  <!-- 含み損益 -->
-                <col style="width: 120px;">  <!-- 実現損益 -->
-                <col style="width: 130px;">  <!-- 総合損益 -->
+                <col style="width: 130px;">  <!-- 合計購入額 -->
+                <col style="width: 130px;">  <!-- 含み損益 -->
+                <col style="width: 130px;">  <!-- 実現損益 -->
+                <col style="width: 140px;">  <!-- 総合損益 -->
             </colgroup>
             <thead>
                 <tr style="background-color: #f9fafb;">
@@ -741,7 +741,6 @@ function generatePortfolioTable(portfolioData) {
                     <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
                     <th onclick="sortTable('averagePurchaseRate')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
                     <th onclick="sortTable('currentValue')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
-                    <th onclick="sortTable('heldInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">保有分購入額 <span id="sort-heldInvestment">${getSortIcon('heldInvestment')}</span></th>
                     <th onclick="sortTable('totalInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
                     <th onclick="sortTable('unrealizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
                     <th onclick="sortTable('realizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${getSortIcon('realizedProfit')}</span></th>
@@ -758,10 +757,9 @@ function generatePortfolioTable(portfolioData) {
         html += `
             <tr style="transition: all 0.2s ease; ${profitBg ? `background-color: ${profitBg};` : ''}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${profitBg ? profitBg : 'transparent'}'">
                 <td onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" style="padding: 12px; font-weight: 600; color: #3b82f6; border-bottom: 1px solid #e5e7eb; cursor: pointer;" title="クリックして${item.coinName}の詳細を表示">${item.coinName}</td>
-                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
+                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #111827; font-weight: 700;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">¥${item.averagePurchaseRate.toLocaleString()}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">${item.currentValue > 0 ? '¥' + item.currentValue.toLocaleString() : '-'}</td>
-                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">¥${item.currentHoldingInvestment.toLocaleString()}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">¥${item.totalInvestment.toLocaleString()}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: ${(item.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'}; font-weight: ${Math.abs(item.unrealizedProfit || 0) > 0 ? '600' : 'normal'};">${(item.unrealizedProfit || 0) !== 0 ? '¥' + Math.round(item.unrealizedProfit || 0).toLocaleString() : '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: ${profitColor}; font-weight: ${Math.abs(item.realizedProfit) > 0 ? '600' : 'normal'};">${item.realizedProfit !== 0 ? '¥' + Math.round(item.realizedProfit).toLocaleString() : '-'}</td>
@@ -775,7 +773,6 @@ function generatePortfolioTable(portfolioData) {
             <tfoot>
                 <tr style="background-color: #f3f4f6; font-weight: 600; border-top: 2px solid #d1d5db;">
                     <td style="padding: 15px 12px; text-align: left; font-weight: 700; color: #1f2937; border-bottom: 1px solid #e5e7eb;">合計</td>
-                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
                     <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
                     <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
                     <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
