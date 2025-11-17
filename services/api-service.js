@@ -232,21 +232,23 @@ class APIService {
      * 複数銘柄の価格履歴を順次取得（API制限対策）
      * @param {string[]} coinNames - 銘柄シンボルの配列
      * @param {object} options - オプション設定（fetchPriceHistoryと同じ）
+     * @param {number} options.delayMs - リクエスト間の待機時間（デフォルト: 300ms）
      * @returns {Promise<object>} 銘柄別の価格履歴データ {BTC: [...], ETH: [...], ...}
      */
     async fetchMultiplePriceHistories(coinNames, options = {}) {
         const results = {};
+        const delayMs = options.delayMs || 300;
 
-        // 直列実行でAPI制限を回避（リクエスト間に300ms待機）
+        // 直列実行でAPI制限を回避（リクエスト間に指定時間待機）
         for (let i = 0; i < coinNames.length; i++) {
             const coinName = coinNames[i];
             try {
                 const priceHistory = await this.fetchPriceHistory(coinName, options);
                 results[coinName] = priceHistory;
 
-                // 次のリクエストまで300ms待機（最後のリクエスト後は待機不要）
+                // 次のリクエストまで指定時間待機（最後のリクエスト後は待機不要）
                 if (i < coinNames.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
                 }
             } catch (error) {
                 console.warn(`${coinName}の価格履歴取得失敗:`, error.message);

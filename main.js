@@ -499,9 +499,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * 価格履歴蓄積の初期化（起動時に自動実行）
+ * キャッシュがある場合のみ自動更新、ない場合は手動実行が必要
  * 保有銘柄の価格履歴を差分取得してマージ（直列実行でAPI制限対策）
  */
-async function initializePriceHistoryAccumulation() {
+async function initializePriceHistoryAccumulation(isManualTrigger = false) {
     const portfolioData = window.cache.getPortfolioData();
     if (!portfolioData || !portfolioData.summary) {
         return;
@@ -512,10 +513,29 @@ async function initializePriceHistoryAccumulation() {
         return;
     }
 
-    console.log(`価格履歴の差分更新を開始します（${coinNames.length}銘柄）...`);
+    // キャッシュの存在確認
+    const hasCache = coinNames.some(coinName => {
+        const cacheKey = window.cacheKeys.priceHistory(coinName);
+        const cached = window.cache.get(cacheKey);
+        return cached && cached.data && cached.data.length > 0;
+    });
 
-    // fetchMultiplePriceHistoriesを使用（直列実行+300ms待機でAPI制限対策）
-    const results = await window.apiService.fetchMultiplePriceHistories(coinNames);
+    // キャッシュがなく、手動トリガーでない場合はスキップ
+    if (!hasCache && !isManualTrigger) {
+        console.log('初回の価格履歴取得は手動で実行してください');
+        return;
+    }
+
+    console.log(`価格履歴の${hasCache ? '差分' : '初回'}更新を開始します（${coinNames.length}銘柄）...`);
+
+    if (isManualTrigger) {
+        window.uiService.showInfo(`価格履歴を取得中です（${coinNames.length}銘柄、数分かかる場合があります）...`);
+    }
+
+    // fetchMultiplePriceHistoriesを使用（直列実行でAPI制限対策）
+    // 初回取得: 1500ms待機、差分更新: 300ms待機
+    const delayMs = hasCache ? 300 : 1500;
+    const results = await window.apiService.fetchMultiplePriceHistories(coinNames, { delayMs });
 
     // 成功・失敗をカウント
     let successCount = 0;
@@ -528,11 +548,20 @@ async function initializePriceHistoryAccumulation() {
         }
     }
 
-    console.log(`価格履歴の差分更新完了: 成功${successCount}件、失敗${errorCount}件`);
+    console.log(`価格履歴の${hasCache ? '差分' : '初回'}更新完了: 成功${successCount}件、失敗${errorCount}件`);
 
     if (successCount > 0) {
         window.uiService.showSuccess(`価格履歴を最新化しました（${successCount}/${coinNames.length}銘柄）`);
+    } else if (errorCount > 0) {
+        window.uiService.showError(`価格履歴の取得に失敗しました。しばらく待ってから再試行してください。`);
     }
+}
+
+/**
+ * 手動で価格履歴を取得（初回取得用）
+ */
+async function manualFetchPriceHistory() {
+    await initializePriceHistoryAccumulation(true);
 }
 
 // ===================================================================
@@ -595,6 +624,7 @@ async function renderCoinProfitChart(coinName) {
     window.showPriceDataStatus = showPriceDataStatus;
     window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
     window.renderCoinProfitChart = renderCoinProfitChart;
+    window.manualFetchPriceHistory = manualFetchPriceHistory;
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
     window.showSuccessMessage = showSuccessMessage;
     window.showErrorMessage = showErrorMessage;
