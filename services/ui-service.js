@@ -339,6 +339,27 @@ class TableRenderer {
         const profitColor = coinSummary.realizedProfit >= 0 ? '#27ae60' : '#e74c3c';
         const profitIcon = coinSummary.realizedProfit > 0 ? '📈' : coinSummary.realizedProfit < 0 ? '📉' : '➖';
 
+        // 価格フォーマット関数
+        const formatPrice = (price) => {
+            if (price >= 1) {
+                // 1円以上は整数表示
+                return '¥' + Math.round(price).toLocaleString();
+            } else if (price > 0) {
+                // 1円未満は科学的記数法
+                const exponent = Math.floor(Math.log10(price));
+                const mantissa = (price / Math.pow(10, exponent)).toFixed(1);
+                return `¥${mantissa}×10<sup>${exponent}</sup>`;
+            }
+            return '取得中...';
+        };
+
+        // 価格比較の計算
+        const currentPrice = coinSummary.currentPrice;
+        const avgPrice = coinSummary.averagePurchaseRate;
+        const isHigher = currentPrice > avgPrice;
+        const priceDiff = currentPrice - avgPrice;
+        const diffPercent = avgPrice > 0 ? ((priceDiff / avgPrice) * 100).toFixed(1) : 0;
+
         let html = `
             <!-- 銘柄サマリーカード -->
             <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
@@ -370,12 +391,23 @@ class TableRenderer {
 
                 <!-- 価格情報（やや強調） -->
                 <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #e5e7eb;">
-                    <div style="text-align: center; padding: 20px; background: #fafbfc; border-radius: 8px; border: 1px solid #cbd5e1; max-width: 400px; margin: 0 auto;">
-                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">価格</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #111827; line-height: 1.4;">
-                            ${coinSummary.currentPrice > 0 ? '¥' + coinSummary.currentPrice.toLocaleString() : '取得中...'} <span style="color: #9ca3af; font-weight: 400;">/</span> ¥${coinSummary.averagePurchaseRate.toLocaleString()}
+                    <div style="text-align: center; padding: 20px; background: ${isHigher ? '#f0fdf4' : '#fef2f2'}; border-radius: 8px; border: 2px solid ${isHigher ? '#86efac' : '#fca5a5'}; max-width: 450px; margin: 0 auto;">
+                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">現在価格</div>
+                        <div style="font-size: 24px; font-weight: 800; color: ${isHigher ? '#059669' : '#dc2626'}; line-height: 1.2;">
+                            ${currentPrice > 0 ? formatPrice(currentPrice) : '取得中...'}
                         </div>
-                        <div style="font-size: 10px; color: #9ca3af; margin-top: 6px; letter-spacing: 0.3px;">現在価格 / 平均購入価格</div>
+                        ${currentPrice > 0 ? `
+                        <div style="margin: 12px 0; padding: 8px 0; border-top: 1px dashed ${isHigher ? '#86efac' : '#fca5a5'}; border-bottom: 1px dashed ${isHigher ? '#86efac' : '#fca5a5'};">
+                            <div style="font-size: 14px; font-weight: 600; color: ${isHigher ? '#059669' : '#dc2626'};">
+                                ${isHigher ? '▲' : '▼'} ${isHigher ? '+' : ''}${diffPercent}%
+                            </div>
+                            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">平均購入価格との差</div>
+                        </div>
+                        ` : ''}
+                        <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 600;">平均購入価格</div>
+                        <div style="font-size: 16px; font-weight: 600; color: #64748b; line-height: 1.3;">
+                            ${formatPrice(avgPrice)}
+                        </div>
                     </div>
                 </div>
 
