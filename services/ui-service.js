@@ -352,7 +352,7 @@ class TableRenderer {
                     <!-- 総合損益 -->
                     <div style="text-align: center; padding: 20px; background: ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 10px; border: 2px solid ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#86efac' : '#fca5a5'}; box-shadow: 0 2px 6px ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};">
                         <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">総合損益</div>
-                        <div style="font-size: 24px; font-weight: 800; color: ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${profitIcon} ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '+' : ''}¥${Math.round(coinSummary.totalProfit || coinSummary.realizedProfit).toLocaleString()}</div>
+                        <div style="font-size: 24px; font-weight: 800; color: ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '+' : ''}¥${Math.round(coinSummary.totalProfit || coinSummary.realizedProfit).toLocaleString()}</div>
                     </div>
 
                     <!-- 実現損益 -->
