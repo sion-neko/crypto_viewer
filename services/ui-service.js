@@ -532,6 +532,161 @@ class TableRenderer {
 }
 
 /**
+ * 進捗バー管理クラス
+ * 長時間かかる処理の進捗を表示
+ */
+class ProgressManager {
+    constructor() {
+        this.modal = null;
+        this.overlay = null;
+        this.isVisible = false;
+    }
+
+    /**
+     * 進捗バーを表示
+     * @param {string} title - タイトル
+     * @param {number} total - 全体の数
+     * @param {string} subtitle - サブタイトル（オプション）
+     */
+    show(title = '処理中...', total = 100, subtitle = '') {
+        if (this.isVisible) {
+            return;
+        }
+
+        // オーバーレイ作成
+        this.overlay = document.createElement('div');
+        this.overlay.id = 'progress-overlay';
+        this.overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            opacity: 0;
+            transition: opacity 0.3s;
+        `;
+        document.body.appendChild(this.overlay);
+
+        // モーダル作成
+        this.modal = document.createElement('div');
+        this.modal.id = 'progress-modal';
+        this.modal.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 9999;
+            min-width: 400px;
+            max-width: 90vw;
+            opacity: 0;
+            transition: opacity 0.3s;
+        `;
+
+        this.modal.innerHTML = `
+            <h3 id="progress-title" style="margin: 0 0 10px 0; font-size: 18px; color: #1e293b;">${title}</h3>
+            <p id="progress-subtitle" style="margin: 0 0 20px 0; color: #64748b; font-size: 14px;">${subtitle}</p>
+            <div style="margin: 20px 0;">
+                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div id="progress-bar" style="background: linear-gradient(90deg, #3b82f6, #2563eb); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+            <p id="progress-text" style="margin: 10px 0 0 0; color: #475569; font-size: 14px;">準備中...</p>
+            <p id="progress-info" style="margin: 10px 0 0 0; color: #94a3b8; font-size: 12px;">
+                API制限対策のため、3秒間隔で取得しています
+            </p>
+        `;
+
+        document.body.appendChild(this.modal);
+
+        // アニメーション開始
+        setTimeout(() => {
+            this.overlay.style.opacity = '1';
+            this.modal.style.opacity = '1';
+        }, 10);
+
+        this.isVisible = true;
+        this.total = total;
+    }
+
+    /**
+     * 進捗を更新
+     * @param {number} current - 現在の進捗
+     * @param {number} total - 全体の数
+     * @param {string} message - メッセージ
+     */
+    update(current, total, message = '') {
+        if (!this.isVisible) {
+            return;
+        }
+
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+
+        if (progressBar && progressText) {
+            const percentage = Math.min(100, Math.round((current / total) * 100));
+            progressBar.style.width = `${percentage}%`;
+
+            if (message) {
+                progressText.textContent = message;
+            } else {
+                progressText.textContent = `${current} / ${total}`;
+            }
+        }
+    }
+
+    /**
+     * サブタイトルを更新
+     * @param {string} subtitle - 新しいサブタイトル
+     */
+    updateSubtitle(subtitle) {
+        if (!this.isVisible) {
+            return;
+        }
+
+        const subtitleElement = document.getElementById('progress-subtitle');
+        if (subtitleElement) {
+            subtitleElement.textContent = subtitle;
+        }
+    }
+
+    /**
+     * 進捗バーを非表示
+     */
+    hide() {
+        if (!this.isVisible) {
+            return;
+        }
+
+        // フェードアウト
+        if (this.modal) {
+            this.modal.style.opacity = '0';
+        }
+        if (this.overlay) {
+            this.overlay.style.opacity = '0';
+        }
+
+        // 削除
+        setTimeout(() => {
+            if (this.modal && this.modal.parentNode) {
+                this.modal.parentNode.removeChild(this.modal);
+            }
+            if (this.overlay && this.overlay.parentNode) {
+                this.overlay.parentNode.removeChild(this.overlay);
+            }
+            this.modal = null;
+            this.overlay = null;
+            this.isVisible = false;
+        }, 300);
+    }
+}
+
+/**
  * UIサービスクラス
  * 全てのUI操作を統合的に管理
  */
@@ -540,6 +695,7 @@ class UIService {
         this.messageManager = new MessageManager();
         this.tabManager = new TabManager();
         this.tableRenderer = new TableRenderer();
+        this.progress = new ProgressManager();
     }
 
     // メッセージ管理への委譲
@@ -606,3 +762,4 @@ window.UIService = UIService;
 window.MessageManager = MessageManager;
 window.TabManager = TabManager;
 window.TableRenderer = TableRenderer;
+window.ProgressManager = ProgressManager;

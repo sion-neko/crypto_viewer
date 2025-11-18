@@ -3,6 +3,58 @@
 // ===================================================================
 
 /**
+ * レート制限管理クラス
+ * CoinGecko API制限（30 calls/分）を遵守
+ */
+class RateLimiter {
+    /**
+     * @param {number} maxCallsPerMinute - 1分あたりの最大コール数（デフォルト: 20、安全マージン込み）
+     */
+    constructor(maxCallsPerMinute = 20) {
+        this.maxCalls = maxCallsPerMinute;
+        this.callTimestamps = [];
+    }
+
+    /**
+     * レート制限を確認し、必要に応じて待機
+     * @returns {Promise<void>}
+     */
+    async waitIfNeeded() {
+        const now = Date.now();
+        const oneMinuteAgo = now - 60000;
+
+        // 1分以内のコールをフィルタ
+        this.callTimestamps = this.callTimestamps.filter(t => t > oneMinuteAgo);
+
+        // 制限に達していたら待機
+        if (this.callTimestamps.length >= this.maxCalls) {
+            const oldestCall = this.callTimestamps[0];
+            const waitTime = oldestCall + 60000 - now + 1000; // +1秒の余裕
+            console.log(`⏳ API制限に近づいています。${Math.ceil(waitTime/1000)}秒待機します...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+
+        this.callTimestamps.push(Date.now());
+    }
+
+    /**
+     * 統計情報を取得
+     * @returns {object} レート制限の統計情報
+     */
+    getStats() {
+        const now = Date.now();
+        const oneMinuteAgo = now - 60000;
+        const recentCalls = this.callTimestamps.filter(t => t > oneMinuteAgo).length;
+
+        return {
+            recentCalls,
+            maxCalls: this.maxCalls,
+            remainingCalls: Math.max(0, this.maxCalls - recentCalls)
+        };
+    }
+}
+
+/**
  * APIサービスクラス
  * CoinGecko APIへの全てのリクエストを管理し、キャッシュを活用する
  */
@@ -15,6 +67,7 @@ class APIService {
         this.cache = cacheService;
         this.config = config;
         this.cacheKeys = window.cacheKeys;
+        this.rateLimiter = new RateLimiter(20); // 30 calls/分の制限に対し、安全マージン込みで20に設定
     }
 
     // ===================================================================
@@ -70,6 +123,9 @@ class APIService {
         // 3. まだキャッシュにない銘柄はAPI呼び出し
         if (uncachedCoins.length > 0) {
             try {
+                // レート制限チェック（必要に応じて待機）
+                await this.rateLimiter.waitIfNeeded();
+
                 const coingeckoIds = uncachedCoins.map(coinName => this.config.coinGeckoMapping[coinName]).join(',');
                 const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoIds}&vs_currencies=jpy&include_last_updated_at=true`;
 
@@ -234,16 +290,22 @@ class APIService {
      * 複数銘柄の価格履歴を順次取得（API制限対策）
      * @param {string[]} coinNames - 銘柄シンボルの配列
      * @param {object} options - オプション設定（fetchPriceHistoryと同じ）
-     * @param {number} options.delayMs - リクエスト間の待機時間（デフォルト: 300ms）
+     * @param {number} options.delayMs - リクエスト間の待機時間（デフォルト: 3000ms）
+     * @param {function} options.onProgress - 進捗コールバック (current, total, coinName) => void
      * @returns {Promise<object>} 銘柄別の価格履歴データ {BTC: [...], ETH: [...], ...}
      */
     async fetchMultiplePriceHistories(coinNames, options = {}) {
         const results = {};
-        const delayMs = options.delayMs || 300;
+        const delayMs = options.delayMs || 3000; // 3秒間隔に変更（20 calls/分ペース）
+        const onProgress = options.onProgress || (() => {});
 
         // 直列実行でAPI制限を回避（リクエスト間に指定時間待機）
         for (let i = 0; i < coinNames.length; i++) {
             const coinName = coinNames[i];
+
+            // 進捗通知
+            onProgress(i + 1, coinNames.length, coinName);
+
             try {
                 const priceHistory = await this.fetchPriceHistory(coinName, options);
                 results[coinName] = priceHistory;
@@ -268,6 +330,9 @@ class APIService {
                 results[coinName] = null;
             }
         }
+
+        // 完了通知
+        onProgress(coinNames.length, coinNames.length, null);
 
         return results;
     }
@@ -318,33 +383,78 @@ class APIService {
             vsCurrency = 'jpy',
             days = 30,
             interval = 'daily',
-            timeoutMs = 10000
+            timeoutMs = 10000,
+            retries = 3
         } = options;
 
-        const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
+        // 指数バックオフによる自動リトライ
+        return await this._retryWithBackoff(async () => {
+            // レート制限チェック（必要に応じて待機）
+            await this.rateLimiter.waitIfNeeded();
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
 
-        try {
-            const response = await fetch(url, {
-                signal: controller.signal,
-                headers: { 'Accept': 'application/json' }
-            });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-            if (!response.ok) {
-                if (response.status === 429) {
-                    throw new Error('API制限に達しました (429 Too Many Requests)');
-                } else if (response.status === 403) {
-                    throw new Error('APIアクセスが拒否されました (403 Forbidden)');
+            try {
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 429) {
+                        throw new Error('API制限に達しました (429 Too Many Requests)');
+                    } else if (response.status === 403) {
+                        throw new Error('APIアクセスが拒否されました (403 Forbidden)');
+                    } else {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                }
+
+                return await response.json();
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }, retries);
+    }
+
+    /**
+     * 指数バックオフによる自動リトライ
+     * @private
+     * @param {function} fn - 実行する非同期関数
+     * @param {number} maxRetries - 最大リトライ回数
+     * @returns {Promise<*>} 関数の実行結果
+     * @throws {Error} 最大リトライ回数を超えた場合
+     */
+    async _retryWithBackoff(fn, maxRetries = 3) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                return await fn();
+            } catch (error) {
+                const is429Error = error.message.includes('429');
+                const isLastRetry = i === maxRetries - 1;
+
+                if (is429Error && !isLastRetry) {
+                    const waitTime = Math.pow(2, i) * 10000; // 10秒, 20秒, 40秒
+                    console.warn(`⏳ API制限エラー。${waitTime/1000}秒待機してリトライします... (${i+1}/${maxRetries})`);
+
+                    // UIに通知
+                    if (window.uiService && window.uiService.progress && window.uiService.progress.isVisible) {
+                        window.uiService.progress.updateSubtitle(`API制限に達しました。${waitTime/1000}秒待機中...`);
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+
+                    // 待機後、サブタイトルをリセット
+                    if (window.uiService && window.uiService.progress && window.uiService.progress.isVisible) {
+                        window.uiService.progress.updateSubtitle('');
+                    }
                 } else {
-                    throw new Error(`API Error: ${response.status}`);
+                    throw error;
                 }
             }
-
-            return await response.json();
-        } finally {
-            clearTimeout(timeoutId);
         }
     }
 

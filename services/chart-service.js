@@ -40,8 +40,25 @@ class ChartService {
                 throw new Error('保有銘柄がありません');
             }
 
-            // 複数銘柄の価格履歴を並列取得
-            const priceHistories = await this.apiService.fetchMultiplePriceHistories(coinNames);
+            // 進捗バーを表示
+            const uiService = window.uiService;
+            uiService.progress.show('価格履歴を取得中...', coinNames.length,
+                `${coinNames.length}銘柄の価格データを順次取得します`);
+
+            // 複数銘柄の価格履歴を順次取得（進捗通知付き）
+            const priceHistories = await this.apiService.fetchMultiplePriceHistories(coinNames, {
+                onProgress: (current, total, coinName) => {
+                    if (coinName) {
+                        uiService.progress.update(current, total, `${coinName} (${current}/${total}銘柄)`);
+                    } else {
+                        uiService.progress.update(current, total, '完了');
+                    }
+                }
+            });
+
+            // 進捗バーを非表示
+            uiService.progress.hide();
+
             const validCoinNames = coinNames.filter(coinName => priceHistories[coinName]);
 
             if (validCoinNames.length === 0) {
@@ -77,6 +94,11 @@ class ChartService {
             return { success: true, coinCount: Object.keys(allProfitData).length };
 
         } catch (error) {
+            // エラー時も進捗バーを非表示
+            if (window.uiService && window.uiService.progress) {
+                window.uiService.progress.hide();
+            }
+
             console.error('全銘柄損益チャート描画エラー:', error);
             this.showChartError(canvasId, '全銘柄', error, [
                 '一部の銘柄で価格履歴を取得できませんでした',
