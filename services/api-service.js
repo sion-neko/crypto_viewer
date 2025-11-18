@@ -132,8 +132,11 @@ class APIService {
                 const cacheKey = this.cacheKeys.priceHistory(coinName);
                 const historyValue = this.cache.get(cacheKey);
 
-                if (historyValue && historyValue.length > 0) {
-                    const latestPrice = historyValue[historyValue.length - 1].price;
+                // 蓄積データ形式の場合
+                const priceData = historyValue?.data || historyValue;
+
+                if (priceData && Array.isArray(priceData) && priceData.length > 0) {
+                    const latestPrice = priceData[priceData.length - 1].price;
                     prices[coinName] = {
                         price_jpy: latestPrice,
                         last_updated_at: Date.now() / 1000
@@ -162,11 +165,11 @@ class APIService {
     // ===================================================================
 
     /**
-     * 単一銘柄の価格履歴を取得（キャッシュ優先）
+     * 単一銘柄の価格履歴を取得（蓄積データ優先、差分更新）
      * @param {string} coinName - 銘柄シンボル
      * @param {object} options - オプション設定
+     * @param {number} options.days - 取得日数（デフォルト: 30、最大: 365）
      * @param {string} options.vsCurrency - 通貨単位（デフォルト: 'jpy'）
-     * @param {number} options.days - 日数（デフォルト: 30）
      * @param {string} options.interval - 間隔（デフォルト: 'daily'）
      * @param {number} options.timeoutMs - タイムアウト（デフォルト: 10000）
      * @returns {Promise<Array>} 価格履歴データ [{date: Date, price: number}, ...]
@@ -174,8 +177,8 @@ class APIService {
      */
     async fetchPriceHistory(coinName, options = {}) {
         const {
-            vsCurrency = 'jpy',
             days = 30,
+            vsCurrency = 'jpy',
             interval = 'daily',
             timeoutMs = 10000
         } = options;
@@ -185,18 +188,25 @@ class APIService {
             throw new Error(`${coinName}はサポートされていない銘柄です`);
         }
 
-        // キャッシュから取得
+        // 蓄積キャッシュから取得
         const cacheKey = this.cacheKeys.priceHistory(coinName);
-        const cachedData = this.cache.get(cacheKey);
+        const existing = this.cache.get(cacheKey);
 
-        if (cachedData) {
-            return cachedData;
+        // 更新が必要かチェック
+        const needsUpdate = this._needsUpdate(existing);
+
+        if (!needsUpdate && existing) {
+            // 更新不要、既存データを返す
+            return existing.data;
         }
+
+        // 差分取得日数を計算（指定されたdaysを上限とする）
+        const daysToFetch = this._calculateDaysToFetch(existing, days);
 
         // API呼び出し
         const data = await this._executePriceHistoryApi(coingeckoId, {
             vsCurrency,
-            days,
+            days: daysToFetch,
             interval,
             timeoutMs
         });
@@ -206,36 +216,41 @@ class APIService {
         }
 
         // データを整形
-        const priceHistory = data.prices.map(([timestamp, price]) => ({
+        const newPriceHistory = data.prices.map(([timestamp, price]) => ({
             date: new Date(timestamp),
             price: price
         }));
 
-        // 永続キャッシュに保存
-        this.cache.set(cacheKey, priceHistory, this.config.cacheDurations.PRICE_HISTORY);
+        // 既存データとマージ
+        const merged = this._mergeHistoricalData(existing, newPriceHistory, coinName);
 
-        return priceHistory;
+        // 蓄積キャッシュに保存（無期限）
+        this.cache.set(cacheKey, merged, Infinity);
+
+        return merged.data;
     }
 
     /**
      * 複数銘柄の価格履歴を順次取得（API制限対策）
      * @param {string[]} coinNames - 銘柄シンボルの配列
      * @param {object} options - オプション設定（fetchPriceHistoryと同じ）
+     * @param {number} options.delayMs - リクエスト間の待機時間（デフォルト: 300ms）
      * @returns {Promise<object>} 銘柄別の価格履歴データ {BTC: [...], ETH: [...], ...}
      */
     async fetchMultiplePriceHistories(coinNames, options = {}) {
         const results = {};
+        const delayMs = options.delayMs || 300;
 
-        // 直列実行でAPI制限を回避（リクエスト間に300ms待機）
+        // 直列実行でAPI制限を回避（リクエスト間に指定時間待機）
         for (let i = 0; i < coinNames.length; i++) {
             const coinName = coinNames[i];
             try {
                 const priceHistory = await this.fetchPriceHistory(coinName, options);
                 results[coinName] = priceHistory;
 
-                // 次のリクエストまで300ms待機（最後のリクエスト後は待機不要）
+                // 次のリクエストまで指定時間待機（最後のリクエスト後は待機不要）
                 if (i < coinNames.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
                 }
             } catch (error) {
                 console.warn(`${coinName}の価格履歴取得失敗:`, error.message);
@@ -265,13 +280,17 @@ class APIService {
      * @returns {array|null} キャッシュデータ（なければnull）
      */
     _getStaleCache(coinName, options = {}) {
-        const { days = 30 } = options;
-        const cacheKey = window.cacheKeys.priceHistory(coinName, days);
+        const cacheKey = window.cacheKeys.priceHistory(coinName);
 
         try {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const parsed = JSON.parse(cached);
+                // 蓄積データ形式の場合
+                if (parsed.value && parsed.value.data) {
+                    return parsed.value.data;
+                }
+                // 旧形式の場合
                 return parsed.value || null;
             }
         } catch (error) {
@@ -327,6 +346,120 @@ class APIService {
         } finally {
             clearTimeout(timeoutId);
         }
+    }
+
+    /**
+     * 更新が必要かチェック（24時間経過判定）
+     * @private
+     * @param {object} existing - 既存の蓄積データ
+     * @returns {boolean} 更新が必要な場合true
+     */
+    _needsUpdate(existing) {
+        if (!existing || !existing.metadata) {
+            return true; // データがない場合は更新必要
+        }
+
+        const lastUpdate = existing.metadata.lastUpdated;
+        const now = Date.now();
+        const dayInMs = 24 * 60 * 60 * 1000;
+
+        return (now - lastUpdate) > dayInMs;
+    }
+
+    /**
+     * 差分取得日数を計算
+     * @private
+     * @param {object} existing - 既存の蓄積データ
+     * @param {number} maxDays - 最大取得日数（デフォルト: 30）
+     * @returns {number} 取得すべき日数
+     */
+    _calculateDaysToFetch(existing, maxDays = 30) {
+        if (!existing || !existing.metadata || !existing.metadata.lastDate) {
+            // 初回は指定されたmaxDays分取得
+            return maxDays;
+        }
+
+        const lastDate = new Date(existing.metadata.lastDate);
+        const today = new Date();
+        const daysDiff = Math.ceil((today - lastDate) / (24 * 60 * 60 * 1000));
+
+        // 差分とmaxDaysの小さい方を取得（欠損を最小化しつつ上限を守る）
+        return Math.min(daysDiff, maxDays);
+    }
+
+    /**
+     * 価格履歴データをマージ（重複排除）
+     * @private
+     * @param {object} existing - 既存の蓄積データ
+     * @param {Array} newData - 新規データ配列
+     * @param {string} coinName - 銘柄名
+     * @returns {object} マージされた蓄積データ
+     */
+    _mergeHistoricalData(existing, newData, coinName) {
+        // 日付をキーにしたマップで重複排除
+        const dateMap = new Map();
+
+        // 既存データを格納
+        if (existing && existing.data) {
+            existing.data.forEach(point => {
+                const dateKey = new Date(point.date).toDateString();
+                dateMap.set(dateKey, {
+                    date: new Date(point.date),
+                    price: point.price
+                });
+            });
+        }
+
+        // 新規データで上書き・追加
+        newData.forEach(point => {
+            const dateKey = point.date.toDateString();
+            dateMap.set(dateKey, {
+                date: new Date(point.date),
+                price: point.price
+            });
+        });
+
+        // 日付順にソート
+        const sortedData = Array.from(dateMap.values())
+            .sort((a, b) => a.date - b.date);
+
+        // メタデータ生成
+        const metadata = this._generateMetadata(sortedData, coinName);
+
+        return {
+            coinName,
+            data: sortedData,
+            metadata
+        };
+    }
+
+    /**
+     * メタデータ生成
+     * @private
+     * @param {Array} sortedData - ソート済みデータ配列
+     * @param {string} coinName - 銘柄名
+     * @returns {object} メタデータ
+     */
+    _generateMetadata(sortedData, coinName) {
+        if (sortedData.length === 0) {
+            return {
+                firstDate: null,
+                lastDate: null,
+                totalDays: 0,
+                lastUpdated: Date.now()
+            };
+        }
+
+        const firstDate = sortedData[0].date;
+        const lastDate = sortedData[sortedData.length - 1].date;
+        const totalDays = sortedData.length;
+
+        return {
+            firstDate,
+            lastDate,
+            totalDays,
+            lastUpdated: Date.now()
+        };
     }
 }
 
