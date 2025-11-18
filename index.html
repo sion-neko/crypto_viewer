@@ -246,8 +246,14 @@
     <script src="config.js"></script>
     <script src="storage-utils.js"></script>
 
+    <!-- Utility Classes -->
+    <script src="utils/transaction-utils.js"></script>
+    <script src="utils/formatter-utils.js"></script>
+
     <!-- Service Layer (Object-Oriented Architecture) -->
     <script src="services/api-service.js"></script>
+    <script src="services/portfolio-analyzer.js"></script>
+    <script src="services/chart-data-generator.js"></script>
     <script src="services/chart-service.js"></script>
     <script src="services/ui-service.js"></script>
     <script src="services/file-service.js"></script>
@@ -256,10 +262,20 @@
     <script src="api.js"></script>
     <script src="charts.js"></script>
     <script src="portfolio.js"></script>
+
+    <!-- Controllers -->
+    <script src="controllers/keyboard-controller.js"></script>
+    <script src="controllers/mobile-menu-controller.js"></script>
+    <script src="controllers/app-initializer.js"></script>
+
     <script src="main.js"></script>
 
     <!-- Initialize service instances -->
     <script>
+        // Initialize core services
+        window.portfolioAnalyzer = new PortfolioAnalyzer();
+        window.chartDataGenerator = new ChartDataGenerator();
+
         // Initialize ChartService instance (depends on apiService and portfolioDataService)
         window.chartService = new ChartService(window.apiService, window.portfolioDataService, AppConfig);
 

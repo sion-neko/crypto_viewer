@@ -31,30 +31,9 @@ function getExistingTransactions() {
     return safeGetJSON('rawTransactions', []);
 }
 
-// 取引データ統合（重複除外）
+// 取引データ統合（重複除外） - TransactionUtilsクラスに委譲
 function mergeTransactionData(existingData, newData) {
-    const merged = [...existingData];
-    let duplicateCount = 0;
-
-    newData.forEach(newTx => {
-        // 重複チェック：日時・銘柄・取引所・数量・金額が完全一致
-        const isDuplicate = existingData.some(existingTx =>
-            existingTx.date === newTx.date &&
-            existingTx.coinName === newTx.coinName &&
-            existingTx.exchange === newTx.exchange &&
-            Math.abs(existingTx.quantity - newTx.quantity) < 0.00000001 &&
-            Math.abs(existingTx.amount - newTx.amount) < 0.01 &&
-            existingTx.type === newTx.type
-        );
-
-        if (!isDuplicate) {
-            merged.push(newTx);
-        } else {
-            duplicateCount++;
-        }
-    });
-
-    return merged;
+    return window.TransactionUtils.merge(existingData, newData);
 }
 
 // CSVファイル解析
