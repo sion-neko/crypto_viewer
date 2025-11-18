@@ -565,6 +565,85 @@ async function renderCoinProfitChart(coinName) {
     }
 }
 
+// ===================================================================
+// PRICE FETCHING (moved from api.js)
+// ===================================================================
+
+/**
+ * 現在価格を取得してポートフォリオを更新
+ */
+async function fetchCurrentPrices() {
+    try {
+        const currentPortfolioData = portfolioDataService.getData();
+
+        if (!currentPortfolioData) {
+            throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
+        }
+
+        if (!currentPortfolioData.summary || currentPortfolioData.summary.length === 0) {
+            throw new Error('ポートフォリオサマリーデータが見つかりません');
+        }
+
+        // 銘柄リストを取得
+        const portfolioCoinNames = currentPortfolioData.summary.map(item => item.coinName);
+
+        // APIServiceを使用して価格を取得
+        window.uiService.showInfo('価格データを取得中...');
+        const prices = await window.apiService.fetchCurrentPrices(portfolioCoinNames);
+
+        // PortfolioAnalyzerを使用してポートフォリオデータを更新
+        const updatedData = window.portfolioAnalyzer.updateWithPrices(currentPortfolioData, prices);
+        portfolioDataService.updateData(updatedData);
+
+        // メッセージ生成
+        const validCoinNames = prices._metadata?.coinNames || [];
+        let message = `価格更新完了: ${validCoinNames.length}銘柄`;
+
+        if (prices._metadata?.source === 'price_history_cache') {
+            message = `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`;
+        } else if (prices._metadata?.lastUpdate) {
+            const cacheDate = new Date(prices._metadata.lastUpdate);
+            const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric'
+            });
+            message = `価格更新完了: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`;
+        }
+
+        // ポートフォリオ表示を更新
+        refreshPortfolioDisplay(updatedData, message);
+
+    } catch (error) {
+        console.error('価格取得エラー:', error);
+        window.uiService.showError(`価格取得失敗: ${error.message}`);
+        updatePriceStatus('取得失敗');
+    }
+}
+
+/**
+ * 価格更新ステータス表示
+ */
+function updatePriceStatus(message = null) {
+    const statusElement = document.getElementById('price-update-status');
+    if (!statusElement) return;
+
+    if (message) {
+        statusElement.textContent = message;
+        return;
+    }
+
+    const portfolioData = portfolioDataService.getData();
+    if (!portfolioData || !portfolioData.summary) {
+        statusElement.textContent = '未取得';
+        return;
+    }
+
+    const hasPrices = portfolioData.summary.some(item => item.currentPrice && item.currentPrice > 0);
+    statusElement.textContent = hasPrices ? '取得済み' : '未取得';
+}
+
 // グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
 (function () {
     window.showPage = showPage;
@@ -576,6 +655,8 @@ async function renderCoinProfitChart(coinName) {
     window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
     window.renderCoinProfitChart = renderCoinProfitChart;
     window.manualFetchPriceHistory = manualFetchPriceHistory;
+    window.fetchCurrentPrices = fetchCurrentPrices;
+    window.updatePriceStatus = updatePriceStatus;
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
     window.showSuccessMessage = showSuccessMessage;
     window.showErrorMessage = showErrorMessage;
