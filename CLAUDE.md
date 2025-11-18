@@ -47,16 +47,25 @@ crypto_viewer/
 ├── style.css           # スタイルシート
 ├── config.js           # アプリケーション設定、定数管理（AppConfig）
 ├── storage-utils.js    # CacheService、localStorage操作、計算ユーティリティ
-├── main.js             # エントリーポイント、CSV処理、初期化
+├── main.js             # エントリーポイント、グローバル関数（レガシー互換）
 ├── portfolio.js        # ポートフォリオ分析エンジン、PortfolioDataService
 ├── api.js              # レガシーAPI関数（段階的に廃止予定）
 ├── charts.js           # レガシーチャート関数（段階的に廃止予定）
 ├── cache-viewer.html   # 開発用キャッシュ状態表示ツール
-└── services/           # サービスレイヤー（新アーキテクチャ）
-    ├── api-service.js     # APIService - CoinGecko API統合
-    ├── chart-service.js   # ChartService - チャート描画・管理
-    ├── file-service.js    # FileService - CSV処理・ファイル管理
-    └── ui-service.js      # UIService - UI操作統合（MessageManager、TabManager、TableRenderer）
+├── utils/              # ユーティリティクラス
+│   ├── transaction-utils.js  # TransactionUtils - 取引データ操作
+│   └── formatter-utils.js    # FormatterUtils - フォーマット処理
+├── services/           # サービスレイヤー（新アーキテクチャ）
+│   ├── api-service.js        # APIService - CoinGecko API統合
+│   ├── portfolio-analyzer.js # PortfolioAnalyzer - 分析・ソート
+│   ├── chart-data-generator.js # ChartDataGenerator - チャートデータ生成
+│   ├── chart-service.js      # ChartService - チャート描画・管理
+│   ├── file-service.js       # FileService - CSV処理・ファイル管理
+│   └── ui-service.js         # UIService - UI操作統合
+└── controllers/        # コントローラーレイヤー
+    ├── app-initializer.js    # AppInitializer - アプリ初期化
+    ├── keyboard-controller.js # KeyboardController - キーボード操作
+    └── mobile-menu-controller.js # MobileMenuController - モバイルメニュー
 ```
 
 **重要**: 現在、レガシーコード（api.js、charts.js）と新サービスレイヤー（services/）が共存しています。新機能追加時は必ずサービスクラスを使用してください。
@@ -64,7 +73,36 @@ crypto_viewer/
 ### モジュール間の関係（新アーキテクチャ）
 
 ```
+【ユーティリティレイヤー】
+
+utils/transaction-utils.js (TransactionUtils) - 静的メソッド
+  ├→ isDuplicate(tx1, tx2) : 重複判定
+  ├→ merge(existingData, newData) : 重複除外マージ
+  ├→ filterByCoin(transactions, coinName) : 銘柄フィルタ
+  ├→ sortByDate(transactions, ascending) : 日付ソート
+  ├→ categorizeByType(transactions) : 買い/売り分類
+  └→ validate(transaction) : データ検証
+
+utils/formatter-utils.js (FormatterUtils) - 静的メソッド
+  ├→ formatPrice(value) : 価格フォーマット
+  ├→ formatProfit(value) : 損益フォーマット（符号付き）
+  ├→ formatProfitShort(value) : 損益短縮形式（K/M単位）
+  ├→ formatDate(date) : 日付フォーマット
+  ├→ formatDateTime(date) : 日時フォーマット
+  ├→ formatPercentage(value) : パーセンテージ
+  └→ formatQuantity(value) : 数量フォーマット
+
 【サービスレイヤー - 推奨】
+
+services/portfolio-analyzer.js (PortfolioAnalyzer)
+  ├→ analyze(transactions) : ポートフォリオ分析
+  ├→ sort(summaryData, field, direction) : ソート処理
+  └→ updateWithPrices(portfolioData, prices) : 価格更新
+
+services/chart-data-generator.js (ChartDataGenerator)
+  ├→ generateHistoricalProfitTimeSeries(transactions, priceHistory) : 日次損益データ
+  ├→ generateCombinedProfitTimeSeries(allProfitData) : 統合損益データ
+  └→ generatePriceChartData(priceHistory) : 価格チャートデータ
 
 services/api-service.js (APIService)
   ├→ fetchCurrentPrices(coinNames) : 現在価格取得（キャッシュ優先）
@@ -75,12 +113,12 @@ services/chart-service.js (ChartService)
   ├→ renderPortfolioProfitChart(portfolioData, mode) : ポートフォリオチャート描画
   ├→ renderCoinChart(coinName) : 個別銘柄価格チャート
   ├→ destroyChart(canvasId) : チャート破棄
-  └→ 内部: _generateHistoricalProfitTimeSeries(), _generateCombinedProfitTimeSeries()
+  └→ 内部: ChartDataGeneratorに委譲
 
 services/file-service.js (FileService)
   ├→ handleFiles(files) : CSVファイルアップロード処理
   ├→ parseCSVFile(file) : CSV解析（PapaParse使用）
-  └→ 内部: _processCSVData(), _mergeTransactionData()
+  └→ 内部: TransactionUtilsに委譲
 
 services/ui-service.js (UIService)
   ├→ MessageManager : トースト通知管理
@@ -93,6 +131,22 @@ services/ui-service.js (UIService)
       ├→ renderPortfolioTable(portfolioData, isMobile)
       ├→ renderTradingHistoryTable(portfolioData, isMobile)
       └→ renderCoinDetailPage(coinSummary, coinDetailData)
+
+【コントローラーレイヤー】
+
+controllers/app-initializer.js (AppInitializer)
+  ├→ initialize() : アプリケーション初期化
+  ├→ 内部: DOM初期化、イベントリスナー設定
+  └→ 内部: 保存データロード、バックグラウンドタスク開始
+
+controllers/keyboard-controller.js (KeyboardController)
+  ├→ initialize() : キーボードショートカット初期化
+  └→ ショートカット: Ctrl+1/2（タブ切り替え）、Ctrl+S（サマリー）、Ctrl+矢印（サブタブ）
+
+controllers/mobile-menu-controller.js (MobileMenuController)
+  ├→ initialize() : モバイルメニュー初期化
+  ├→ toggleMenu() : メニュー開閉
+  └→ 内部: ハンバーガーメニュー、オーバーレイ管理
 
 【コアレイヤー】
 
@@ -115,8 +169,8 @@ portfolio.js
   │   ├→ getData(), updateData(data)
   │   ├→ getSortState(), setSortState(field, direction)
   │   └→ clearCache()
-  ├→ analyzePortfolioData(transactions) : 損益計算エンジン
-  ├→ sortPortfolioData(field, direction) : ソート機能
+  ├→ analyzePortfolioData(transactions) : PortfolioAnalyzerに委譲
+  ├→ sortPortfolioData(field, direction) : PortfolioAnalyzerに委譲
   └→ displayDashboard(portfolioData) : ダッシュボード初期化
 
 config.js
@@ -165,24 +219,46 @@ api.js, charts.js
 window.cache = new CacheService();                          // storage-utils.js
 window.portfolioDataService = new PortfolioDataService();   // portfolio.js
 
-// 2. APIサービス（CacheServiceに依存）
+// 2. ユーティリティサービス（依存関係なし）
+window.portfolioAnalyzer = new PortfolioAnalyzer();         // services/portfolio-analyzer.js
+window.chartDataGenerator = new ChartDataGenerator();       // services/chart-data-generator.js
+
+// 3. APIサービス（CacheServiceに依存）
 window.apiService = new APIService(cache, AppConfig);       // services/api-service.js
 
-// 3. UIサービス（依存関係なし）
+// 4. UIサービス（依存関係なし）
 window.uiService = new UIService();                         // services/ui-service.js
 
-// 4. チャートサービス（APIService、PortfolioDataServiceに依存）
+// 5. チャートサービス（APIService、PortfolioDataServiceに依存）
 window.chartService = new ChartService(apiService, portfolioDataService, AppConfig);  // services/chart-service.js
 
-// 5. ファイルサービス（PortfolioDataService、UIServiceに依存）
+// 6. ファイルサービス（PortfolioDataService、UIServiceに依存）
 window.fileService = new FileService(portfolioDataService, uiService);  // services/file-service.js
 ```
 
 #### サービス使用例
 
 ```javascript
+// ポートフォリオ分析
+const result = portfolioAnalyzer.analyze(transactions);
+const sorted = portfolioAnalyzer.sort(result.summary, 'totalProfit', 'desc');
+
+// トランザクション操作
+const merged = TransactionUtils.merge(existingData, newData);
+const filtered = TransactionUtils.filterByCoin(transactions, 'BTC');
+
+// フォーマット
+const price = FormatterUtils.formatPrice(1234.56);
+const profit = FormatterUtils.formatProfit(-5000);
+const date = FormatterUtils.formatDate(new Date());
+
 // 価格取得
 const prices = await apiService.fetchCurrentPrices(['BTC', 'ETH']);
+
+// チャートデータ生成
+const profitData = chartDataGenerator.generateHistoricalProfitTimeSeries(
+    transactions, priceHistory
+);
 
 // チャート描画
 await chartService.renderPortfolioProfitChart(portfolioData, 'combined');
