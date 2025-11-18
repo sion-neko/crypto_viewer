@@ -535,9 +535,9 @@ async function initializePriceHistoryAccumulation(isManualTrigger = false) {
     }
 
     // fetchMultiplePriceHistoriesを使用（直列実行でAPI制限対策）
-    // 手動取得: 365日・1500ms待機、自動更新: 30日・300ms待機
+    // API制限対策: 3000ms（3秒）間隔で取得（20 calls/分ペース）
     const days = isManualTrigger ? 365 : 30;
-    const delayMs = isManualTrigger ? 1500 : 300;
+    const delayMs = 3000; // 常に3秒間隔（API制限: 30 calls/分に対し安全マージン込み）
     const results = await window.apiService.fetchMultiplePriceHistories(coinNames, { days, delayMs });
 
     // 成功・失敗をカウント

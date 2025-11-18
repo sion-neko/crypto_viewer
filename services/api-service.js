@@ -405,7 +405,9 @@ class APIService {
 
                 if (!response.ok) {
                     if (response.status === 429) {
-                        throw new Error('API制限に達しました (429 Too Many Requests)');
+                        const error = new Error('API制限に達しました (429 Too Many Requests)');
+                        error.status = 429;
+                        throw error;
                     } else if (response.status === 403) {
                         throw new Error('APIアクセスが拒否されました (403 Forbidden)');
                     } else {
@@ -414,6 +416,15 @@ class APIService {
                 }
 
                 return await response.json();
+            } catch (error) {
+                // fetchエラー（ネットワークエラーまたはCORS）の場合、429の可能性を考慮
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    // CORSエラーは通常429エラーの副作用なので、429として扱う
+                    const wrappedError = new Error('API制限またはネットワークエラー (429の可能性)');
+                    wrappedError.status = 429;
+                    throw wrappedError;
+                }
+                throw error;
             } finally {
                 clearTimeout(timeoutId);
             }
@@ -433,7 +444,7 @@ class APIService {
             try {
                 return await fn();
             } catch (error) {
-                const is429Error = error.message.includes('429');
+                const is429Error = error.message.includes('429') || error.status === 429;
                 const isLastRetry = i === maxRetries - 1;
 
                 if (is429Error && !isLastRetry) {
