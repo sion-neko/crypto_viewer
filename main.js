@@ -551,48 +551,17 @@ async function manualFetchPriceHistory() {
 // ===================================================================
 
 /**
- * 個別銘柄の損益推移チャートを描画
+ * 個別銘柄の損益推移チャートを描画 - ChartServiceに委譲
  * @param {string} coinName - 銘柄シンボル（例: "BTC"）
  */
 async function renderCoinProfitChart(coinName) {
     try {
-        // ポートフォリオデータを取得
-        const portfolioData = window.portfolioDataService.getData();
-        if (!portfolioData) {
-            throw new Error('ポートフォリオデータが見つかりません');
-        }
-
-        const canvasId = `${coinName.toLowerCase()}-profit-chart`;
-
-        // rawTransactionsから該当銘柄の取引を取得
-        const transactions = getTransactionsByCoin(coinName);
-        if (!transactions || transactions.all.length === 0) {
-            throw new Error(`${coinName}の取引データが見つかりません`);
-        }
-
-        // 価格履歴を取得
-        showInfoMessage(`${coinName}の価格履歴を取得中...`);
-        const priceHistory = await fetchCoinNamePriceHistory(coinName);
-
-        // 損益推移データを生成
-        const profitData = generateHistoricalProfitTimeSeries(
-            transactions.all,
-            priceHistory
-        );
-
-        // チャートを描画（含み損益のみ）
-        displayProfitChart(
-            canvasId,
-            profitData,
-            `${coinName} 含み損益推移（過去1か月）`,
-            'coin'
-        );
-
-        showSuccessMessage(`${coinName}の損益チャートを表示しました`);
-
+        window.uiService.showInfo(`${coinName}の価格履歴を取得中...`);
+        await window.chartService.renderCoinChart(coinName);
+        window.uiService.showSuccess(`${coinName}の損益チャートを表示しました`);
     } catch (error) {
         console.error(`${coinName}チャート描画エラー:`, error);
-        showErrorMessage(`${coinName}チャート描画失敗: ${error.message}`);
+        window.uiService.showError(`${coinName}チャート描画失敗: ${error.message}`);
     }
 }
 

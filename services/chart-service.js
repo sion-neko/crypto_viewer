@@ -473,62 +473,8 @@ class ChartService {
      * @private
      */
     _generateHistoricalProfitTimeSeries(transactions, priceHistory) {
-        const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-        const dailyProfitData = [];
-
-        priceHistory.forEach(pricePoint => {
-            const targetDate = pricePoint.date instanceof Date ? pricePoint.date : new Date(pricePoint.date);
-            const price = pricePoint.price;
-
-            let realizedProfit = 0;
-            let totalQuantity = 0;
-            let weightedAvgPrice = 0;
-            let totalBought = 0;
-            let totalSold = 0;
-
-            sortedTransactions.forEach(tx => {
-                const txDate = new Date(tx.date);
-
-                if (txDate <= targetDate) {
-                    if (tx.type === '買') {
-                        const result = calculateWeightedAverage(totalQuantity, weightedAvgPrice, tx.quantity, tx.rate);
-                        totalQuantity = result.totalQty;
-                        weightedAvgPrice = result.weightedAvgPrice;
-                        totalBought += tx.amount;
-                    } else if (tx.type === '売') {
-                        const sellProfit = calculateRealizedProfit(tx.amount, tx.quantity, weightedAvgPrice);
-                        realizedProfit += sellProfit;
-                        totalQuantity -= tx.quantity;
-                        totalSold += tx.amount;
-
-                        if (totalQuantity <= 0) {
-                            totalQuantity = 0;
-                            weightedAvgPrice = 0;
-                        }
-                    }
-                }
-            });
-
-            const unrealizedProfit = totalQuantity > 0.00000001
-                ? calculateUnrealizedProfit(totalQuantity, price, weightedAvgPrice)
-                : 0;
-
-            const totalProfit = realizedProfit + unrealizedProfit;
-
-            dailyProfitData.push({
-                date: targetDate,
-                realizedProfit: realizedProfit,
-                unrealizedProfit: unrealizedProfit,
-                totalProfit: totalProfit,
-                totalBought: totalBought,
-                totalSold: totalSold,
-                holdingQuantity: totalQuantity,
-                avgPrice: weightedAvgPrice,
-                currentPrice: price
-            });
-        });
-
-        return dailyProfitData;
+        // ChartDataGeneratorに委譲
+        return window.chartDataGenerator.generateHistoricalProfitTimeSeries(transactions, priceHistory);
     }
 
     /**
@@ -536,48 +482,8 @@ class ChartService {
      * @private
      */
     _generateCombinedProfitTimeSeries(allProfitData) {
-        const allDates = new Set();
-        Object.values(allProfitData).forEach(profitData => {
-            profitData.forEach(point => {
-                allDates.add(point.date.toDateString());
-            });
-        });
-
-        const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
-
-        const combinedData = sortedDates.map(dateStr => {
-            const targetDate = new Date(dateStr);
-            let totalRealizedProfit = 0;
-            let totalUnrealizedProfit = 0;
-            let totalProfit = 0;
-            let totalHoldingQuantity = 0;
-            let totalCurrentValue = 0;
-
-            Object.keys(allProfitData).forEach(coinName => {
-                const profitData = allProfitData[coinName];
-                const point = profitData.find(p => p.date.toDateString() === dateStr);
-
-                if (point) {
-                    totalRealizedProfit += point.realizedProfit || 0;
-                    totalUnrealizedProfit += point.unrealizedProfit || 0;
-                    totalProfit += point.totalProfit || 0;
-                    totalHoldingQuantity += point.holdingQuantity || 0;
-                    totalCurrentValue += (point.holdingQuantity || 0) * (point.currentPrice || 0);
-                }
-            });
-
-            return {
-                date: targetDate,
-                realizedProfit: totalRealizedProfit,
-                unrealizedProfit: totalUnrealizedProfit,
-                totalProfit: totalProfit,
-                holdingQuantity: totalHoldingQuantity,
-                avgPrice: totalHoldingQuantity > 0 ? totalCurrentValue / totalHoldingQuantity : 0,
-                currentPrice: 0
-            };
-        });
-
-        return combinedData;
+        // ChartDataGeneratorに委譲
+        return window.chartDataGenerator.generateCombinedProfitTimeSeries(allProfitData);
     }
 
     // ===================================================================
@@ -620,7 +526,7 @@ class ChartService {
     }
 
     _createProfitChartOptions(title, profitData, canvasId) {
-        const coinNameMatch = canvasId ? canvasId.match(/^([a-z]+)-profit-chart$/i) : null;
+        const coinNameMatch = canvasId.match(/^([a-z]+)-profit-chart$/i);
         const coinName = coinNameMatch ? coinNameMatch[1].toUpperCase() : 'COIN_NAME';
 
         return {
