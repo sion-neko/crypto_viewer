@@ -519,10 +519,23 @@ function displayDashboard(portfolioData) {
     // アップロード成功後はダッシュボードページに切り替え
     showPage('dashboard');
 
-    // 全銘柄の損益推移チャートを描画（DOM準備完了後）
+    // 全銘柄の損益推移チャートを描画（キャッシュがある場合のみ）
     setTimeout(() => {
-        // サマリータブは常に全体表示（combined）モードで描画
-        renderAllCoinNamesProfitChart(portfolioData, 'combined');
+        // 価格履歴キャッシュの存在を確認
+        const coinNames = portfolioData.summary.map(item => item.coinName);
+        const hasCache = coinNames.some(coinName => {
+            const cacheKey = window.cacheKeys.priceHistory(coinName);
+            const cached = window.cache.get(cacheKey);
+            return cached && cached.data && cached.data.length > 0;
+        });
+
+        if (hasCache) {
+            // キャッシュがある場合のみ自動描画
+            renderAllCoinNamesProfitChart(portfolioData, 'combined');
+        } else {
+            // キャッシュがない場合は手動更新を促すメッセージを表示
+            console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');
+        }
     }, 800); // DOM要素の準備を待つため少し短縮
 }
 
