@@ -10,7 +10,7 @@ class RateLimiter {
     /**
      * @param {number} maxCallsPerMinute - 1分あたりの最大コール数（デフォルト: 20、安全マージン込み）
      */
-    constructor(maxCallsPerMinute = 20) {
+    constructor(maxCallsPerMinute = 10) {
         this.maxCalls = maxCallsPerMinute;
         this.callTimestamps = [];
     }
@@ -30,7 +30,7 @@ class RateLimiter {
         if (this.callTimestamps.length >= this.maxCalls) {
             const oldestCall = this.callTimestamps[0];
             const waitTime = oldestCall + 60000 - now + 1000; // +1秒の余裕
-            console.log(`⏳ API制限に近づいています。${Math.ceil(waitTime/1000)}秒待機します...`);
+            console.log(`⏳ API制限に近づいています。${Math.ceil(waitTime / 1000)}秒待機します...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
 
@@ -291,18 +291,6 @@ class APIService {
      * @param {string[]} coinNames - 銘柄シンボルの配列
      * @param {object} options - オプション設定（fetchPriceHistoryと同じ）
      * @param {number} options.delayMs - リクエスト間の待機時間（デフォルト: 3000ms）
-     * @param {function} options.onProgress - 進捗コールバック (current, total, coinName) => void
-     * @returns {Promise<object>} 銘柄別の価格履歴データ {BTC: [...], ETH: [...], ...}
-     */
-    async fetchMultiplePriceHistories(coinNames, options = {}) {
-        const results = {};
-        const delayMs = options.delayMs || 3000; // 3秒間隔に変更（20 calls/分ペース）
-        const onProgress = options.onProgress || (() => {});
-
-        // 直列実行でAPI制限を回避（リクエスト間に指定時間待機）
-        for (let i = 0; i < coinNames.length; i++) {
-            const coinName = coinNames[i];
-
             // 進捗通知
             onProgress(i + 1, coinNames.length, coinName);
 
@@ -449,11 +437,11 @@ class APIService {
 
                 if (is429Error && !isLastRetry) {
                     const waitTime = Math.pow(2, i) * 10000; // 10秒, 20秒, 40秒
-                    console.warn(`⏳ API制限エラー。${waitTime/1000}秒待機してリトライします... (${i+1}/${maxRetries})`);
+                    console.warn(`⏳ API制限エラー。${waitTime / 1000}秒待機してリトライします... (${i + 1}/${maxRetries})`);
 
                     // UIに通知
                     if (window.uiService && window.uiService.progress && window.uiService.progress.isVisible) {
-                        window.uiService.progress.updateSubtitle(`API制限に達しました。${waitTime/1000}秒待機中...`);
+                        window.uiService.progress.updateSubtitle(`API制限に達しました。${waitTime / 1000}秒待機中...`);
                     }
 
                     await new Promise(resolve => setTimeout(resolve, waitTime));
