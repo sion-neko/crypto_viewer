@@ -20,38 +20,38 @@ window.COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 
 // 価格履歴API実行（タイムアウト・エラーハンドリング付き）
 async function executePriceHistoryApi(coingeckoId, options = {}) {
-	const {
-		vsCurrency = 'jpy',
-		days = 30,
-		interval = 'daily',
-		timeoutMs = 10000
-	} = options;
+    const {
+        vsCurrency = 'jpy',
+        days = 30,
+        interval = 'daily',
+        timeoutMs = 10000
+    } = options;
 
-	const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
+    const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
 
-	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-	try {
-		const response = await fetch(url, {
-			signal: controller.signal,
-			headers: { 'Accept': 'application/json' }
-		});
+    try {
+        const response = await fetch(url, {
+            signal: controller.signal,
+            headers: { 'Accept': 'application/json' }
+        });
 
-		if (!response.ok) {
-			if (response.status === 429) {
-				throw new Error('API制限に達しました (429 Too Many Requests)');
-			} else if (response.status === 403) {
-				throw new Error('APIアクセスが拒否されました (403 Forbidden)');
-			} else {
-				throw new Error(`API Error: ${response.status}`);
-			}
-		}
+        if (!response.ok) {
+            if (response.status === 429) {
+                throw new Error('API制限に達しました (429 Too Many Requests)');
+            } else if (response.status === 403) {
+                throw new Error('APIアクセスが拒否されました (403 Forbidden)');
+            } else {
+                throw new Error(`API Error: ${response.status}`);
+            }
+        }
 
-		return await response.json();
-	} finally {
-		clearTimeout(timeoutId);
-	}
+        return await response.json();
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 // グローバル公開

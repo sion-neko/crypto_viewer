@@ -281,7 +281,7 @@ class APIService {
         const merged = this._mergeHistoricalData(existing, newPriceHistory, coinName);
 
         // 蓄積キャッシュに保存（無期限）
-        this.cache.set(cacheKey, merged, Infinity);
+        this.cache.set(cacheKey, merged, Number.MAX_SAFE_INTEGER);
 
         return merged.data;
     }
@@ -290,16 +290,32 @@ class APIService {
      * 複数銘柄の価格履歴を順次取得（API制限対策）
      * @param {string[]} coinNames - 銘柄シンボルの配列
      * @param {object} options - オプション設定（fetchPriceHistoryと同じ）
-     * @param {number} options.delayMs - リクエスト間の待機時間（デフォルト: 3000ms）
+     * @param {number} options.delayMs - リクエスト間の待機時間（デフォルト: 6000ms）
+     * @param {function} options.onProgress - 進捗コールバック (current, total, coinName) => void
+     * @returns {Promise<object>} 結果オブジェクト {BTC: [...], ETH: null, ...}
+     */
+    async fetchMultiplePriceHistories(coinNames, options = {}) {
+        const results = {};
+        const delayMs = options.delayMs || 6000; // 6秒間隔（10 calls/分ペース）
+        const onProgress = options.onProgress || (() => { });
+
+        // 直列実行でAPI制限を回避（リクエスト間に指定時間待機）
+        for (let i = 0; i < coinNames.length; i++) {
+            const coinName = coinNames[i];
+
             // 進捗通知
             onProgress(i + 1, coinNames.length, coinName);
 
             try {
+                // キャッシュが有効かチェック
+                const isFresh = this._isPriceHistoryFresh(coinName);
+
                 const priceHistory = await this.fetchPriceHistory(coinName, options);
                 results[coinName] = priceHistory;
 
-                // 次のリクエストまで指定時間待機（最後のリクエスト後は待機不要）
-                if (i < coinNames.length - 1) {
+                // キャッシュが有効でない場合のみ待機（APIを叩いたとみなす）
+                // 最後のリクエスト後は待機不要
+                if (!isFresh && i < coinNames.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                 }
             } catch (error) {
@@ -323,6 +339,18 @@ class APIService {
         onProgress(coinNames.length, coinNames.length, null);
 
         return results;
+    }
+
+    /**
+     * 価格履歴キャッシュが有効かチェック
+     * @private
+     * @param {string} coinName - 銘柄シンボル
+     * @returns {boolean} 有効なキャッシュがある場合true
+     */
+    _isPriceHistoryFresh(coinName) {
+        const cacheKey = this.cacheKeys.priceHistory(coinName);
+        const existing = this.cache.get(cacheKey);
+        return existing && !this._needsUpdate(existing);
     }
 
     /**
