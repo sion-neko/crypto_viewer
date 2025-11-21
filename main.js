@@ -2,9 +2,6 @@
 // MAIN.JS - File handling, CSV processing, UI navigation, utilities
 // ===================================================================
 
-// DOM Elements and Event Listeners (will be initialized in DOMContentLoaded)
-let uploadZone, fileInput, dashboardArea;
-
 // CSVファイルアップロード処理（サービスクラスへの委譲版）
 async function handleFiles(files) {
     const result = await window.fileService.handleFiles(files);
@@ -402,10 +399,9 @@ function isMobile() {
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM要素を初期化
-    uploadZone = document.getElementById('uploadZone');
-    fileInput = document.getElementById('fileInput');
-    dashboardArea = document.getElementById('dashboardArea');
+    // DOM要素を取得してイベントリスナーを設定（ローカル変数）
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
 
     // イベントリスナーを設定
     if (uploadZone) {
