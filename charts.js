@@ -22,10 +22,9 @@ async function fetchCoinNamePriceHistory(coinName) {
 
 /**
  * 全銘柄の総合損益推移チャートを描画 (Delegates to ChartService)
- * @param {object} portfolioData 
- * @param {string} chartMode 
+ * @param {object} portfolioData
  */
-async function renderAllCoinNamesProfitChart(portfolioData = null, chartMode = 'combined') {
+async function renderAllCoinNamesProfitChart(portfolioData = null) {
     // データが渡されない場合はServiceから取得
     const data = portfolioData || window.portfolioDataService.getData();
 
@@ -34,7 +33,7 @@ async function renderAllCoinNamesProfitChart(portfolioData = null, chartMode = '
         return;
     }
 
-    return await window.chartService.renderPortfolioProfitChart(data, chartMode);
+    return await window.chartService.renderPortfolioProfitChart(data);
 }
 
 /**
@@ -48,15 +47,6 @@ function displayProfitChart(canvasId, profitData, title, chartType = 'summary') 
     window.chartService.displayProfitChart(canvasId, profitData, title, chartType);
 }
 
-/**
- * 複数銘柄の損益推移チャート表示 (Delegates to ChartService)
- * @param {string} canvasId 
- * @param {object} allProfitData 
- * @param {string} title 
- */
-function displayMultiCoinNameProfitChart(canvasId, allProfitData, title) {
-    window.chartService._displayMultiCoinProfitChart(canvasId, allProfitData, title);
-}
 
 /**
  * 価格履歴を使った日次総合損益データを生成 (Delegates to ChartService)
@@ -93,7 +83,6 @@ async function displayCoinNameChart(coinName) {
 window.fetchCoinNamePriceHistory = fetchCoinNamePriceHistory;
 window.renderAllCoinNamesProfitChart = renderAllCoinNamesProfitChart;
 window.displayProfitChart = displayProfitChart;
-window.displayMultiCoinNameProfitChart = displayMultiCoinNameProfitChart;
 window.generateHistoricalProfitTimeSeries = generateHistoricalProfitTimeSeries;
 window.generateCombinedProfitTimeSeries = generateCombinedProfitTimeSeries;
 window.displayCoinNameChart = displayCoinNameChart;

@@ -531,7 +531,7 @@ function displayDashboard(portfolioData) {
 
         if (hasCache) {
             // キャッシュがある場合のみ自動描画
-            renderAllCoinNamesProfitChart(portfolioData, 'combined');
+            renderAllCoinNamesProfitChart(portfolioData);
         } else {
             // キャッシュがない場合は手動更新を促すメッセージを表示
             console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');

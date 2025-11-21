@@ -26,10 +26,9 @@ class ChartService {
     /**
      * 全銘柄の総合損益推移チャートを描画
      * @param {object} portfolioData - ポートフォリオデータ
-     * @param {string} chartMode - チャートモード ('combined' or 'individual')
      * @returns {Promise<void>}
      */
-    async renderPortfolioProfitChart(portfolioData, chartMode = 'combined') {
+    async renderPortfolioProfitChart(portfolioData) {
         const canvasId = ChartElementIds.getCanvas();
 
         try {
@@ -82,14 +81,9 @@ class ChartService {
                 }
             });
 
-            if (chartMode === 'combined') {
-                // 全銘柄の合計損益推移チャートを表示
-                const combinedProfitData = this._generateCombinedProfitTimeSeries(allProfitData);
-                this.displayProfitChart(canvasId, combinedProfitData, 'ポートフォリオ総合損益推移（過去1か月）');
-            } else {
-                // 複数銘柄の個別損益推移チャートを表示
-                this._displayMultiCoinProfitChart(canvasId, allProfitData, '全銘柄個別損益推移（過去1か月）');
-            }
+            // 全銘柄の合計損益推移チャートを表示（combinedモードのみ）
+            const combinedProfitData = this._generateCombinedProfitTimeSeries(allProfitData);
+            this.displayProfitChart(canvasId, combinedProfitData, 'ポートフォリオ総合損益推移（過去1か月）');
 
             return { success: true, coinCount: Object.keys(allProfitData).length };
 
@@ -269,79 +263,6 @@ class ChartService {
         }
     }
 
-    /**
-     * 複数銘柄の損益推移チャート表示
-     * @private
-     */
-    _displayMultiCoinProfitChart(canvasId, allProfitData, title) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) {
-            console.error(`Canvas not found: ${canvasId}`);
-            return;
-        }
-
-        const ctx = canvas.getContext('2d');
-        this.destroyChart(canvasId);
-
-        // 全銘柄の日付を統合してソート
-        const allDates = new Set();
-        Object.values(allProfitData).forEach(profitData => {
-            profitData.forEach(point => {
-                allDates.add(point.date.toDateString());
-            });
-        });
-
-        const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
-        const labels = sortedDates.map(dateStr => {
-            const date = new Date(dateStr);
-            return `${date.getMonth() + 1}/${date.getDate()}`;
-        });
-
-        // 銘柄ごとのデータセットを作成
-        const datasets = [];
-        const colors = [
-            '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
-            '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#d35400'
-        ];
-
-        let colorIndex = 0;
-        Object.keys(allProfitData).forEach(coinName => {
-            const profitData = allProfitData[coinName];
-            const color = colors[colorIndex % colors.length];
-
-            const data = sortedDates.map(dateStr => {
-                const point = profitData.find(p => p.date.toDateString() === dateStr);
-                return point ? point.totalProfit : null;
-            });
-
-            const finalProfit = data[data.length - 1] || 0;
-            const borderWidth = Math.abs(finalProfit) > 10000 ? 3 : 2;
-
-            datasets.push({
-                label: `${coinName}`,
-                data: data,
-                borderColor: color,
-                backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.1)'),
-                borderWidth: borderWidth,
-                fill: false,
-                tension: 0.1,
-                pointBackgroundColor: color,
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 1,
-                pointRadius: 3,
-                pointHoverRadius: 5,
-                spanGaps: true
-            });
-
-            colorIndex++;
-        });
-
-        this.chartInstances[canvasId] = new Chart(ctx, {
-            type: 'line',
-            data: { labels, datasets },
-            options: this._createMultiCoinProfitChartOptions(title)
-        });
-    }
 
     // ===================================================================
     // チャート管理
@@ -716,75 +637,6 @@ class ChartService {
         };
     }
 
-    _createMultiCoinProfitChartOptions(title) {
-        const formatValue = (value) => {
-            const sign = value >= 0 ? '+' : '';
-            return `${sign}¥${Math.round(value).toLocaleString()}`;
-        };
-
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: title,
-                    font: { size: 16, weight: 'bold' },
-                    color: '#2c3e50'
-                },
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 15,
-                        font: { size: 11 }
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    callbacks: {
-                        label: function (context) {
-                            const value = context.parsed.y;
-                            if (value === null) return null;
-                            return `${context.dataset.label}: ${formatValue(value)}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    display: true,
-                    title: {
-                        display: true,
-                        text: '日付',
-                        font: { size: 12, weight: 'bold' }
-                    },
-                    grid: { color: 'rgba(0,0,0,0.1)' }
-                },
-                y: {
-                    display: true,
-                    title: {
-                        display: true,
-                        text: '損益 (¥)',
-                        font: { size: 12, weight: 'bold' }
-                    },
-                    grid: { color: 'rgba(0,0,0,0.1)' },
-                    ticks: {
-                        callback: function (value) {
-                            return formatValue(value);
-                        }
-                    }
-                }
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            }
-        };
-    }
 }
 
 /**
