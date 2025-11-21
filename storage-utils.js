@@ -476,23 +476,4 @@ function getTransactionsByCoin(coinName) {
     return { all, buy, sell };
 }
 
-/**
- * Chart.jsインスタンスを安全に破棄
- * @param {string} canvasId - Canvas要素のID
- */
-function destroyChartSafely(canvasId) {
-    if (!window.chartInstances) {
-        window.chartInstances = {};
-    }
-
-    const chart = window.chartInstances[canvasId];
-    if (chart) {
-        try {
-            chart.destroy();
-        } catch (error) {
-            console.warn(`チャート破棄エラー (${canvasId}):`, error);
-        }
-        delete window.chartInstances[canvasId];
-    }
-}
   
