@@ -18,44 +18,13 @@ window.COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 // PRICE FETCHING FUNCTIONS
 // ===================================================================
 
-// 価格履歴API実行（タイムアウト・エラーハンドリング付き）
-async function executePriceHistoryApi(coingeckoId, options = {}) {
-    const {
-        vsCurrency = 'jpy',
-        days = 30,
-        interval = 'daily',
-        timeoutMs = 10000
-    } = options;
-
-    const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=${encodeURIComponent(vsCurrency)}&days=${encodeURIComponent(String(days))}&interval=${encodeURIComponent(interval)}`;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-        const response = await fetch(url, {
-            signal: controller.signal,
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) {
-            if (response.status === 429) {
-                throw new Error('API制限に達しました (429 Too Many Requests)');
-            } else if (response.status === 403) {
-                throw new Error('APIアクセスが拒否されました (403 Forbidden)');
-            } else {
-                throw new Error(`API Error: ${response.status}`);
-            }
-        }
-
-        return await response.json();
-    } finally {
-        clearTimeout(timeoutId);
-    }
-}
-
-// グローバル公開
-window.executePriceHistoryApi = executePriceHistoryApi;
+// 価格履歴API実行（APIServiceに委譲）
+// 注: この関数はAPIServiceの内部メソッドに移動済み
+// 後方互換性のため残していますが、直接使用は非推奨
+window.executePriceHistoryApi = function(coingeckoId, options = {}) {
+    console.warn('executePriceHistoryApi() is deprecated. Use apiService instead.');
+    return window.apiService._executePriceHistoryApi(coingeckoId, options);
+};
 
 // 価格取得関連機能（サービスクラスへの委譲版）
 async function fetchCurrentPrices() {
@@ -108,39 +77,8 @@ async function fetchCurrentPrices() {
     }
 }
 
-// 価格履歴キャッシュから現在価格を取得（API効率化）
-async function tryGetPricesFromHistory(coinNames) {
-    const prices = {};
-    let successCount = 0;
-
-    for (const coinName of coinNames) {
-        try {
-            const cacheKey = cacheKeys.priceHistory(coinName);
-            const historyValue = cache.get(cacheKey);
-
-            if (historyValue && historyValue.length > 0) {
-                const latestPrice = historyValue[historyValue.length - 1].price;
-                prices[coinName] = {
-                    price_jpy: latestPrice,
-                    last_updated_at: Date.now() / 1000
-                };
-                successCount++;
-            }
-        } catch (error) {
-        }
-    }
-
-    if (successCount > 0) {
-        prices._metadata = {
-            lastUpdate: Date.now(),
-            coinNames: Object.keys(prices).filter(key => key !== '_metadata'),
-            source: 'price_history_cache'
-        };
-        return prices;
-    }
-
-    return null;
-}
+// tryGetPricesFromHistory() は APIService._tryGetPricesFromHistory() に移動済み
+// この関数は削除されました（APIServiceを使用してください）
 
 // 価格データでポートフォリオを更新（含み損益計算）
 function updatePortfolioWithPrices(portfolioData, prices) {
