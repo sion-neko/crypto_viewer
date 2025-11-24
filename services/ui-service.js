@@ -334,30 +334,39 @@ class TableRenderer {
      * @returns {string} HTMLマークアップ
      */
     renderCoinDetailPage(coinSummary) {
-        const profitColor = coinSummary.realizedProfit >= 0 ? '#27ae60' : '#e74c3c';
-        const profitIcon = coinSummary.realizedProfit > 0 ? '📈' : coinSummary.realizedProfit < 0 ? '📉' : '➖';
+        return this._renderCoinSummarySection(coinSummary) +
+               this._renderCoinChartSection(coinSummary) +
+               this._renderCoinTransactionsTable(coinSummary);
+    }
 
-        // 価格フォーマット関数
-        const formatPrice = (price) => {
-            if (price >= 1) {
-                // 1円以上は整数表示
-                return '¥' + Math.round(price).toLocaleString();
-            } else if (price > 0) {
-                // 1円未満は10^-3単位で表示
-                const mantissa = (price * 1000).toFixed(3);
-                return `¥${mantissa}×10<sup>-3</sup>`;
-            }
-            return '取得中...';
-        };
+    // ========== 個別銘柄詳細ページ生成ヘルパー ==========
 
-        // 価格比較の計算
+    /**
+     * 価格フォーマット（1円未満対応）
+     * @private
+     */
+    _formatPriceDisplay(price) {
+        if (price >= 1) {
+            return '¥' + Math.round(price).toLocaleString();
+        } else if (price > 0) {
+            const mantissa = (price * 1000).toFixed(3);
+            return `¥${mantissa}×10<sup>-3</sup>`;
+        }
+        return '取得中...';
+    }
+
+    /**
+     * 銘柄サマリーセクション生成（損益・価格・統計）
+     * @private
+     */
+    _renderCoinSummarySection(coinSummary) {
         const currentPrice = coinSummary.currentPrice;
         const avgPrice = coinSummary.averagePurchaseRate;
         const isHigher = currentPrice > avgPrice;
-        const priceDiff = currentPrice - avgPrice;
-        const diffPercent = avgPrice > 0 ? ((priceDiff / avgPrice) * 100).toFixed(1) : 0;
+        const diffPercent = avgPrice > 0 ? (((currentPrice - avgPrice) / avgPrice) * 100).toFixed(1) : 0;
+        const formatPrice = this._formatPriceDisplay.bind(this);
 
-        let html = `
+        return `
             <!-- 銘柄サマリーカード -->
             <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <div style="text-align: center; margin-bottom: 15px;">
@@ -429,7 +438,15 @@ class TableRenderer {
                     </div>
                 </div>
             </div>
+        `;
+    }
 
+    /**
+     * 銘柄チャートセクション生成
+     * @private
+     */
+    _renderCoinChartSection(coinSummary) {
+        return `
             <!-- 銘柄チャート -->
             <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -442,15 +459,37 @@ class TableRenderer {
                     <canvas id="${coinSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 350px;"></canvas>
                 </div>
             </div>
+        `;
+    }
 
+    /**
+     * 取引履歴テーブル生成
+     * @private
+     */
+    _renderCoinTransactionsTable(coinSummary) {
+        const transactions = getTransactionsByCoin(coinSummary.coinName);
+        const sortedTransactions = [...transactions.all].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let tableRows = '';
+        sortedTransactions.forEach(tx => {
+            const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
+            const typeBg = tx.type === '買' ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)';
+
+            tableRows += `
+                <tr style="background-color: ${typeBg};">
+                    <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold; font-size: 0.95rem;">${tx.type}</td>
+                    <td class="table-cell-mono">${parseFloat(tx.quantity.toFixed(8))}</td>
+                    <td class="table-cell-mono">¥${tx.rate.toLocaleString()}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace; font-weight: 600;">¥${tx.amount.toLocaleString()}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem; font-weight: 600;">${tx.exchange}</td>
+                </tr>
+            `;
+        });
+
+        return `
             <!-- 取引履歴テーブル -->
             <div class="info-box">
-        `;
-
-        // rawTransactionsから該当銘柄の取引を取得
-        const transactions = getTransactionsByCoin(coinSummary.coinName);
-
-        html += `
                 <h4 class="text-section-title">📊 ${coinSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse;">
@@ -465,35 +504,12 @@ class TableRenderer {
                             </tr>
                         </thead>
                         <tbody>
-        `;
-
-        // 取引履歴を日付順に並び替え（新しい順）
-        const sortedTransactions = [...transactions.all].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        sortedTransactions.forEach(tx => {
-            const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
-            const typeBg = tx.type === '買' ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)';
-
-            html += `
-                <tr style="background-color: ${typeBg};">
-                    <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
-                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold; font-size: 0.95rem;">${tx.type}</td>
-                    <td class="table-cell-mono">${parseFloat(tx.quantity.toFixed(8))}</td>
-                    <td class="table-cell-mono">¥${tx.rate.toLocaleString()}</td>
-                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace; font-weight: 600;">¥${tx.amount.toLocaleString()}</td>
-                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem; font-weight: 600;">${tx.exchange}</td>
-                </tr>
-            `;
-        });
-
-        html += `
+                            ${tableRows}
                         </tbody>
                     </table>
                 </div>
             </div>
         `;
-
-        return html;
     }
 
     // ===================================================================
