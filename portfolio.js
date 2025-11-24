@@ -1,10 +1,6 @@
-// ===================================================================
-// PORTFOLIO.JS - Portfolio analysis, calculations, and display
-// ===================================================================
+// ========== PORTFOLIO.JS - Portfolio analysis, calculations, and display ==========
 
-// ===================================================================
-// PORTFOLIO DATA SERVICE CLASS
-// ===================================================================
+// ========== PORTFOLIO DATA SERVICE CLASS ==========
 
 /**
  * ポートフォリオデータを管理するサービスクラス
@@ -88,9 +84,7 @@ class PortfolioDataService {
 // シングルトンインスタンスを作成してグローバルに公開
 window.portfolioDataService = new PortfolioDataService();
 
-// ===================================================================
-// PORTFOLIO UPDATE HELPER
-// ===================================================================
+// ========== PORTFOLIO UPDATE HELPER ==========
 
 /**
  * ポートフォリオ表示を更新（共通処理）
@@ -134,9 +128,7 @@ function refreshPortfolioDisplay(portfolioData = null, message = null) {
     updatePriceStatus();
 }
 
-// ===================================================================
-// PORTFOLIO ANALYSIS FUNCTIONS
-// ===================================================================
+// ========== PORTFOLIO ANALYSIS FUNCTIONS ==========
 
 // ポートフォリオ分析（損益計算強化版）
 function analyzePortfolioData(transactions) {
@@ -249,9 +241,7 @@ function analyzePortfolioData(transactions) {
     };
 }
 
-// ===================================================================
-// TABLE SORTING FUNCTIONS
-// ===================================================================
+// ========== TABLE SORTING FUNCTIONS ==========
 
 // テーブルソート機能
 function sortTable(field) {
@@ -379,9 +369,7 @@ function updateSortIndicators(activeField, direction) {
     });
 }
 
-// ===================================================================
-// DASHBOARD AND DISPLAY FUNCTIONS
-// ===================================================================
+// ========== DASHBOARD AND DISPLAY FUNCTIONS ==========
 
 // ダッシュボード表示（タブシステム版）
 function displayDashboard(portfolioData) {
@@ -569,18 +557,14 @@ function updateDataStatus(portfolioData) {
     }
 }
 
-// ===================================================================
-// SUBTAB CREATION AND MANAGEMENT
-// ===================================================================
+// ========== SUBTAB CREATION AND MANAGEMENT ==========
 
 // 銘柄別サブタブ生成（サービスクラスへの委譲版）
 function createCoinNameSubtabs(portfolioData) {
     window.uiService.createCoinSubTabs(portfolioData);
 }
 
-// ===================================================================
-// TABLE GENERATION FUNCTIONS
-// ===================================================================
+// ========== TABLE GENERATION FUNCTIONS ==========
 
 // モバイル用ポートフォリオカード生成
 function generateMobilePortfolioCards(portfolioData) {
@@ -1034,7 +1018,5 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
     return html;
 }
 
-// ===================================================================
-// PROFIT CHART FUNCTIONS
-// ===================================================================
+// ========== PROFIT CHART FUNCTIONS ==========
 // (未使用のチャート関数を削除しました)

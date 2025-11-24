@@ -1,14 +1,10 @@
-// ===================================================================
-// CHARTS.JS - Legacy Wrapper for ChartService
-// ===================================================================
+// ========== CHARTS.JS - Legacy Wrapper for ChartService ==========
 
 // Note: This file is kept for backward compatibility.
 // All actual logic has been moved to services/chart-service.js and services/api-service.js.
 // This resolves issues with API rate limiting and zombie charts.
 
-// ===================================================================
-// DELEGATED FUNCTIONS
-// ===================================================================
+// ========== DELEGATED FUNCTIONS ==========
 
 /**
  * 銘柄の過去の価格履歴を取得 (Delegates to APIService)
@@ -75,9 +71,7 @@ async function displayCoinNameChart(coinName) {
     await window.chartService.renderCoinChart(coinName);
 }
 
-// ===================================================================
-// EXPORTS
-// ===================================================================
+// ========== EXPORTS ==========
 
 // グローバルスコープに公開（既存のコードとの互換性のため）
 window.fetchCoinNamePriceHistory = fetchCoinNamePriceHistory;
