@@ -371,70 +371,75 @@ function updateSortIndicators(activeField, direction) {
 
 // ========== DASHBOARD AND DISPLAY FUNCTIONS ==========
 
-// ダッシュボード表示（タブシステム版）
+// ダッシュボード表示（メイン関数）
 function displayDashboard(portfolioData) {
-    // PortfolioDataServiceに保存
-    portfolioDataService.updateData(portfolioData);
+    _initializeDashboardData(portfolioData);
+    _toggleDashboardDisplay();
+    _initializeChartContainer();
+    _renderDashboardTables(portfolioData);
+    _finalizeDashboardSetup(portfolioData);
+}
 
-    // デフォルトソート（実現損益降順）
+// データ保存とソート設定
+function _initializeDashboardData(portfolioData) {
+    portfolioDataService.updateData(portfolioData);
     portfolioDataService.setSortState('realizedProfit', 'desc');
     sortPortfolioData('realizedProfit', 'desc');
+}
 
-    // 旧表示エリアを非表示
+// UI表示/非表示の切り替え
+function _toggleDashboardDisplay() {
     document.getElementById('dashboardArea').style.display = 'none';
-
-    // タブコンテナを表示
     document.getElementById('tabContainer').style.display = 'block';
+}
 
-    // チャート表示エリアを一度だけ初期化（ソート時に消えないように）
+// チャートコンテナの初期化
+function _initializeChartContainer() {
     const chartContainer = document.getElementById('portfolio-chart-container');
-    if (!chartContainer.hasChildNodes()) {
-        if (isMobile()) {
-            // モバイル版チャート
-            chartContainer.innerHTML = `
-                <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
-                    <div class="card-header">
-                        <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
-                        <div style="float: right;">
-                            <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                更新
-                            </button>
-                        </div>
-                    </div>
-                    <div style="height: 300px; padding: 10px; position: relative;">
-                        <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
-                    </div>
-                </div>
-            `;
-        } else {
-            // デスクトップ版チャート
-            chartContainer.innerHTML = `
-                <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
-                        <div>
-                            <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                                チャート更新
-                            </button>
-                        </div>
-                    </div>
-                    <div style="height: 400px; position: relative;">
-                        <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
-                    </div>
-                </div>
-            `;
-        }
-    }
+    if (chartContainer.hasChildNodes()) return;
 
-    // ポートフォリオテーブル表示
+    if (isMobile()) {
+        chartContainer.innerHTML = `
+            <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
+                <div class="card-header">
+                    <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
+                    <div style="float: right;">
+                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            更新
+                        </button>
+                    </div>
+                </div>
+                <div style="height: 300px; padding: 10px; position: relative;">
+                    <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+        `;
+    } else {
+        chartContainer.innerHTML = `
+            <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
+                    <div>
+                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                            チャート更新
+                        </button>
+                    </div>
+                </div>
+                <div style="height: 400px; position: relative;">
+                    <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// テーブル描画とキャッシュ価格復元
+function _renderDashboardTables(portfolioData) {
     const tableContainer = document.getElementById('portfolio-table-container');
     const currentData = portfolioDataService.getData();
     tableContainer.innerHTML = generatePortfolioTable(currentData);
 
-    // キャッシュに価格データがある場合は自動的に復元
     const coinNames = portfolioData.summary.map(item => item.coinName);
-
-    // 個別銘柄のキャッシュからタイムスタンプを収集
     const cacheTimestamps = [];
     const cachedPriceData = {};
 
@@ -451,9 +456,7 @@ function displayDashboard(portfolioData) {
         }
     }
 
-    // キャッシュされた価格データがある場合
     if (Object.keys(cachedPriceData).length > 0) {
-        // キャッシュから価格を復元
         const pricesObject = {};
         for (const [coinName, priceData] of Object.entries(cachedPriceData)) {
             pricesObject[coinName] = priceData;
@@ -464,19 +467,15 @@ function displayDashboard(portfolioData) {
         portfolioDataService.updateData(portfolioData);
         const updatedData = portfolioDataService.getData();
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
-        // portfolioDataの保存はupdateData()内で実行済み（価格情報はクリアして保存）
 
-        // 価格ステータスを更新（実際のキャッシュ状態を表示）
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus();
         }
     } else {
-        // キャッシュが全くない場合は自動的に価格を取得
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus('価格データ取得中...');
         }
 
-        // 自動的に価格を取得
         setTimeout(() => {
             if (typeof fetchCurrentPrices === 'function') {
                 fetchCurrentPrices();
@@ -484,32 +483,26 @@ function displayDashboard(portfolioData) {
         }, 1000);
     }
 
-    // 取引履歴テーブル表示
     const tradingContainer = document.getElementById('trading-history-container');
     tradingContainer.innerHTML = generateTradingHistoryTable(portfolioData);
+}
 
-    // 銘柄別サブタブ作成
+// サブタブ作成、ステータス更新、チャート描画
+function _finalizeDashboardSetup(portfolioData) {
     try {
         createCoinNameSubtabs(portfolioData);
     } catch (error) {
         console.error('❌ Error in createCoinNameSubtabs:', error);
     }
 
-    // サマリータブを明示的にアクティブに設定
     setTimeout(() => {
         switchSubtab('summary');
-
-        // 事前キャッシュは全銘柄チャート描画で一括処理するため削除
     }, 50);
 
     updateDataStatus(portfolioData);
-
-    // アップロード成功後はダッシュボードページに切り替え
     showPage('dashboard');
 
-    // 全銘柄の損益推移チャートを描画（キャッシュがある場合のみ）
     setTimeout(() => {
-        // 価格履歴キャッシュの存在を確認
         const coinNames = portfolioData.summary.map(item => item.coinName);
         const hasCache = coinNames.some(coinName => {
             const cacheKey = window.cacheKeys.priceHistory(coinName);
@@ -518,13 +511,11 @@ function displayDashboard(portfolioData) {
         });
 
         if (hasCache) {
-            // キャッシュがある場合のみ自動描画
             renderAllCoinNamesProfitChart(portfolioData);
         } else {
-            // キャッシュがない場合は手動更新を促すメッセージを表示
             console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');
         }
-    }, 800); // DOM要素の準備を待つため少し短縮
+    }, 800);
 }
 
 // データ状態更新
