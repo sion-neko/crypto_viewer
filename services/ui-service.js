@@ -369,19 +369,19 @@ class TableRenderer {
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <!-- 総合損益 -->
                     <div style="text-align: center; padding: 20px; background: ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 10px; border: 2px solid ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#86efac' : '#fca5a5'}; box-shadow: 0 2px 6px ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};">
-                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">総合損益</div>
+                        <div class="text-label-caps">総合損益</div>
                         <div style="font-size: 24px; font-weight: 800; color: ${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${(coinSummary.totalProfit || coinSummary.realizedProfit) >= 0 ? '+' : ''}¥${Math.round(coinSummary.totalProfit || coinSummary.realizedProfit).toLocaleString()}</div>
                     </div>
 
                     <!-- 実現損益 -->
                     <div style="text-align: center; padding: 20px; background: ${coinSummary.realizedProfit >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 10px; border: 2px solid ${coinSummary.realizedProfit >= 0 ? '#86efac' : '#fca5a5'}; box-shadow: 0 2px 6px ${coinSummary.realizedProfit >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};">
-                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">実現損益</div>
+                        <div class="text-label-caps">実現損益</div>
                         <div style="font-size: 24px; font-weight: 800; color: ${coinSummary.realizedProfit >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${coinSummary.realizedProfit >= 0 ? '+' : ''}¥${Math.round(coinSummary.realizedProfit).toLocaleString()}</div>
                     </div>
 
                     <!-- 含み損益 -->
                     <div style="text-align: center; padding: 20px; background: ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 10px; border: 2px solid ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#86efac' : '#fca5a5'}; box-shadow: 0 2px 6px ${(coinSummary.unrealizedProfit || 0) >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};">
-                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">含み損益</div>
+                        <div class="text-label-caps">含み損益</div>
                         <div style="font-size: 24px; font-weight: 800; color: ${(coinSummary.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'}; line-height: 1.2;">${(coinSummary.unrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(coinSummary.unrealizedProfit || 0).toLocaleString()}</div>
                     </div>
                 </div>
@@ -407,25 +407,25 @@ class TableRenderer {
 
                 <!-- その他の情報（控えめに表示） -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
-                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">現在評価額</div>
-                        <div style="font-size: 13px; font-weight: 600; color: #374151;">${coinSummary.currentValue > 0 ? '¥' + Math.round(coinSummary.currentValue).toLocaleString() : '計算中...'}</div>
+                    <div class="stat-card">
+                        <div class="text-label-xs">現在評価額</div>
+                        <div class="text-value-md">${coinSummary.currentValue > 0 ? '¥' + Math.round(coinSummary.currentValue).toLocaleString() : '計算中...'}</div>
                     </div>
-                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">保有数量</div>
-                        <div style="font-size: 13px; font-weight: 600; color: #374151;">${parseFloat(coinSummary.holdingQuantity.toFixed(8))}</div>
+                    <div class="stat-card">
+                        <div class="text-label-xs">保有数量</div>
+                        <div class="text-value-md">${parseFloat(coinSummary.holdingQuantity.toFixed(8))}</div>
                     </div>
-                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">総投資額</div>
-                        <div style="font-size: 13px; font-weight: 600; color: #374151;">¥${coinSummary.totalInvestment.toLocaleString()}</div>
+                    <div class="stat-card">
+                        <div class="text-label-xs">総投資額</div>
+                        <div class="text-value-md">¥${coinSummary.totalInvestment.toLocaleString()}</div>
                     </div>
-                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">売却金額</div>
-                        <div style="font-size: 13px; font-weight: 600; color: #374151;">¥${coinSummary.totalSellAmount.toLocaleString()}</div>
+                    <div class="stat-card">
+                        <div class="text-label-xs">売却金額</div>
+                        <div class="text-value-md">¥${coinSummary.totalSellAmount.toLocaleString()}</div>
                     </div>
-                    <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 3px; font-weight: 500;">取引回数</div>
-                        <div style="font-size: 13px; font-weight: 600; color: #374151;">買${coinSummary.buyTransactionCount}回・売${coinSummary.sellTransactionCount}回</div>
+                    <div class="stat-card">
+                        <div class="text-label-xs">取引回数</div>
+                        <div class="text-value-md">買${coinSummary.buyTransactionCount}回・売${coinSummary.sellTransactionCount}回</div>
                     </div>
                 </div>
             </div>
@@ -444,24 +444,24 @@ class TableRenderer {
             </div>
 
             <!-- 取引履歴テーブル -->
-            <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div class="info-box">
         `;
 
         // rawTransactionsから該当銘柄の取引を取得
         const transactions = getTransactionsByCoin(coinSummary.coinName);
 
         html += `
-                <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
+                <h4 class="text-section-title">📊 ${coinSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
-                            <tr style="background-color: #f8f9fa;">
-                                <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
-                                <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">売買</th>
-                                <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">数量</th>
-                                <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">レート</th>
-                                <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">金額</th>
-                                <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">取引所</th>
+                            <tr class="table-header-bg">
+                                <th class="table-cell-left">日時</th>
+                                <th class="table-cell-center">売買</th>
+                                <th class="table-cell-right">数量</th>
+                                <th class="table-cell-right">レート</th>
+                                <th class="table-cell-right">金額</th>
+                                <th class="table-cell-center">取引所</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -476,10 +476,10 @@ class TableRenderer {
 
             html += `
                 <tr style="background-color: ${typeBg};">
-                    <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                    <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
                     <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold; font-size: 0.95rem;">${tx.type}</td>
-                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">${parseFloat(tx.quantity.toFixed(8))}</td>
-                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">¥${tx.rate.toLocaleString()}</td>
+                    <td class="table-cell-mono">${parseFloat(tx.quantity.toFixed(8))}</td>
+                    <td class="table-cell-mono">¥${tx.rate.toLocaleString()}</td>
                     <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace; font-weight: 600;">¥${tx.amount.toLocaleString()}</td>
                     <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem; font-weight: 600;">${tx.exchange}</td>
                 </tr>

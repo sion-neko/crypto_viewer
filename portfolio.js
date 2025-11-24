@@ -684,7 +684,7 @@ function generatePortfolioTable(portfolioData) {
             <!-- 現在価格一覧 -->
             <div>
                 <div style="margin-bottom: 10px;">
-                    <div style="font-size: 13px; font-weight: 600; color: #374151;">現在価格</div>
+                    <div class="text-value-md">現在価格</div>
                     <div style="font-size: 11px; color: #6b7280;">CoinGecko API</div>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
@@ -724,24 +724,24 @@ function generatePortfolioTable(portfolioData) {
             <table class="portfolio-table" border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; min-width: 800px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
             <colgroup>
                 <col style="width: 100px;">  <!-- 銘柄 -->
-                <col style="width: 130px;">  <!-- 現在価格 -->
-                <col style="width: 140px;">  <!-- 平均購入レート -->
-                <col style="width: 120px;">  <!-- 評価額 -->
-                <col style="width: 130px;">  <!-- 合計購入額 -->
-                <col style="width: 130px;">  <!-- 含み損益 -->
-                <col style="width: 130px;">  <!-- 実現損益 -->
-                <col style="width: 140px;">  <!-- 総合損益 -->
+                <col class="w-130">  <!-- 現在価格 -->
+                <col class="w-140">  <!-- 平均購入レート -->
+                <col class="w-120">  <!-- 評価額 -->
+                <col class="w-130">  <!-- 合計購入額 -->
+                <col class="w-130">  <!-- 含み損益 -->
+                <col class="w-130">  <!-- 実現損益 -->
+                <col class="w-140">  <!-- 総合損益 -->
             </colgroup>
             <thead>
                 <tr style="background-color: #f9fafb;">
                     <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #374151;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
-                    <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
-                    <th onclick="sortTable('averagePurchaseRate')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
-                    <th onclick="sortTable('currentValue')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
-                    <th onclick="sortTable('totalInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
-                    <th onclick="sortTable('unrealizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
-                    <th onclick="sortTable('realizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${getSortIcon('realizedProfit')}</span></th>
-                    <th onclick="sortTable('totalProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">総合損益 <span id="sort-totalProfit">${getSortIcon('totalProfit')}</span></th>
+                    <th onclick="sortTable('currentPrice')" class="table-sortable">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
+                    <th onclick="sortTable('averagePurchaseRate')" class="table-sortable">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
+                    <th onclick="sortTable('currentValue')" class="table-sortable">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
+                    <th onclick="sortTable('totalInvestment')" class="table-sortable">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
+                    <th onclick="sortTable('unrealizedProfit')" class="table-sortable">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
+                    <th onclick="sortTable('realizedProfit')" class="table-sortable">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${getSortIcon('realizedProfit')}</span></th>
+                    <th onclick="sortTable('totalProfit')" class="table-sortable">総合損益 <span id="sort-totalProfit">${getSortIcon('totalProfit')}</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -840,19 +840,19 @@ function generateTradingHistoryTable(portfolioData) {
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     let html = `
-        <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">全取引履歴（新しい順） - 全${allTransactions.length}件</h4>
-            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <div class="info-box">
+            <h4 class="text-section-title">全取引履歴（新しい順） - 全${allTransactions.length}件</h4>
+            <div class="scroll-x">
                 <table class="trading-history-table" style="width: 100%; min-width: 700px; border-collapse: collapse;">
                     <thead>
-                        <tr style="background-color: #f8f9fa;">
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">銘柄</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">売買</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">数量</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">レート</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">金額</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">取引所</th>
+                        <tr class="table-header-bg">
+                            <th class="table-cell-left">日時</th>
+                            <th class="table-cell-left">銘柄</th>
+                            <th class="table-cell-center">売買</th>
+                            <th class="table-cell-right">数量</th>
+                            <th class="table-cell-right">レート</th>
+                            <th class="table-cell-right">金額</th>
+                            <th class="table-cell-center">取引所</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -862,7 +862,7 @@ function generateTradingHistoryTable(portfolioData) {
         const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
         html += `
             <tr>
-                <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; font-weight: bold;">${tx.coinName}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold;">${tx.type}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">${tx.quantity.toFixed(8)}</td>
@@ -923,67 +923,67 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
                 <!-- 保有数量 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">保有数量</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${parseFloat(coinNameSummary.holdingQuantity.toFixed(8))}</div>
+                    <div class="text-label-sm">保有数量</div>
+                    <div class="text-primary-lg">${parseFloat(coinNameSummary.holdingQuantity.toFixed(8))}</div>
                 </div>
 
                 <!-- 平均購入レート -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">平均購入レート</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.averagePurchaseRate.toLocaleString()}</div>
+                    <div class="text-label-sm">平均購入レート</div>
+                    <div class="text-primary-lg">¥${coinNameSummary.averagePurchaseRate.toLocaleString()}</div>
                 </div>
 
                 <!-- 総投資額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">総投資額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.totalInvestment.toLocaleString()}</div>
+                    <div class="text-label-sm">総投資額</div>
+                    <div class="text-primary-lg">¥${coinNameSummary.totalInvestment.toLocaleString()}</div>
                 </div>
 
                 <!-- 売却金額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #06b6d4;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">売却金額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.totalSellAmount.toLocaleString()}</div>
+                    <div class="text-label-sm">売却金額</div>
+                    <div class="text-primary-lg">¥${coinNameSummary.totalSellAmount.toLocaleString()}</div>
                 </div>
 
                 <!-- 取引回数 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #84cc16;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">取引回数</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">買${coinNameSummary.buyTransactionCount}回・売${coinNameSummary.sellTransactionCount}回</div>
+                    <div class="text-label-sm">取引回数</div>
+                    <div class="text-primary-lg">買${coinNameSummary.buyTransactionCount}回・売${coinNameSummary.sellTransactionCount}回</div>
                 </div>
 
                 <!-- 現在価格 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #ec4899;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在価格</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinNameSummary.currentPrice > 0 ? '¥' + coinNameSummary.currentPrice.toLocaleString() : '取得中...'}</div>
+                    <div class="text-label-sm">現在価格</div>
+                    <div class="text-primary-lg">${coinNameSummary.currentPrice > 0 ? '¥' + coinNameSummary.currentPrice.toLocaleString() : '取得中...'}</div>
                 </div>
 
                 <!-- 現在評価額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #14b8a6;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在評価額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinNameSummary.currentValue > 0 ? '¥' + Math.round(coinNameSummary.currentValue).toLocaleString() : '計算中...'}</div>
+                    <div class="text-label-sm">現在評価額</div>
+                    <div class="text-primary-lg">${coinNameSummary.currentValue > 0 ? '¥' + Math.round(coinNameSummary.currentValue).toLocaleString() : '計算中...'}</div>
                 </div>
             </div>
         </div>
 
         <!-- 取引履歴テーブル -->
-        <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <div class="info-box">
     `;
 
     // rawTransactionsから該当銘柄の取引を取得
     const transactions = getTransactionsByCoin(coinNameSummary.coinName);
 
     html += `
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinNameSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
-            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+            <h4 class="text-section-title">📊 ${coinNameSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
+            <div class="scroll-x">
                 <table style="width: 100%; min-width: 600px; border-collapse: collapse;">
                     <thead>
-                        <tr style="background-color: #f8f9fa;">
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">売買</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">数量</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">レート</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">金額</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">取引所</th>
+                        <tr class="table-header-bg">
+                            <th class="table-cell-left">日時</th>
+                            <th class="table-cell-center">売買</th>
+                            <th class="table-cell-right">数量</th>
+                            <th class="table-cell-right">レート</th>
+                            <th class="table-cell-right">金額</th>
+                            <th class="table-cell-center">取引所</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -998,10 +998,10 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
 
         html += `
             <tr style="background-color: ${typeBg};">
-                <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold; font-size: 0.95rem;">${tx.type}</td>
-                <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">${parseFloat(tx.quantity.toFixed(8))}</td>
-                <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">¥${tx.rate.toLocaleString()}</td>
+                <td class="table-cell-mono">${parseFloat(tx.quantity.toFixed(8))}</td>
+                <td class="table-cell-mono">¥${tx.rate.toLocaleString()}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace; font-weight: 600;">¥${tx.amount.toLocaleString()}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem; font-weight: 600;">${tx.exchange}</td>
             </tr>
