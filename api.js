@@ -18,13 +18,8 @@ window.COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 // PRICE FETCHING FUNCTIONS
 // ===================================================================
 
-// 価格履歴API実行（APIServiceに委譲）
-// 注: この関数はAPIServiceの内部メソッドに移動済み
-// 後方互換性のため残していますが、直接使用は非推奨
-window.executePriceHistoryApi = function(coingeckoId, options = {}) {
-    console.warn('executePriceHistoryApi() is deprecated. Use apiService instead.');
-    return window.apiService._executePriceHistoryApi(coingeckoId, options);
-};
+// executePriceHistoryApi() は APIService._executePriceHistoryApi() に移動済み
+// （この関数は削除されました）
 
 // 価格取得関連機能（サービスクラスへの委譲版）
 async function fetchCurrentPrices() {
