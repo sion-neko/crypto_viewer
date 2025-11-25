@@ -1,10 +1,6 @@
-// ===================================================================
-// PORTFOLIO.JS - Portfolio analysis, calculations, and display
-// ===================================================================
+// ========== PORTFOLIO.JS - Portfolio analysis, calculations, and display ==========
 
-// ===================================================================
-// PORTFOLIO DATA SERVICE CLASS
-// ===================================================================
+// ========== PORTFOLIO DATA SERVICE CLASS ==========
 
 /**
  * ポートフォリオデータを管理するサービスクラス
@@ -88,9 +84,7 @@ class PortfolioDataService {
 // シングルトンインスタンスを作成してグローバルに公開
 window.portfolioDataService = new PortfolioDataService();
 
-// ===================================================================
-// PORTFOLIO UPDATE HELPER
-// ===================================================================
+// ========== PORTFOLIO UPDATE HELPER ==========
 
 /**
  * ポートフォリオ表示を更新（共通処理）
@@ -134,9 +128,7 @@ function refreshPortfolioDisplay(portfolioData = null, message = null) {
     updatePriceStatus();
 }
 
-// ===================================================================
-// PORTFOLIO ANALYSIS FUNCTIONS
-// ===================================================================
+// ========== PORTFOLIO ANALYSIS FUNCTIONS ==========
 
 // ポートフォリオ分析（損益計算強化版）
 function analyzePortfolioData(transactions) {
@@ -249,9 +241,7 @@ function analyzePortfolioData(transactions) {
     };
 }
 
-// ===================================================================
-// TABLE SORTING FUNCTIONS
-// ===================================================================
+// ========== TABLE SORTING FUNCTIONS ==========
 
 // テーブルソート機能
 function sortTable(field) {
@@ -379,74 +369,77 @@ function updateSortIndicators(activeField, direction) {
     });
 }
 
-// ===================================================================
-// DASHBOARD AND DISPLAY FUNCTIONS
-// ===================================================================
+// ========== DASHBOARD AND DISPLAY FUNCTIONS ==========
 
-// ダッシュボード表示（タブシステム版）
+// ダッシュボード表示（メイン関数）
 function displayDashboard(portfolioData) {
-    // PortfolioDataServiceに保存
-    portfolioDataService.updateData(portfolioData);
+    _initializeDashboardData(portfolioData);
+    _toggleDashboardDisplay();
+    _initializeChartContainer();
+    _renderDashboardTables(portfolioData);
+    _finalizeDashboardSetup(portfolioData);
+}
 
-    // デフォルトソート（実現損益降順）
+// データ保存とソート設定
+function _initializeDashboardData(portfolioData) {
+    portfolioDataService.updateData(portfolioData);
     portfolioDataService.setSortState('realizedProfit', 'desc');
     sortPortfolioData('realizedProfit', 'desc');
+}
 
-    // 旧表示エリアを非表示
+// UI表示/非表示の切り替え
+function _toggleDashboardDisplay() {
     document.getElementById('dashboardArea').style.display = 'none';
-
-    // タブコンテナを表示
     document.getElementById('tabContainer').style.display = 'block';
+}
 
-    // チャート表示エリアを一度だけ初期化（ソート時に消えないように）
+// チャートコンテナの初期化
+function _initializeChartContainer() {
     const chartContainer = document.getElementById('portfolio-chart-container');
-    if (!chartContainer.hasChildNodes()) {
-        if (isMobile()) {
-            // モバイル版チャート
-            chartContainer.innerHTML = `
-                <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
-                    <div class="card-header">
-                        <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
-                        <div style="float: right;">
-                            <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                更新
-                            </button>
-                        </div>
-                    </div>
-                    <div style="height: 300px; padding: 10px; position: relative;">
-                        <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
-                    </div>
-                </div>
-            `;
-        } else {
-            // デスクトップ版チャート
-            chartContainer.innerHTML = `
-                <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
-                        <div>
-                            <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                                チャート更新
-                            </button>
-                        </div>
-                    </div>
-                    <div style="height: 400px; position: relative;">
-                        <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
-                    </div>
-                </div>
-            `;
-        }
-    }
+    if (chartContainer.hasChildNodes()) return;
 
-    // ポートフォリオテーブル表示
+    if (isMobile()) {
+        chartContainer.innerHTML = `
+            <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
+                <div class="card-header">
+                    <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
+                    <div style="float: right;">
+                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            更新
+                        </button>
+                    </div>
+                </div>
+                <div style="height: 300px; padding: 10px; position: relative;">
+                    <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+        `;
+    } else {
+        chartContainer.innerHTML = `
+            <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
+                    <div>
+                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                            チャート更新
+                        </button>
+                    </div>
+                </div>
+                <div style="height: 400px; position: relative;">
+                    <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// テーブル描画とキャッシュ価格復元
+function _renderDashboardTables(portfolioData) {
     const tableContainer = document.getElementById('portfolio-table-container');
     const currentData = portfolioDataService.getData();
     tableContainer.innerHTML = generatePortfolioTable(currentData);
 
-    // キャッシュに価格データがある場合は自動的に復元
     const coinNames = portfolioData.summary.map(item => item.coinName);
-
-    // 個別銘柄のキャッシュからタイムスタンプを収集
     const cacheTimestamps = [];
     const cachedPriceData = {};
 
@@ -463,9 +456,7 @@ function displayDashboard(portfolioData) {
         }
     }
 
-    // キャッシュされた価格データがある場合
     if (Object.keys(cachedPriceData).length > 0) {
-        // キャッシュから価格を復元
         const pricesObject = {};
         for (const [coinName, priceData] of Object.entries(cachedPriceData)) {
             pricesObject[coinName] = priceData;
@@ -476,19 +467,15 @@ function displayDashboard(portfolioData) {
         portfolioDataService.updateData(portfolioData);
         const updatedData = portfolioDataService.getData();
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
-        // portfolioDataの保存はupdateData()内で実行済み（価格情報はクリアして保存）
 
-        // 価格ステータスを更新（実際のキャッシュ状態を表示）
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus();
         }
     } else {
-        // キャッシュが全くない場合は自動的に価格を取得
         if (typeof updatePriceStatus === 'function') {
             updatePriceStatus('価格データ取得中...');
         }
 
-        // 自動的に価格を取得
         setTimeout(() => {
             if (typeof fetchCurrentPrices === 'function') {
                 fetchCurrentPrices();
@@ -496,32 +483,26 @@ function displayDashboard(portfolioData) {
         }, 1000);
     }
 
-    // 取引履歴テーブル表示
     const tradingContainer = document.getElementById('trading-history-container');
     tradingContainer.innerHTML = generateTradingHistoryTable(portfolioData);
+}
 
-    // 銘柄別サブタブ作成
+// サブタブ作成、ステータス更新、チャート描画
+function _finalizeDashboardSetup(portfolioData) {
     try {
         createCoinNameSubtabs(portfolioData);
     } catch (error) {
         console.error('❌ Error in createCoinNameSubtabs:', error);
     }
 
-    // サマリータブを明示的にアクティブに設定
     setTimeout(() => {
         switchSubtab('summary');
-
-        // 事前キャッシュは全銘柄チャート描画で一括処理するため削除
     }, 50);
 
     updateDataStatus(portfolioData);
-
-    // アップロード成功後はダッシュボードページに切り替え
     showPage('dashboard');
 
-    // 全銘柄の損益推移チャートを描画（キャッシュがある場合のみ）
     setTimeout(() => {
-        // 価格履歴キャッシュの存在を確認
         const coinNames = portfolioData.summary.map(item => item.coinName);
         const hasCache = coinNames.some(coinName => {
             const cacheKey = window.cacheKeys.priceHistory(coinName);
@@ -530,13 +511,11 @@ function displayDashboard(portfolioData) {
         });
 
         if (hasCache) {
-            // キャッシュがある場合のみ自動描画
             renderAllCoinNamesProfitChart(portfolioData);
         } else {
-            // キャッシュがない場合は手動更新を促すメッセージを表示
             console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');
         }
-    }, 800); // DOM要素の準備を待つため少し短縮
+    }, 800);
 }
 
 // データ状態更新
@@ -569,18 +548,14 @@ function updateDataStatus(portfolioData) {
     }
 }
 
-// ===================================================================
-// SUBTAB CREATION AND MANAGEMENT
-// ===================================================================
+// ========== SUBTAB CREATION AND MANAGEMENT ==========
 
 // 銘柄別サブタブ生成（サービスクラスへの委譲版）
 function createCoinNameSubtabs(portfolioData) {
     window.uiService.createCoinSubTabs(portfolioData);
 }
 
-// ===================================================================
-// TABLE GENERATION FUNCTIONS
-// ===================================================================
+// ========== TABLE GENERATION FUNCTIONS ==========
 
 // モバイル用ポートフォリオカード生成
 function generateMobilePortfolioCards(portfolioData) {
@@ -670,16 +645,11 @@ function generateMobilePortfolioCards(portfolioData) {
     return `<div class="mobile-card-table">${html}</div>`;
 }
 
-// ポートフォリオテーブル生成（損益計算版）
-function generatePortfolioTable(portfolioData) {
-    const stats = portfolioData.stats;
-    const profitColor = stats.totalRealizedProfit >= 0 ? '#27ae60' : '#e74c3c';
+// ========== ポートフォリオテーブル生成関数群 ==========
 
-    // 現在価格が設定されている銘柄のみフィルタ
-    const coinsWithPrice = portfolioData.summary.filter(item => item.currentPrice > 0);
-    const hasPriceData = coinsWithPrice.length > 0;
-
-    let html = `
+// サマリーセクション生成（統計情報と価格カード）
+function _renderPortfolioSummarySection(stats, coinsWithPrice, hasPriceData) {
+    return `
         <!-- ポートフォリオサマリー（統合版） -->
         <div style="margin-bottom: 25px; background: #ffffff; border: 1px solid #d1d5db; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
             <div style="margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
@@ -700,7 +670,7 @@ function generatePortfolioTable(portfolioData) {
             <!-- 現在価格一覧 -->
             <div>
                 <div style="margin-bottom: 10px;">
-                    <div style="font-size: 13px; font-weight: 600; color: #374151;">現在価格</div>
+                    <div class="text-value-md">現在価格</div>
                     <div style="font-size: 11px; color: #6b7280;">CoinGecko API</div>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
@@ -734,34 +704,45 @@ function generatePortfolioTable(portfolioData) {
             </div>
             `}
         </div>
+    `;
+}
 
+// テーブルヘッダー生成（colgroup + thead）
+function _renderPortfolioTableHeader() {
+    return `
         <!-- 銘柄別詳細テーブル -->
         <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 30px;">
             <table class="portfolio-table" border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; min-width: 800px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
             <colgroup>
                 <col style="width: 100px;">  <!-- 銘柄 -->
-                <col style="width: 130px;">  <!-- 現在価格 -->
-                <col style="width: 140px;">  <!-- 平均購入レート -->
-                <col style="width: 120px;">  <!-- 評価額 -->
-                <col style="width: 130px;">  <!-- 合計購入額 -->
-                <col style="width: 130px;">  <!-- 含み損益 -->
-                <col style="width: 130px;">  <!-- 実現損益 -->
-                <col style="width: 140px;">  <!-- 総合損益 -->
+                <col class="w-130">  <!-- 現在価格 -->
+                <col class="w-140">  <!-- 平均購入レート -->
+                <col class="w-120">  <!-- 評価額 -->
+                <col class="w-130">  <!-- 合計購入額 -->
+                <col class="w-130">  <!-- 含み損益 -->
+                <col class="w-130">  <!-- 実現損益 -->
+                <col class="w-140">  <!-- 総合損益 -->
             </colgroup>
             <thead>
                 <tr style="background-color: #f9fafb;">
                     <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #374151;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
-                    <th onclick="sortTable('currentPrice')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
-                    <th onclick="sortTable('averagePurchaseRate')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
-                    <th onclick="sortTable('currentValue')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
-                    <th onclick="sortTable('totalInvestment')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
-                    <th onclick="sortTable('unrealizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
-                    <th onclick="sortTable('realizedProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${getSortIcon('realizedProfit')}</span></th>
-                    <th onclick="sortTable('totalProfit')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: right; font-weight: 600; font-size: 0.9rem; color: #374151;">総合損益 <span id="sort-totalProfit">${getSortIcon('totalProfit')}</span></th>
+                    <th onclick="sortTable('currentPrice')" class="table-sortable">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
+                    <th onclick="sortTable('averagePurchaseRate')" class="table-sortable">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
+                    <th onclick="sortTable('currentValue')" class="table-sortable">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
+                    <th onclick="sortTable('totalInvestment')" class="table-sortable">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
+                    <th onclick="sortTable('unrealizedProfit')" class="table-sortable">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
+                    <th onclick="sortTable('realizedProfit')" class="table-sortable">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${getSortIcon('realizedProfit')}</span></th>
+                    <th onclick="sortTable('totalProfit')" class="table-sortable">総合損益 <span id="sort-totalProfit">${getSortIcon('totalProfit')}</span></th>
                 </tr>
             </thead>
             <tbody>
     `;
+}
+
+// テーブルボディとフッター生成（tbody + tfoot）
+function _renderPortfolioTableBody(portfolioData) {
+    const stats = portfolioData.stats;
+    let html = '';
 
     portfolioData.summary.forEach(item => {
         const profitColor = item.realizedProfit > 0 ? '#27ae60' : item.realizedProfit < 0 ? '#e74c3c' : '#6c757d';
@@ -800,6 +781,17 @@ function generatePortfolioTable(portfolioData) {
     `;
 
     return html;
+}
+
+// ポートフォリオテーブル生成（メイン関数）
+function generatePortfolioTable(portfolioData) {
+    const stats = portfolioData.stats;
+    const coinsWithPrice = portfolioData.summary.filter(item => item.currentPrice > 0);
+    const hasPriceData = coinsWithPrice.length > 0;
+
+    return _renderPortfolioSummarySection(stats, coinsWithPrice, hasPriceData) +
+           _renderPortfolioTableHeader() +
+           _renderPortfolioTableBody(portfolioData);
 }
 
 // モバイル用取引履歴カード生成
@@ -856,19 +848,19 @@ function generateTradingHistoryTable(portfolioData) {
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     let html = `
-        <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">全取引履歴（新しい順） - 全${allTransactions.length}件</h4>
-            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <div class="info-box">
+            <h4 class="text-section-title">全取引履歴（新しい順） - 全${allTransactions.length}件</h4>
+            <div class="scroll-x">
                 <table class="trading-history-table" style="width: 100%; min-width: 700px; border-collapse: collapse;">
                     <thead>
-                        <tr style="background-color: #f8f9fa;">
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">銘柄</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">売買</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">数量</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">レート</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">金額</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">取引所</th>
+                        <tr class="table-header-bg">
+                            <th class="table-cell-left">日時</th>
+                            <th class="table-cell-left">銘柄</th>
+                            <th class="table-cell-center">売買</th>
+                            <th class="table-cell-right">数量</th>
+                            <th class="table-cell-right">レート</th>
+                            <th class="table-cell-right">金額</th>
+                            <th class="table-cell-center">取引所</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -878,7 +870,7 @@ function generateTradingHistoryTable(portfolioData) {
         const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
         html += `
             <tr>
-                <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; font-weight: bold;">${tx.coinName}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold;">${tx.type}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">${tx.quantity.toFixed(8)}</td>
@@ -899,12 +891,13 @@ function generateTradingHistoryTable(portfolioData) {
     return html;
 }
 
-// 個別銘柄詳細ページ生成
-function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
-    const profitColor = coinNameSummary.realizedProfit >= 0 ? '#27ae60' : '#e74c3c';
+// ========== 個別銘柄詳細ページ生成関数群 ==========
+
+// 損益サマリーカード生成（3つの損益カード）
+function _renderCoinProfitSummaryCards(coinNameSummary) {
     const profitIcon = coinNameSummary.realizedProfit > 0 ? '📈' : coinNameSummary.realizedProfit < 0 ? '📉' : '➖';
 
-    let html = `
+    return `
         <!-- 銘柄サマリーカード -->
         <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
             <div style="text-align: center; margin-bottom: 15px;">
@@ -934,107 +927,113 @@ function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
                     <div style="font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 600;">${coinNameSummary.currentHoldingInvestment > 0 ? ((coinNameSummary.unrealizedProfit || 0) >= 0 ? '+' : '') + (((coinNameSummary.unrealizedProfit || 0) / coinNameSummary.currentHoldingInvestment) * 100).toFixed(1) + '%' : ''}</div>
                 </div>
             </div>
+    `;
+}
 
+// 詳細統計グリッド生成（7つの統計カード）
+function _renderCoinDetailStatsGrid(coinNameSummary) {
+    return `
             <!-- 詳細統計（2行目） -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
                 <!-- 保有数量 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">保有数量</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${parseFloat(coinNameSummary.holdingQuantity.toFixed(8))}</div>
+                    <div class="text-label-sm">保有数量</div>
+                    <div class="text-primary-lg">${parseFloat(coinNameSummary.holdingQuantity.toFixed(8))}</div>
                 </div>
 
                 <!-- 平均購入レート -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">平均購入レート</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.averagePurchaseRate.toLocaleString()}</div>
+                    <div class="text-label-sm">平均購入レート</div>
+                    <div class="text-primary-lg">¥${coinNameSummary.averagePurchaseRate.toLocaleString()}</div>
                 </div>
 
                 <!-- 総投資額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">総投資額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.totalInvestment.toLocaleString()}</div>
+                    <div class="text-label-sm">総投資額</div>
+                    <div class="text-primary-lg">¥${coinNameSummary.totalInvestment.toLocaleString()}</div>
                 </div>
 
                 <!-- 売却金額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #06b6d4;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">売却金額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">¥${coinNameSummary.totalSellAmount.toLocaleString()}</div>
+                    <div class="text-label-sm">売却金額</div>
+                    <div class="text-primary-lg">¥${coinNameSummary.totalSellAmount.toLocaleString()}</div>
                 </div>
 
                 <!-- 取引回数 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #84cc16;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">取引回数</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">買${coinNameSummary.buyTransactionCount}回・売${coinNameSummary.sellTransactionCount}回</div>
+                    <div class="text-label-sm">取引回数</div>
+                    <div class="text-primary-lg">買${coinNameSummary.buyTransactionCount}回・売${coinNameSummary.sellTransactionCount}回</div>
                 </div>
 
                 <!-- 現在価格 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #ec4899;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在価格</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinNameSummary.currentPrice > 0 ? '¥' + coinNameSummary.currentPrice.toLocaleString() : '取得中...'}</div>
+                    <div class="text-label-sm">現在価格</div>
+                    <div class="text-primary-lg">${coinNameSummary.currentPrice > 0 ? '¥' + coinNameSummary.currentPrice.toLocaleString() : '取得中...'}</div>
                 </div>
 
                 <!-- 現在評価額 -->
                 <div style="text-align: center; padding: 15px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #14b8a6;">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 500;">現在評価額</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${coinNameSummary.currentValue > 0 ? '¥' + Math.round(coinNameSummary.currentValue).toLocaleString() : '計算中...'}</div>
+                    <div class="text-label-sm">現在評価額</div>
+                    <div class="text-primary-lg">${coinNameSummary.currentValue > 0 ? '¥' + Math.round(coinNameSummary.currentValue).toLocaleString() : '計算中...'}</div>
                 </div>
             </div>
         </div>
-
-        <!-- 取引履歴テーブル -->
-        <div style="background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
     `;
+}
 
-    // rawTransactionsから該当銘柄の取引を取得
+// 取引履歴テーブル生成
+function _renderCoinTransactionTable(coinNameSummary) {
     const transactions = getTransactionsByCoin(coinNameSummary.coinName);
-
-    html += `
-            <h4 style="color: #2c3e50; margin-bottom: 20px;">📊 ${coinNameSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
-            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-                <table style="width: 100%; min-width: 600px; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #f8f9fa;">
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">日時</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">売買</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">数量</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">レート</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-weight: 600; color: #495057;">金額</th>
-                            <th style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-weight: 600; color: #495057;">取引所</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-
-    // 取引履歴を日付順に並び替え（新しい順）
     const sortedTransactions = [...transactions.all].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+    let tableRows = '';
     sortedTransactions.forEach(tx => {
         const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
         const typeBg = tx.type === '買' ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)';
 
-        html += `
+        tableRows += `
             <tr style="background-color: ${typeBg};">
-                <td style="border: 1px solid #dee2e6; padding: 12px; font-size: 0.9rem;">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold; font-size: 0.95rem;">${tx.type}</td>
-                <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">${parseFloat(tx.quantity.toFixed(8))}</td>
-                <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace;">¥${tx.rate.toLocaleString()}</td>
+                <td class="table-cell-mono">${parseFloat(tx.quantity.toFixed(8))}</td>
+                <td class="table-cell-mono">¥${tx.rate.toLocaleString()}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right; font-family: monospace; font-weight: 600;">¥${tx.amount.toLocaleString()}</td>
                 <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem; font-weight: 600;">${tx.exchange}</td>
             </tr>
         `;
     });
 
-    html += `
+    return `
+        <!-- 取引履歴テーブル -->
+        <div class="info-box">
+            <h4 class="text-section-title">📊 ${coinNameSummary.coinName} 全取引履歴（${transactions.all.length}件）</h4>
+            <div class="scroll-x">
+                <table style="width: 100%; min-width: 600px; border-collapse: collapse;">
+                    <thead>
+                        <tr class="table-header-bg">
+                            <th class="table-cell-left">日時</th>
+                            <th class="table-cell-center">売買</th>
+                            <th class="table-cell-right">数量</th>
+                            <th class="table-cell-right">レート</th>
+                            <th class="table-cell-right">金額</th>
+                            <th class="table-cell-center">取引所</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
                     </tbody>
                 </table>
             </div>
         </div>
     `;
-
-    return html;
 }
 
-// ===================================================================
-// PROFIT CHART FUNCTIONS
-// ===================================================================
+// 個別銘柄詳細ページ生成（メイン関数）
+function generateCoinNameDetailPage(coinNameSummary, coinNameData) {
+    return _renderCoinProfitSummaryCards(coinNameSummary) +
+           _renderCoinDetailStatsGrid(coinNameSummary) +
+           _renderCoinTransactionTable(coinNameSummary);
+}
+
+// ========== PROFIT CHART FUNCTIONS ==========
 // (未使用のチャート関数を削除しました)

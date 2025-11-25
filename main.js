@@ -1,6 +1,4 @@
-// ===================================================================
-// MAIN.JS - File handling, CSV processing, UI navigation, utilities
-// ===================================================================
+// ========== MAIN.JS - File handling, CSV processing, UI navigation, utilities ==========
 
 // CSVファイルアップロード処理（サービスクラスへの委譲版）
 async function handleFiles(files) {
@@ -25,9 +23,7 @@ async function handleFiles(files) {
 
 // CSV処理関数はFileServiceに移動済み（services/file-service.js参照）
 
-// ===================================================================
-// UI NAVIGATION AND UTILITY FUNCTIONS
-// ===================================================================
+// ========== UI NAVIGATION AND UTILITY FUNCTIONS ==========
 
 // ページ切り替え
 function showPage(pageId) {
@@ -65,9 +61,7 @@ function switchToNextSubtab() {
     window.uiService.switchToNextSubTab();
 }
 
-// ===================================================================
-// MESSAGE AND NOTIFICATION FUNCTIONS
-// ===================================================================
+// ========== MESSAGE AND NOTIFICATION FUNCTIONS ==========
 
 // メッセージ表示（サービスクラスへの委譲版）
 function showSuccessMessage(message) {
@@ -86,9 +80,7 @@ function showWarningMessage(message) {
     window.uiService.showWarning(message);
 }
 
-// ===================================================================
-// FILE MANAGEMENT FUNCTIONS
-// ===================================================================
+// ========== FILE MANAGEMENT FUNCTIONS ==========
 
 // ファイル名を保存
 function saveLoadedFileNames(fileNames) {
@@ -116,9 +108,7 @@ function clearAllData() {
     }
 }
 
-// ===================================================================
-// PRICE DATA MANAGEMENT FUNCTIONS
-// ===================================================================
+// ========== PRICE DATA MANAGEMENT FUNCTIONS ==========
 
 // 価格データ管理機能（CacheService使用版）
 function clearPriceData() {
@@ -186,9 +176,7 @@ function updatePriceDataStatusDisplay() {
     }
 }
 
-// ===================================================================
-// KEYBOARD SHORTCUTS
-// ===================================================================
+// ========== KEYBOARD SHORTCUTS ==========
 
 // キーボードショートカット機能
 function initializeKeyboardShortcuts() {
@@ -273,9 +261,7 @@ function initializeMobileMenu() {
     });
 }
 
-// ===================================================================
-// UTILITY FUNCTIONS
-// ===================================================================
+// ========== UTILITY FUNCTIONS ==========
 
 // モバイルデバイス検出
 function isMobile() {
@@ -284,9 +270,7 @@ function isMobile() {
 
 // キャッシュ機能はcharts.jsで統一管理
 
-// ===================================================================
-// INITIALIZATION
-// ===================================================================
+// ========== INITIALIZATION ==========
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', () => {
@@ -377,9 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
 });
 
-// ===================================================================
-// PRICE HISTORY ACCUMULATION
-// ===================================================================
+// ========== PRICE HISTORY ACCUMULATION ==========
 
 /**
  * 価格履歴蓄積の初期化
@@ -451,9 +433,7 @@ async function manualFetchPriceHistory() {
     await initializePriceHistoryAccumulation(true);
 }
 
-// ===================================================================
-// INDIVIDUAL COIN PROFIT CHART RENDERING
-// ===================================================================
+// ========== INDIVIDUAL COIN PROFIT CHART RENDERING ==========
 
 /**
  * 個別銘柄の損益推移チャートを描画

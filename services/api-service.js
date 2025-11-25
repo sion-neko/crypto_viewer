@@ -1,6 +1,4 @@
-// ===================================================================
-// API-SERVICE.JS - API呼び出しの一元管理
-// ===================================================================
+// ========== API-SERVICE.JS - API呼び出しの一元管理 ==========
 
 /**
  * レート制限管理クラス
@@ -184,23 +182,19 @@ class APIService {
         let successCount = 0;
 
         for (const coinName of coinNames) {
-            try {
-                const cacheKey = this.cacheKeys.priceHistory(coinName);
-                const historyValue = this.cache.get(cacheKey);
+            const cacheKey = this.cacheKeys.priceHistory(coinName);
+            const historyValue = this.cache.get(cacheKey);
 
-                // 蓄積データ形式の場合
-                const priceData = historyValue?.data || historyValue;
+            // 蓄積データ形式の場合
+            const priceData = historyValue?.data || historyValue;
 
-                if (priceData && Array.isArray(priceData) && priceData.length > 0) {
-                    const latestPrice = priceData[priceData.length - 1].price;
-                    prices[coinName] = {
-                        price_jpy: latestPrice,
-                        last_updated_at: Date.now() / 1000
-                    };
-                    successCount++;
-                }
-            } catch (error) {
-                // スキップ
+            if (priceData && Array.isArray(priceData) && priceData.length > 0) {
+                const latestPrice = priceData[priceData.length - 1].price;
+                prices[coinName] = {
+                    price_jpy: latestPrice,
+                    last_updated_at: Date.now() / 1000
+                };
+                successCount++;
             }
         }
 

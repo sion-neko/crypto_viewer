@@ -1,6 +1,4 @@
-// ===================================================================
-// CHART-SERVICE.JS - チャート管理の一元化
-// ===================================================================
+// ========== CHART-SERVICE.JS - チャート管理の一元化 ==========
 
 /**
  * チャートサービスクラス
@@ -188,9 +186,6 @@ class ChartService {
             }
 
             const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                throw new Error(`Cannot get 2D context for canvas: ${canvasId}`);
-            }
 
             // 既存のチャートインスタンスを破棄
             this.destroyChart(canvasId);

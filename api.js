@@ -1,6 +1,4 @@
-// ===================================================================
-// API.JS - Price fetching and CoinGecko API related functions
-// ===================================================================
+// ========== API.JS - Price fetching and CoinGecko API related functions ==========
 
 // 注: 価格データは全てCacheServiceで管理されます（window.cache）
 
@@ -14,9 +12,7 @@ const COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 // 後方互換性のため、グローバルにも公開
 window.COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 
-// ===================================================================
-// PRICE FETCHING FUNCTIONS
-// ===================================================================
+// ========== PRICE FETCHING FUNCTIONS ==========
 
 // executePriceHistoryApi() は APIService._executePriceHistoryApi() に移動済み
 // （この関数は削除されました）
