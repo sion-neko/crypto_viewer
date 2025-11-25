@@ -456,7 +456,10 @@ function _renderDashboardTables(portfolioData) {
         }
     }
 
-    if (Object.keys(cachedPriceData).length > 0) {
+    // 全銘柄のキャッシュが有効な場合のみキャッシュから表示
+    const allCoinsCached = Object.keys(cachedPriceData).length === coinNames.length;
+
+    if (allCoinsCached) {
         const pricesObject = {};
         for (const [coinName, priceData] of Object.entries(cachedPriceData)) {
             pricesObject[coinName] = priceData;
