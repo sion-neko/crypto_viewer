@@ -47,9 +47,8 @@ crypto_viewer/
 ├── style.css           # スタイルシート
 ├── config.js           # アプリケーション設定、定数管理（AppConfig）
 ├── storage-utils.js    # CacheService、localStorage操作、計算ユーティリティ
-├── main.js             # エントリーポイント、CSV処理、初期化
+├── main.js             # エントリーポイント、CSV処理、初期化、価格管理関数
 ├── portfolio.js        # ポートフォリオ分析エンジン、PortfolioDataService
-├── api.js              # レガシーAPI関数（段階的に廃止予定）
 ├── charts.js           # レガシーチャート関数（段階的に廃止予定）
 ├── cache-viewer.html   # 開発用キャッシュ状態表示ツール
 └── services/           # サービスレイヤー（新アーキテクチャ）
@@ -59,7 +58,7 @@ crypto_viewer/
     └── ui-service.js      # UIService - UI操作統合（MessageManager、TabManager、TableRenderer）
 ```
 
-**重要**: 現在、レガシーコード（api.js、charts.js）と新サービスレイヤー（services/）が共存しています。新機能追加時は必ずサービスクラスを使用してください。
+**重要**: 現在、レガシーコード（charts.js）と新サービスレイヤー（services/）が共存しています。新機能追加時は必ずサービスクラスを使用してください。
 
 ### モジュール間の関係（新アーキテクチャ）
 
@@ -127,7 +126,7 @@ config.js
 
 【レガシーレイヤー - 段階的廃止予定】
 
-api.js, charts.js
+charts.js
   └→ 下位互換性のため保持（新規開発では使用禁止）
 ```
 
@@ -156,7 +155,7 @@ api.js, charts.js
 
 ### 1. サービスレイヤーアーキテクチャ（新規開発必須）
 
-**全ての新規開発はサービスクラスを使用してください。レガシーコード（api.js、charts.js）は使用禁止です。**
+**全ての新規開発はサービスクラスを使用してください。レガシーコード（charts.js）は使用禁止です。**
 
 #### サービスインスタンスの初期化順序
 
@@ -360,7 +359,7 @@ await chartService.renderCoinChart('BTC')
 
 ## 銘柄サポート
 
-### 対応銘柄（api.js: COIN_NAME_MAPPING）
+### 対応銘柄（config.js: AppConfig.coinGeckoMapping）
 
 ```javascript
 window.COIN_NAME_MAPPING = {
@@ -381,7 +380,7 @@ window.COIN_NAME_MAPPING = {
 ```
 
 **新規銘柄追加方法**:
-1. `api.js`の`COIN_NAME_MAPPING`にCoinGecko IDを追加
+1. `config.js`の`AppConfig.coinGeckoMapping`にCoinGecko IDを追加
 2. （オプション）`charts.js`の`COIN_NAME_COLORS`に色を追加
 
 ## UI構造
@@ -458,7 +457,7 @@ Ctrl+→   : 次のサブタブ
 
 #### 移行中・未移行
 
-⚠️ **レガシーコード**: api.js、charts.js
+⚠️ **レガシーコード**: charts.js
 - 下位互換性のため保持
 - 新規開発では使用禁止
 - 将来的に削除予定
