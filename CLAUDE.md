@@ -14,11 +14,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - データは完全にlocalStorageで管理（プライバシー重視）
 - 日本語UI（GMOコイン、OKCoin Japan対応）
 
-## 開発・テスト方法
-### お願い
-コードは簡潔に書く。
-必要のないエラー処理はしない。
-例えばロジック的にnullが来ないのであればnullチェックは不要
+## 開発方針
+
+### コーディング規約
+- コードは簡潔に書く
+- 必要のないエラー処理はしない（ロジック的にnullが来ないのであればnullチェックは不要）
+- 新規開発は必ずサービスクラスを使用（レガシーコードは使用禁止）
+- 変数名は`coinName`を使用（`symbol`は古い命名）
+- コメントは簡潔に、自明なコードにはコメント不要
 
 ### 実行方法
 ```bash
@@ -264,28 +267,41 @@ analyzePortfolioData(transactions)
 ### 7. API制限対策（APIService）
 
 CoinGecko無料プラン制限（Demo Plan）:
-- **30回/分** （実測値、安全マージン込みで20回/分推奨）
+- **30回/分** （実測値、安全マージン込みで10-20回/分推奨）
 - **月間10,000コール**
-- キャッシュ: 現在価格30分、履歴24時間
+- キャッシュ戦略:
+  - 現在価格: 30分キャッシュ（個別銘柄ごと）
+  - 価格履歴: 蓄積型キャッシュ（24時間ごとに差分更新、無期限保存）
 - フォールバック: 価格履歴キャッシュから現在価格を推定
-- レート制限: 3秒間隔（20 calls/分ペース）で順次取得
+- レート制限: RateLimiterクラスによる自動管理（waitIfNeeded()）
 - 自動リトライ: 429エラー時は指数バックオフ（10秒→20秒→40秒待機）
+- 差分更新: 価格履歴は必要な日数分のみ取得して既存データとマージ
+- 期限切れキャッシュ利用: 429エラー時は古いキャッシュも活用
 - 進捗バー: 長時間処理時はモーダル型進捗バーを表示
 
 ```javascript
 // APIService.fetchCurrentPrices() の処理フロー
 apiService.fetchCurrentPrices(coinNames)
-  1. 価格履歴キャッシュから現在価格を推定を試行
-  2. 永続化キャッシュ確認 (30分)
+  1. 個別銘柄キャッシュ確認（30分有効）
+  2. 価格履歴キャッシュから現在価格を推定を試行
   3. CoinGecko API呼び出し（RateLimiterでレート制限管理）
-  4. キャッシュに保存
+  4. 個別銘柄ごとにキャッシュに保存
+
+// APIService.fetchPriceHistory() の処理フロー（蓄積型キャッシュ）
+apiService.fetchPriceHistory(coinName, options)
+  1. 蓄積キャッシュから既存データを取得
+  2. 更新が必要かチェック（24時間経過？）
+  3. 差分取得日数を計算（最終更新日からの経過日数）
+  4. CoinGecko API呼び出し（差分日数のみ）
+  5. 既存データと新規データをマージ（重複排除）
+  6. 無期限キャッシュとして保存
 ```
 
 ### 8. チャート描画（ChartService）
 
-2つの表示モード:
-- **combined**: 全銘柄の合計損益推移
-- **individual**: 各銘柄の個別損益推移
+表示モード:
+- **combined**: 全銘柄の合計損益推移（メインモード）
+- ~~**individual**: 各銘柄の個別損益推移~~ （削除済み - 最近のリファクタリングで廃止）
 
 ```javascript
 // ChartService使用例
@@ -313,13 +329,14 @@ await chartService.renderCoinChart('BTC')
 'loadedFileNames'              // 読み込み済みCSVファイル名
 
 // 価格データ（storage-utils.jsのcacheKeys参照）
-'prices_[coinNames]'           // 現在価格（30分キャッシュ）
-'[coinName]_price_history_30d' // 価格履歴（24時間キャッシュ）
+'price_[coinName]'             // 個別銘柄の現在価格（30分キャッシュ）
+'[coinName]_price_history_30d' // 価格履歴（蓄積型、24時間ごとに差分更新、無期限保存）
 'chart_[coinName]_30days'      // チャートデータ（6時間キャッシュ）
 
 // 設定
-'portfolioChartMode'           // チャート表示モード (combined/individual)
+'portfolioChartMode'           // チャート表示モード (combined - individualは廃止)
 'cache_metadata'               // キャッシュメタデータ
+'sortState'                    // テーブルソート状態
 ```
 
 ### portfolioData 構造
@@ -360,10 +377,10 @@ await chartService.renderCoinChart('BTC')
 
 ## 銘柄サポート
 
-### 対応銘柄（api.js: COIN_NAME_MAPPING）
+### 対応銘柄（config.js: AppConfig.coinGeckoMapping）
 
 ```javascript
-window.COIN_NAME_MAPPING = {
+AppConfig.coinGeckoMapping = {
   'BTC': 'bitcoin',
   'ETH': 'ethereum',
   'SOL': 'solana',
@@ -381,8 +398,8 @@ window.COIN_NAME_MAPPING = {
 ```
 
 **新規銘柄追加方法**:
-1. `api.js`の`COIN_NAME_MAPPING`にCoinGecko IDを追加
-2. （オプション）`charts.js`の`COIN_NAME_COLORS`に色を追加
+1. `config.js`の`AppConfig.coinGeckoMapping`にCoinGecko IDを追加
+2. （オプション）`AppConfig.coinColors`に色を追加
 
 ## UI構造
 
@@ -611,7 +628,7 @@ cache.delete(cacheKeys.priceHistory('BTC'));
 
 ### アーキテクチャの大幅リファクタリング
 
-1. **サービスレイヤーの導入** (commit: 5f8e4d1)
+1. **サービスレイヤーの導入**
    - オブジェクト指向設計への移行
    - APIService, ChartService, FileService, UIService を新設
    - グローバル関数からクラスメソッドへの移行
@@ -621,9 +638,11 @@ cache.delete(cacheKeys.priceHistory('BTC'));
    - CacheService による一元管理
    - グローバル変数依存の削減
 
-3. **コード整理**
-   - 未使用コードの削除（約360行削減）
-   - 重複コードの共通化
+3. **コード整理** (最新のコミット群)
+   - 未使用コードの削除（Phase 1-4で段階的に実施）
+   - 重複コードの共通化（サービスクラスへ一元化）
+   - 巨大関数の分割（displayDashboard等をヘルパー関数に分割）
+   - インラインスタイルのCSS化
    - 銘柄名を `symbol` → `coinName` に統一
 
 4. **UI/UX改善**
@@ -634,11 +653,19 @@ cache.delete(cacheKeys.priceHistory('BTC'));
 5. **開発ツール追加**
    - [cache-viewer.html](cache-viewer.html) の追加（キャッシュ可視化ツール）
 
+6. **API制限対策の強化**
+   - RateLimiterクラスの導入（自動レート制限管理）
+   - 蓄積型キャッシュシステム（価格履歴は差分更新で永続化）
+   - 個別銘柄キャッシュ方式への変更（より細かい制御）
+   - 期限切れキャッシュのフォールバック機能
+
 ### 削除された機能
 
 - ❌ カード表示（テーブル表示のみに統一）
 - ❌ 自動価格更新（手動更新のみ）
-- ❌ 個別銘柄タブの価格チャート
+- ❌ individualチャートモード（combinedモードに統一）
+- ❌ 未使用の委譲ラッパー関数（executePriceHistoryApi等）
+- ❌ destroyChartSafely関数とwindow.chartInstances（ChartServiceに統合）
 
 ### 破壊的変更
 
