@@ -468,18 +468,12 @@ function _renderDashboardTables(portfolioData) {
         const updatedData = portfolioDataService.getData();
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
 
-        if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus();
-        }
+        updatePriceStatus();
     } else {
-        if (typeof updatePriceStatus === 'function') {
-            updatePriceStatus('価格データ取得中...');
-        }
+        updatePriceStatus('価格データ取得中...');
 
         setTimeout(() => {
-            if (typeof fetchCurrentPrices === 'function') {
-                fetchCurrentPrices();
-            }
+            fetchCurrentPrices();
         }, 1000);
     }
 
