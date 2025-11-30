@@ -247,6 +247,7 @@
     <script src="storage-utils.js"></script>
 
     <!-- Service Layer (Object-Oriented Architecture) -->
+    <script src="services/portfolio-data-service.js"></script>
     <script src="services/api-service.js"></script>
     <script src="services/chart-service.js"></script>
     <script src="services/ui-service.js"></script>
@@ -260,6 +261,9 @@
 
     <!-- Initialize service instances -->
     <script>
+        // Initialize PortfolioDataService instance (no dependencies)
+        window.portfolioDataService = new PortfolioDataService();
+
         // Initialize ChartService instance (depends on apiService and portfolioDataService)
         window.chartService = new ChartService(window.apiService, window.portfolioDataService, AppConfig);
 
