@@ -513,35 +513,328 @@ class TableRenderer {
     }
 
     // ===================================================================
-    // 内部メソッド（デスクトップ版）
+    // ポートフォリオテーブル生成ヘルパー（デスクトップ版）
     // ===================================================================
 
+    _renderPortfolioSummarySection(stats, coinsWithPrice, hasPriceData) {
+        return `
+        <!-- ポートフォリオサマリー（統合版） -->
+        <div style="margin-bottom: 25px; background: #ffffff; border: 1px solid #d1d5db; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1f2937;">ポートフォリオサマリー（${stats.coinNameCount}銘柄）</h3>
+            </div>
+
+            <!-- 統計情報 -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
+                <!-- 総合損益 -->
+                <div style="text-align: center; padding: 12px; background: ${stats.totalProfit >= 0 ? '#f0fdf4' : '#fef2f2'}; border-radius: 6px; border: 1px solid ${stats.totalProfit >= 0 ? '#86efac' : '#fca5a5'};">
+                    <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">総合損益</div>
+                    <div style="font-size: 17px; font-weight: 700; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</div>
+                    <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%</div>
+                </div>
+            </div>
+
+            ${hasPriceData ? `
+            <!-- 現在価格一覧 -->
+            <div>
+                <div style="margin-bottom: 10px;">
+                    <div class="text-value-md">現在価格</div>
+                    <div style="font-size: 11px; color: #6b7280;">CoinGecko API</div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                    ${coinsWithPrice.map(item => {
+                        const priceChange = item.currentPrice && item.averagePurchaseRate ?
+                            ((item.currentPrice - item.averagePurchaseRate) / item.averagePurchaseRate * 100) : 0;
+                        const isPositive = priceChange >= 0;
+                        const bgColor = isPositive ? '#f0fdf4' : '#fef2f2';
+                        const borderColor = isPositive ? '#86efac' : '#fca5a5';
+                        return `
+                            <div style="padding: 12px; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.backgroundColor='${isPositive ? '#dcfce7' : '#fee2e2'}'; this.style.borderColor='#3b82f6'" onmouseout="this.style.backgroundColor='${bgColor}'; this.style.borderColor='${borderColor}'">
+                                <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">${item.coinName}</div>
+                                <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
+                                <div style="font-size: 13px; color: #6b7280; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb;">平均 ¥${item.averagePurchaseRate.toLocaleString()}</div>
+                                <div style="font-size: 12px; font-weight: 600; color: ${isPositive ? '#059669' : '#dc2626'};">
+                                    ${isPositive ? '▲' : '▼'} ${isPositive ? '+' : ''}${priceChange.toFixed(2)}%
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+            ` : `
+            <!-- 価格データなし -->
+            <div style="padding: 16px; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px;">
+                <div style="font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 4px;">価格データがありません</div>
+                <div style="font-size: 12px; color: #78350f; margin-bottom: 10px;">価格更新ボタンをクリックして最新価格を取得してください</div>
+                <button onclick="fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                    価格を更新
+                </button>
+            </div>
+            `}
+        </div>
+    `;
+    }
+
+    _renderPortfolioTableHeader() {
+        return `
+        <!-- 銘柄別詳細テーブル -->
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 30px;">
+            <table class="portfolio-table" border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; min-width: 800px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white;">
+            <colgroup>
+                <col style="width: 100px;">  <!-- 銘柄 -->
+                <col class="w-130">  <!-- 現在価格 -->
+                <col class="w-140">  <!-- 平均購入レート -->
+                <col class="w-120">  <!-- 評価額 -->
+                <col class="w-130">  <!-- 合計購入額 -->
+                <col class="w-130">  <!-- 含み損益 -->
+                <col class="w-130">  <!-- 実現損益 -->
+                <col class="w-140">  <!-- 総合損益 -->
+            </colgroup>
+            <thead>
+                <tr style="background-color: #f9fafb;">
+                    <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #374151;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
+                    <th onclick="sortTable('currentPrice')" class="table-sortable">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
+                    <th onclick="sortTable('averagePurchaseRate')" class="table-sortable">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
+                    <th onclick="sortTable('currentValue')" class="table-sortable">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
+                    <th onclick="sortTable('totalInvestment')" class="table-sortable">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
+                    <th onclick="sortTable('unrealizedProfit')" class="table-sortable">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
+                    <th onclick="sortTable('realizedProfit')" class="table-sortable">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${getSortIcon('realizedProfit')}</span></th>
+                    <th onclick="sortTable('totalProfit')" class="table-sortable">総合損益 <span id="sort-totalProfit">${getSortIcon('totalProfit')}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    }
+
+    _renderPortfolioTableBody(portfolioData) {
+        const stats = portfolioData.stats;
+        let html = '';
+
+        portfolioData.summary.forEach(item => {
+            const profitColor = item.realizedProfit > 0 ? '#27ae60' : item.realizedProfit < 0 ? '#e74c3c' : '#6c757d';
+            const profitBg = item.realizedProfit > 0 ? 'rgba(39, 174, 96, 0.05)' : item.realizedProfit < 0 ? 'rgba(231, 76, 60, 0.05)' : '';
+
+            html += `
+                <tr style="transition: all 0.2s ease; ${profitBg ? `background-color: ${profitBg};` : ''}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${profitBg ? profitBg : 'transparent'}'">
+                    <td onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" style="padding: 12px; font-weight: 600; color: #3b82f6; border-bottom: 1px solid #e5e7eb; cursor: pointer;" title="クリックして${item.coinName}の詳細を表示">${item.coinName}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #111827; font-weight: 700;">${item.currentPrice > 0 ? '¥' + item.currentPrice.toLocaleString() : '-'}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">¥${item.averagePurchaseRate.toLocaleString()}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">${item.currentValue > 0 ? '¥' + item.currentValue.toLocaleString() : '-'}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: #374151;">¥${item.totalInvestment.toLocaleString()}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: ${(item.unrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'}; font-weight: ${Math.abs(item.unrealizedProfit || 0) > 0 ? '600' : 'normal'};">${(item.unrealizedProfit || 0) !== 0 ? '¥' + Math.round(item.unrealizedProfit || 0).toLocaleString() : '-'}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: ${profitColor}; font-weight: ${Math.abs(item.realizedProfit) > 0 ? '600' : 'normal'};">${item.realizedProfit !== 0 ? '¥' + Math.round(item.realizedProfit).toLocaleString() : '-'}</td>
+                    <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; color: ${(item.totalProfit || item.realizedProfit) >= 0 ? '#059669' : '#dc2626'}; font-weight: ${Math.abs(item.totalProfit || item.realizedProfit) > 0 ? '600' : 'normal'};">${(item.totalProfit || item.realizedProfit) !== 0 ? '¥' + Math.round(item.totalProfit || item.realizedProfit).toLocaleString() : '-'}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #f3f4f6; font-weight: 600; border-top: 2px solid #d1d5db;">
+                    <td style="padding: 15px 12px; text-align: left; font-weight: 700; color: #1f2937; border-bottom: 1px solid #e5e7eb;">合計</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #6b7280;">-</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: #374151;">¥${Math.abs(stats.totalInvestment).toLocaleString()}</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: ${(stats.totalUnrealizedProfit || 0) >= 0 ? '#059669' : '#dc2626'};">${(stats.totalUnrealizedProfit || 0) >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit || 0).toLocaleString()}</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}</td>
+                    <td style="padding: 15px 12px; text-align: right; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; font-weight: 700; color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}</td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>
+    `;
+
+        return html;
+    }
+
     _renderDesktopPortfolioTable(portfolioData) {
-        // portfolio.jsのgeneratePortfolioTable関数と同じロジック
-        // 詳細は省略（既存のコードをそのまま移植）
-        return generatePortfolioTable(portfolioData);
+        const stats = portfolioData.stats;
+        const coinsWithPrice = portfolioData.summary.filter(item => item.currentPrice > 0);
+        const hasPriceData = coinsWithPrice.length > 0;
+
+        return this._renderPortfolioSummarySection(stats, coinsWithPrice, hasPriceData) +
+               this._renderPortfolioTableHeader() +
+               this._renderPortfolioTableBody(portfolioData);
     }
 
     _renderDesktopTradingHistoryTable(portfolioData) {
-        // portfolio.jsのgenerateTradingHistoryTable関数と同じロジック
-        // 詳細は省略（既存のコードをそのまま移植）
-        return generateTradingHistoryTable(portfolioData);
+        const allTransactions = safeGetJSON('rawTransactions', []);
+        allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let html = `
+        <div class="info-box">
+            <h4 class="text-section-title">全取引履歴（新しい順） - 全${allTransactions.length}件</h4>
+            <div class="scroll-x">
+                <table class="trading-history-table" style="width: 100%; min-width: 700px; border-collapse: collapse;">
+                    <thead>
+                        <tr class="table-header-bg">
+                            <th class="table-cell-left">日時</th>
+                            <th class="table-cell-left">銘柄</th>
+                            <th class="table-cell-center">売買</th>
+                            <th class="table-cell-right">数量</th>
+                            <th class="table-cell-right">レート</th>
+                            <th class="table-cell-right">金額</th>
+                            <th class="table-cell-center">取引所</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+        allTransactions.slice(0, 50).forEach(tx => {
+            const typeColor = tx.type === '買' ? '#28a745' : '#dc3545';
+            html += `
+                <tr>
+                    <td class="table-cell-plain">${new Date(tx.date).toLocaleString('ja-JP')}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; font-weight: bold;">${tx.coinName}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; color: ${typeColor}; font-weight: bold;">${tx.type}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">${tx.quantity.toFixed(8)}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">¥${tx.rate.toLocaleString()}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">¥${tx.amount.toLocaleString()}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 12px; text-align: center; font-size: 0.85rem;">${tx.exchange}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            ${allTransactions.length > 50 ? `<p style="color: #7f8c8d; text-align: center; margin-top: 15px;">※最新50件のみ表示（全${allTransactions.length}件）</p>` : ''}
+        </div>
+    `;
+        return html;
     }
 
     // ===================================================================
-    // 内部メソッド（モバイル版）
+    // ポートフォリオテーブル生成ヘルパー（モバイル版）
     // ===================================================================
 
     _renderMobilePortfolioCards(portfolioData) {
-        // portfolio.jsのgenerateMobilePortfolioCards関数と同じロジック
-        // 詳細は省略（既存のコードをそのまま移植）
-        return generateMobilePortfolioCards(portfolioData);
+        const stats = portfolioData.stats;
+
+        let html = `
+        <div class="table-card" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 2px solid #3b82f6;">
+            <div class="card-header">📊 ポートフォリオサマリー（${stats.coinNameCount}銘柄）</div>
+            <div class="card-row">
+                <span class="card-label">総合損益</span>
+                <span class="card-value" style="color: ${stats.totalProfit >= 0 ? '#059669' : '#dc2626'};">
+                    ${stats.totalProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalProfit).toLocaleString()}
+                    (${stats.overallTotalProfitMargin >= 0 ? '+' : ''}${stats.overallTotalProfitMargin.toFixed(1)}%)
+                </span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">投資額</span>
+                <span class="card-value">¥${Math.abs(stats.totalInvestment).toLocaleString()}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">実現損益</span>
+                <span class="card-value" style="color: ${stats.totalRealizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                    ${stats.totalRealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalRealizedProfit).toLocaleString()}
+                </span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">含み損益</span>
+                <span class="card-value" style="color: ${stats.totalUnrealizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                    ${stats.totalUnrealizedProfit >= 0 ? '+' : ''}¥${Math.round(stats.totalUnrealizedProfit).toLocaleString()}
+                </span>
+            </div>
+        </div>
+    `;
+
+        if (portfolioData.summary) {
+            portfolioData.summary.forEach((row, index) => {
+                const totalProfit = (row.realizedProfit || 0) + (row.unrealizedProfit || 0);
+                const profitMargin = row.totalInvestment !== 0 ? ((totalProfit / Math.abs(row.totalInvestment)) * 100) : 0;
+
+                html += `
+                    <div class="table-card" onclick="window.uiService.switchSubTab('${row.coinName.toLowerCase()}')" style="cursor: pointer;" title="タップして${row.coinName}の詳細を表示">
+                        <div class="card-header" style="color: ${totalProfit >= 0 ? '#059669' : '#dc2626'};">
+                            ${row.coinName}
+                            <span style="float: right; font-size: 0.9rem;">
+                                ${totalProfit >= 0 ? '+' : ''}¥${Math.round(totalProfit).toLocaleString()}
+                            </span>
+                        </div>
+                        ${row.currentPrice ? `
+                            <div class="card-row" style="background: #f9fafb; padding: 12px; margin: -8px -8px 8px -8px; border-radius: 4px; border-left: 3px solid #3b82f6;">
+                                <span class="card-label" style="color: #6b7280; font-weight: 600; font-size: 0.85rem;">現在価格</span>
+                                <span class="card-value" style="color: #111827; font-weight: 700; font-size: 1.1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${row.currentPrice.toLocaleString()}</span>
+                            </div>
+                        ` : ''}
+                        <div class="card-row">
+                            <span class="card-label">保有量</span>
+                            <span class="card-value">${parseFloat(row.holdingQuantity || 0).toFixed(6)}</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">投資額</span>
+                            <span class="card-value">¥${Math.abs(row.totalInvestment).toLocaleString()}</span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">実現損益</span>
+                            <span class="card-value" style="color: ${row.realizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                                ${row.realizedProfit >= 0 ? '+' : ''}¥${Math.round(row.realizedProfit).toLocaleString()}
+                            </span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">含み損益</span>
+                            <span class="card-value" style="color: ${row.unrealizedProfit >= 0 ? '#059669' : '#dc2626'};">
+                                ${row.unrealizedProfit >= 0 ? '+' : ''}¥${Math.round(row.unrealizedProfit || 0).toLocaleString()}
+                            </span>
+                        </div>
+                        <div class="card-row">
+                            <span class="card-label">損益率</span>
+                            <span class="card-value" style="color: ${profitMargin >= 0 ? '#059669' : '#dc2626'};">
+                                ${profitMargin >= 0 ? '+' : ''}${profitMargin.toFixed(1)}%
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        return `<div class="mobile-card-table">${html}</div>`;
     }
 
     _renderMobileTradingCards(portfolioData) {
-        // portfolio.jsのgenerateMobileTradingCards関数と同じロジック
-        // 詳細は省略（既存のコードをそのまま移植）
-        return generateMobileTradingCards(portfolioData);
+        const allTransactions = safeGetJSON('rawTransactions', []);
+        allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let html = '';
+        allTransactions.slice(0, 50).forEach((tx, index) => {
+            const date = new Date(tx.date);
+            const typeColor = tx.type === '買い' ? '#059669' : '#dc2626';
+            const typeIcon = tx.type === '買い' ? '📈' : '📉';
+
+            html += `
+                <div class="table-card">
+                    <div class="card-header" style="color: ${typeColor};">
+                        ${typeIcon} ${tx.coinName} - ${tx.type}
+                        <span style="float: right; font-size: 0.8rem; color: #7f8c8d;">
+                            ${date.getMonth() + 1}/${date.getDate()}
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">数量</span>
+                        <span class="card-value">${parseFloat(tx.quantity || 0).toFixed(6)}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">単価</span>
+                        <span class="card-value">¥${(tx.rate || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">総額</span>
+                        <span class="card-value">¥${Math.abs(tx.amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">手数料</span>
+                        <span class="card-value">¥${(tx.fee || 0).toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        return `<div class="mobile-card-table">${html}</div>`;
     }
 }
 
