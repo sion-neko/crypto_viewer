@@ -369,6 +369,53 @@ function updateSortIndicators(activeField, direction) {
     });
 }
 
+// ========== PRICE UPDATE FUNCTIONS ==========
+
+// 価格取得とポートフォリオ更新
+async function fetchCurrentPrices() {
+    try {
+        const currentPortfolioData = portfolioDataService.getData();
+
+        if (!currentPortfolioData) {
+            throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
+        }
+
+        if (!currentPortfolioData.summary || currentPortfolioData.summary.length === 0) {
+            throw new Error('ポートフォリオサマリーデータが見つかりません');
+        }
+
+        const portfolioCoinNames = currentPortfolioData.summary.map(item => item.coinName);
+
+        showInfoMessage('価格データを取得中...');
+        const prices = await window.apiService.fetchCurrentPrices(portfolioCoinNames);
+
+        updatePortfolioWithPrices(currentPortfolioData, prices);
+
+        const validCoinNames = prices._metadata?.coinNames || [];
+        let message = `価格更新完了: ${validCoinNames.length}銘柄`;
+
+        if (prices._metadata?.source === 'price_history_cache') {
+            message = `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`;
+        } else if (prices._metadata?.lastUpdate) {
+            const cacheDate = new Date(prices._metadata.lastUpdate);
+            const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric'
+            });
+            message = `価格更新完了: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`;
+        }
+
+        refreshPortfolioDisplay(currentPortfolioData, message);
+
+    } catch (error) {
+        console.error('価格取得エラー:', error);
+        showErrorMessage(`価格取得失敗: ${error.message}`);
+        updatePriceStatus('取得失敗');
+    }
+}
+
 // ========== DASHBOARD AND DISPLAY FUNCTIONS ==========
 
 // ダッシュボード表示（メイン関数）

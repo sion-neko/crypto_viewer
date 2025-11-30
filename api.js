@@ -15,61 +15,8 @@ window.COIN_NAME_MAPPING = AppConfig.coinGeckoMapping;
 // ========== PRICE FETCHING FUNCTIONS ==========
 
 // executePriceHistoryApi() は APIService._executePriceHistoryApi() に移動済み
-// （この関数は削除されました）
-
-// 価格取得関連機能（サービスクラスへの委譲版）
-async function fetchCurrentPrices() {
-    try {
-        // PortfolioDataServiceを使用してポートフォリオデータを取得
-        const currentPortfolioData = portfolioDataService.getData();
-
-        if (!currentPortfolioData) {
-            throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
-        }
-
-        if (!currentPortfolioData.summary || currentPortfolioData.summary.length === 0) {
-            throw new Error('ポートフォリオサマリーデータが見つかりません');
-        }
-
-        // 銘柄リストを取得
-        const portfolioCoinNames = currentPortfolioData.summary.map(item => item.coinName);
-
-        // APIServiceを使用して価格を取得
-        showInfoMessage('価格データを取得中...');
-        const prices = await window.apiService.fetchCurrentPrices(portfolioCoinNames);
-
-        // ポートフォリオデータを再計算（含み損益含む）
-        updatePortfolioWithPrices(currentPortfolioData, prices);
-
-        // メッセージ生成
-        const validCoinNames = prices._metadata?.coinNames || [];
-        let message = `価格更新完了: ${validCoinNames.length}銘柄`;
-
-        if (prices._metadata?.source === 'price_history_cache') {
-            message = `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`;
-        } else if (prices._metadata?.lastUpdate) {
-            const cacheDate = new Date(prices._metadata.lastUpdate);
-            const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric'
-            });
-            message = `価格更新完了: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`;
-        }
-
-        // ポートフォリオデータを渡して表示を更新
-        refreshPortfolioDisplay(currentPortfolioData, message);
-
-    } catch (error) {
-        console.error('価格取得エラー:', error);
-        showErrorMessage(`価格取得失敗: ${error.message}`);
-        updatePriceStatus('取得失敗');
-    }
-}
-
+// fetchCurrentPrices() は portfolio.js に移動済み
 // tryGetPricesFromHistory() は APIService._tryGetPricesFromHistory() に移動済み
-// この関数は削除されました（APIServiceを使用してください）
 
 // 価格データでポートフォリオを更新（含み損益計算）
 function updatePortfolioWithPrices(portfolioData, prices) {
