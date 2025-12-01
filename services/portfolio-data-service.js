@@ -38,7 +38,7 @@ class PortfolioDataService {
             // （価格は個別キャッシュ price_btc などから取得するため、永続化不要）
             const dataToSave = JSON.parse(JSON.stringify(portfolioData));
             clearPriceDataFromPortfolio(dataToSave);
-            window.cache.setJSON('portfolioData', dataToSave);
+            window.cache.setPortfolioData(dataToSave);
         }
     }
 

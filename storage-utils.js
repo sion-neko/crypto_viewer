@@ -81,49 +81,109 @@ class CacheService {
     }
 
     /**
-     * キャッシュからデータを取得（TTL付き/無し両対応）
+     * キャッシュからデータを取得（TTL付きキャッシュ専用）
      * @param {string} key - キャッシュキー
-     * @param {*} defaultValue - 読み込み失敗時のデフォルト値
-     * @returns {*} キャッシュされた値（期限切れまたは存在しない場合はdefaultValue）
+     * @returns {*} キャッシュされた値（期限切れまたは存在しない場合はnull）
      */
-    get(key, defaultValue = null) {
+    get(key) {
         try {
             const raw = this.storage.getItem(key);
-            if (!raw) return defaultValue;
-
+            if (!raw) return null;
             const data = JSON.parse(raw);
-
-            // TTL形式かチェック（timestamp と value プロパティの存在で判定）
-            if (data && typeof data === 'object' && 'timestamp' in data && 'value' in data) {
-                // TTL形式: 期限チェック
-                if (this._isExpired(data)) {
-                    this.storage.removeItem(key);
-                    return defaultValue;
-                }
-                return data.value;
+            if (this._isExpired(data)) {
+                this.storage.removeItem(key);
+                return null;
             }
-
-            // 通常形式: そのまま返す
-            return data;
+            return data.value;
         } catch (e) {
-            console.error(`localStorage読み込みエラー (${key}):`, e);
-            return defaultValue;
+            console.error('キャッシュ読み込み失敗:', e);
+            return null;
         }
     }
 
     /**
-     * JSONデータをlocalStorageに安全に保存する（TTLなし）
-     * set()との違い: TTLラッパーを付けずに直接保存
-     * @param {string} key - localStorageキー
-     * @param {*} value - 保存する値（自動的にJSON文字列化される）
+     * ポートフォリオデータを取得
+     * @returns {object|null} ポートフォリオデータまたはnull
+     */
+    getPortfolioData() {
+        try {
+            const data = this.storage.getItem('portfolioData');
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('ポートフォリオデータ読み込みエラー:', error);
+            return null;
+        }
+    }
+
+    /**
+     * ポートフォリオデータを保存
+     * @param {object} value - ポートフォリオデータ
      * @returns {boolean} 保存成功時true、失敗時false
      */
-    setJSON(key, value) {
+    setPortfolioData(value) {
         try {
-            this.storage.setItem(key, JSON.stringify(value));
+            this.storage.setItem('portfolioData', JSON.stringify(value));
             return true;
         } catch (error) {
-            console.error(`localStorage保存エラー (${key}):`, error);
+            console.error('ポートフォリオデータ保存エラー:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 生の取引データを取得
+     * @returns {Array} 取引データ配列
+     */
+    getRawTransactions() {
+        try {
+            const data = this.storage.getItem('rawTransactions');
+            return data ? JSON.parse(data) : [];
+        } catch (error) {
+            console.error('取引データ読み込みエラー:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 生の取引データを保存
+     * @param {Array} value - 取引データ配列
+     * @returns {boolean} 保存成功時true、失敗時false
+     */
+    setRawTransactions(value) {
+        try {
+            this.storage.setItem('rawTransactions', JSON.stringify(value));
+            return true;
+        } catch (error) {
+            console.error('取引データ保存エラー:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 読み込み済みファイル名を取得
+     * @returns {string[]} ファイル名の配列
+     */
+    getLoadedFileNames() {
+        try {
+            const data = this.storage.getItem('loadedFileNames');
+            return data ? JSON.parse(data) : [];
+        } catch (error) {
+            console.error('ファイル名読み込みエラー:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 読み込み済みファイル名を保存
+     * @param {string[]} value - ファイル名の配列
+     * @returns {boolean} 保存成功時true、失敗時false
+     */
+    setLoadedFileNames(value) {
+        try {
+            this.storage.setItem('loadedFileNames', JSON.stringify(value));
+            return true;
+        } catch (error) {
+            console.error('ファイル名保存エラー:', error);
             return false;
         }
     }
@@ -312,14 +372,6 @@ class CacheService {
         const toRemove = items.slice(0, Math.floor(items.length / 2));
         toRemove.forEach(({ key }) => this.storage.removeItem(key));
     }
-
-    /**
-     * 現在のポートフォリオデータを取得
-     * @returns {object|null} ポートフォリオデータまたはnull
-     */
-    getPortfolioData() {
-        return this.get('portfolioData', null);
-    }
 }
 
 // ========== グローバルシングルトンインスタンス ==========
@@ -332,7 +384,10 @@ window.CacheService = CacheService;
 
 // ========== LOCALSTORAGE UTILITY FUNCTIONS ==========
 // 注: safeGetJSON/safeSetJSON/safeRemoveItemは削除されました
-// 代わりにCacheServiceのgetJSON/setJSON/deleteメソッドを使用してください
+// 代わりにCacheServiceの専用メソッドを使用してください:
+//   - cache.getPortfolioData() / cache.setPortfolioData()
+//   - cache.getRawTransactions() / cache.setRawTransactions()
+//   - cache.getLoadedFileNames() / cache.setLoadedFileNames()
 
 /**
  * 日付フォーマットユーティリティ
@@ -442,7 +497,7 @@ function clearPriceDataFromPortfolio(portfolioData) {
  * @returns {object} {all, buy, sell} 取引配列
  */
 function getTransactionsByCoin(coinName) {
-    const rawTransactions = window.cache.get('rawTransactions', []);
+    const rawTransactions = window.cache.getRawTransactions();
     const all = rawTransactions.filter(tx => tx.coinName === coinName);
     const buy = all.filter(tx => tx.type === '買');
     const sell = all.filter(tx => tx.type === '売');
