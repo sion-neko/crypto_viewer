@@ -89,7 +89,7 @@ function saveLoadedFileNames(fileNames) {
 
 // 保存されたファイル名を取得
 function getLoadedFileNames() {
-    return window.cache.getJSON('loadedFileNames', []);
+    return window.cache.get('loadedFileNames', []);
 }
 
 // 読み込み済みファイル情報を表示（fileServiceに委譲）
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // アップロード済みのデータがあるかチェック（localStorage）
-    const portfolioData = window.cache.getJSON('portfolioData');
+    const portfolioData = window.cache.get('portfolioData');
     if (portfolioData) {
         // データがある場合はタブシステムで表示
         displayDashboard(portfolioData);

@@ -81,44 +81,39 @@ class CacheService {
     }
 
     /**
-     * キャッシュからデータを取得
+     * キャッシュからデータを取得（TTL付き/無し両対応）
      * @param {string} key - キャッシュキー
-     * @returns {*} キャッシュされた値（期限切れまたは存在しない場合はnull）
+     * @param {*} defaultValue - 読み込み失敗時のデフォルト値
+     * @returns {*} キャッシュされた値（期限切れまたは存在しない場合はdefaultValue）
      */
-    get(key) {
+    get(key, defaultValue = null) {
         try {
             const raw = this.storage.getItem(key);
-            if (!raw) return null;
-            const data = JSON.parse(raw);
-            if (this._isExpired(data)) {
-                this.storage.removeItem(key);
-                return null;
-            }
-            return data.value;
-        } catch (e) {
-            console.error('キャッシュ読み込み失敗:', e);
-            return null;
-        }
-    }
+            if (!raw) return defaultValue;
 
-    /**
-     * JSONデータをlocalStorageから安全に読み込む（TTLなし）
-     * @param {string} key - localStorageキー
-     * @param {*} defaultValue - 読み込み失敗時のデフォルト値
-     * @returns {*} パース済みのデータまたはデフォルト値
-     */
-    getJSON(key, defaultValue = null) {
-        try {
-            const data = this.storage.getItem(key);
-            return data ? JSON.parse(data) : defaultValue;
-        } catch (error) {
-            console.error(`localStorage読み込みエラー (${key}):`, error);
+            const data = JSON.parse(raw);
+
+            // TTL形式かチェック（timestamp と value プロパティの存在で判定）
+            if (data && typeof data === 'object' && 'timestamp' in data && 'value' in data) {
+                // TTL形式: 期限チェック
+                if (this._isExpired(data)) {
+                    this.storage.removeItem(key);
+                    return defaultValue;
+                }
+                return data.value;
+            }
+
+            // 通常形式: そのまま返す
+            return data;
+        } catch (e) {
+            console.error(`localStorage読み込みエラー (${key}):`, e);
             return defaultValue;
         }
     }
 
     /**
      * JSONデータをlocalStorageに安全に保存する（TTLなし）
+     * set()との違い: TTLラッパーを付けずに直接保存
      * @param {string} key - localStorageキー
      * @param {*} value - 保存する値（自動的にJSON文字列化される）
      * @returns {boolean} 保存成功時true、失敗時false
@@ -323,7 +318,7 @@ class CacheService {
      * @returns {object|null} ポートフォリオデータまたはnull
      */
     getPortfolioData() {
-        return this.getJSON('portfolioData', null);
+        return this.get('portfolioData', null);
     }
 }
 
@@ -447,7 +442,7 @@ function clearPriceDataFromPortfolio(portfolioData) {
  * @returns {object} {all, buy, sell} 取引配列
  */
 function getTransactionsByCoin(coinName) {
-    const rawTransactions = window.cache.getJSON('rawTransactions', []);
+    const rawTransactions = window.cache.get('rawTransactions', []);
     const all = rawTransactions.filter(tx => tx.coinName === coinName);
     const buy = all.filter(tx => tx.type === '買');
     const sell = all.filter(tx => tx.type === '売');

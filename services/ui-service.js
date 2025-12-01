@@ -660,7 +660,7 @@ class TableRenderer {
     }
 
     _renderDesktopTradingHistoryTable(portfolioData) {
-        const allTransactions = window.cache.getJSON('rawTransactions', []);
+        const allTransactions = window.cache.get('rawTransactions', []);
         allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         let html = `
@@ -797,7 +797,7 @@ class TableRenderer {
     }
 
     _renderMobileTradingCards(portfolioData) {
-        const allTransactions = window.cache.getJSON('rawTransactions', []);
+        const allTransactions = window.cache.get('rawTransactions', []);
         allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         let html = '';

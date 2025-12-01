@@ -178,7 +178,7 @@ class FileService {
      * @returns {Array} 既存トランザクション配列
      */
     _getExistingTransactions() {
-        return window.cache.getJSON('rawTransactions', []);
+        return window.cache.get('rawTransactions', []);
     }
 
     /**
@@ -223,7 +223,7 @@ class FileService {
      * @param {string[]} newFileNames - 新しいファイル名の配列
      */
     _updateLoadedFileNames(newFileNames) {
-        const existingFileNames = window.cache.getJSON('loadedFileNames', []);
+        const existingFileNames = window.cache.get('loadedFileNames', []);
         const allFileNames = [...new Set([...existingFileNames, ...newFileNames])];
         window.cache.setJSON('loadedFileNames', allFileNames);
         this.loadedFileNames = allFileNames;
@@ -234,7 +234,7 @@ class FileService {
      * @returns {string[]} ファイル名の配列
      */
     getLoadedFileNames() {
-        return window.cache.getJSON('loadedFileNames', []);
+        return window.cache.get('loadedFileNames', []);
     }
 
     /**
