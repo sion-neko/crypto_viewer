@@ -40,7 +40,7 @@ class PortfolioDataService {
             // （価格は個別キャッシュ price_btc などから取得するため、永続化不要）
             const dataToSave = JSON.parse(JSON.stringify(portfolioData));
             clearPriceDataFromPortfolio(dataToSave);
-            safeSetJSON('portfolioData', dataToSave);
+            cache.setPortfolioData(dataToSave);
         }
     }
 
@@ -797,7 +797,7 @@ function generatePortfolioTable(portfolioData) {
 // モバイル用取引履歴カード生成
 function generateMobileTradingCards(portfolioData) {
     // rawTransactionsから全取引を取得（coinDataには取引配列を保存していない）
-    const allTransactions = safeGetJSON('rawTransactions', []);
+    const allTransactions = cache.getRawTransactions();
 
     // 日付順にソート（新しい順）
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -842,7 +842,7 @@ function generateMobileTradingCards(portfolioData) {
 // 取引履歴テーブル生成
 function generateTradingHistoryTable(portfolioData) {
     // rawTransactionsから全取引を取得（coinDataには取引配列を保存していない）
-    const allTransactions = safeGetJSON('rawTransactions', []);
+    const allTransactions = cache.getRawTransactions();
 
     // 日付順にソート（新しい順）
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));

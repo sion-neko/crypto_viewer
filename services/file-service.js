@@ -178,7 +178,7 @@ class FileService {
      * @returns {Array} 既存トランザクション配列
      */
     _getExistingTransactions() {
-        return safeGetJSON('rawTransactions', []);
+        return cache.getRawTransactions();
     }
 
     /**
@@ -223,9 +223,9 @@ class FileService {
      * @param {string[]} newFileNames - 新しいファイル名の配列
      */
     _updateLoadedFileNames(newFileNames) {
-        const existingFileNames = safeGetJSON('loadedFileNames', []);
+        const existingFileNames = cache.getLoadedFileNames();
         const allFileNames = [...new Set([...existingFileNames, ...newFileNames])];
-        safeSetJSON('loadedFileNames', allFileNames);
+        cache.setLoadedFileNames(allFileNames);
         this.loadedFileNames = allFileNames;
     }
 
@@ -234,7 +234,7 @@ class FileService {
      * @returns {string[]} ファイル名の配列
      */
     getLoadedFileNames() {
-        return safeGetJSON('loadedFileNames', []);
+        return cache.getLoadedFileNames();
     }
 
     /**
@@ -333,7 +333,7 @@ class FileService {
             // ファイル名リストから削除
             const fileNames = this.getLoadedFileNames();
             const updatedFileNames = fileNames.filter(name => name !== fileName);
-            safeSetJSON('loadedFileNames', updatedFileNames);
+            cache.setLoadedFileNames(updatedFileNames);
             this.loadedFileNames = updatedFileNames;
 
             // 残りの取引データでポートフォリオを再計算

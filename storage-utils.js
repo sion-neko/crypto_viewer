@@ -291,7 +291,86 @@ class CacheService {
      * @returns {object|null} ポートフォリオデータまたはnull
      */
     getPortfolioData() {
-        return safeGetJSON('portfolioData', null);
+        try {
+            const data = this.storage.getItem('portfolioData');
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('ポートフォリオデータ読み込みエラー:', error);
+            return null;
+        }
+    }
+
+    /**
+     * ポートフォリオデータを保存
+     * @param {object} value - ポートフォリオデータ
+     * @returns {boolean} 保存成功時true、失敗時false
+     */
+    setPortfolioData(value) {
+        try {
+            this.storage.setItem('portfolioData', JSON.stringify(value));
+            return true;
+        } catch (error) {
+            console.error('ポートフォリオデータ保存エラー:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 生の取引データを取得
+     * @returns {Array} 取引データ配列
+     */
+    getRawTransactions() {
+        try {
+            const data = this.storage.getItem('rawTransactions');
+            return data ? JSON.parse(data) : [];
+        } catch (error) {
+            console.error('取引データ読み込みエラー:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 生の取引データを保存
+     * @param {Array} value - 取引データ配列
+     * @returns {boolean} 保存成功時true、失敗時false
+     */
+    setRawTransactions(value) {
+        try {
+            this.storage.setItem('rawTransactions', JSON.stringify(value));
+            return true;
+        } catch (error) {
+            console.error('取引データ保存エラー:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 読み込み済みファイル名リストを取得
+     * @returns {Array} ファイル名配列
+     */
+    getLoadedFileNames() {
+        try {
+            const data = this.storage.getItem('loadedFileNames');
+            return data ? JSON.parse(data) : [];
+        } catch (error) {
+            console.error('ファイル名リスト読み込みエラー:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 読み込み済みファイル名リストを保存
+     * @param {Array} value - ファイル名配列
+     * @returns {boolean} 保存成功時true、失敗時false
+     */
+    setLoadedFileNames(value) {
+        try {
+            this.storage.setItem('loadedFileNames', JSON.stringify(value));
+            return true;
+        } catch (error) {
+            console.error('ファイル名リスト保存エラー:', error);
+            return false;
+        }
     }
 }
 
@@ -302,55 +381,6 @@ window.cache = new CacheService();
 
 // 後方互換性のためのエイリアス
 window.CacheService = CacheService;
-
-// ========== LOCALSTORAGE UTILITY FUNCTIONS ==========
-
-/**
- * JSONデータをlocalStorageから安全に読み込む
- * @param {string} key - localStorageキー
- * @param {*} defaultValue - 読み込み失敗時のデフォルト値
- * @returns {*} パース済みのデータまたはデフォルト値
- */
-function safeGetJSON(key, defaultValue = null) {
-    try {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : defaultValue;
-    } catch (error) {
-        console.error(`localStorage読み込みエラー (${key}):`, error);
-        return defaultValue;
-    }
-}
-
-/**
- * JSONデータをlocalStorageに安全に保存する
- * @param {string} key - localStorageキー
- * @param {*} value - 保存する値（自動的にJSON文字列化される）
- * @returns {boolean} 保存成功時true、失敗時false
- */
-function safeSetJSON(key, value) {
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-        return true;
-    } catch (error) {
-        console.error(`localStorage保存エラー (${key}):`, error);
-        return false;
-    }
-}
-
-/**
- * localStorageからキーを安全に削除する
- * @param {string} key - localStorageキー
- * @returns {boolean} 削除成功時true、失敗時false
- */
-function safeRemoveItem(key) {
-    try {
-        localStorage.removeItem(key);
-        return true;
-    } catch (error) {
-        console.error(`localStorage削除エラー (${key}):`, error);
-        return false;
-    }
-}
 
 /**
  * 日付フォーマットユーティリティ
@@ -460,7 +490,7 @@ function clearPriceDataFromPortfolio(portfolioData) {
  * @returns {object} {all, buy, sell} 取引配列
  */
 function getTransactionsByCoin(coinName) {
-    const rawTransactions = safeGetJSON('rawTransactions', []);
+    const rawTransactions = cache.getRawTransactions();
     const all = rawTransactions.filter(tx => tx.coinName === coinName);
     const buy = all.filter(tx => tx.type === '買');
     const sell = all.filter(tx => tx.type === '売');
