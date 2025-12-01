@@ -117,7 +117,7 @@ function clearPriceData() {
         const clearedCount = window.cache.clearPriceCache();
 
         // 価格ステータス更新
-        updatePriceStatus('価格データクリア済み');
+        uiService.displayPriceDataStatus('価格データクリア済み');
 
         // サイドバーの価格データ状況を更新
         updatePriceDataStatusDisplay();

@@ -43,7 +43,7 @@ function refreshPortfolioDisplay(portfolioData = null, message = null) {
     }
 
     // 価格ステータス更新
-    updatePriceStatus();
+    uiService.displayPriceDataStatus();
 }
 
 // ========== PORTFOLIO ANALYSIS FUNCTIONS ==========
@@ -307,7 +307,7 @@ async function fetchCurrentPrices() {
         showInfoMessage('価格データを取得中...');
         const prices = await window.apiService.fetchCurrentPrices(portfolioCoinNames);
 
-        updatePortfolioWithPrices(currentPortfolioData, prices);
+        portfolioDataService.updateWithPrices(prices);
 
         const validCoinNames = prices._metadata?.coinNames || [];
         let message = `価格更新完了: ${validCoinNames.length}銘柄`;
@@ -330,7 +330,7 @@ async function fetchCurrentPrices() {
     } catch (error) {
         console.error('価格取得エラー:', error);
         showErrorMessage(`価格取得失敗: ${error.message}`);
-        updatePriceStatus('取得失敗');
+        uiService.displayPriceDataStatus('取得失敗');
     }
 }
 
@@ -428,14 +428,13 @@ function _renderDashboardTables(portfolioData) {
         }
         pricesObject._metadata = { lastUpdate: Math.min(...cacheTimestamps) };
 
-        updatePortfolioWithPrices(portfolioData, pricesObject);
-        portfolioDataService.updateData(portfolioData);
+        portfolioDataService.updateWithPrices(pricesObject);
         const updatedData = portfolioDataService.getData();
         tableContainer.innerHTML = generatePortfolioTable(updatedData);
 
-        updatePriceStatus();
+        uiService.displayPriceDataStatus();
     } else {
-        updatePriceStatus('価格データ取得中...');
+        uiService.displayPriceDataStatus('価格データ取得中...');
 
         setTimeout(() => {
             fetchCurrentPrices();

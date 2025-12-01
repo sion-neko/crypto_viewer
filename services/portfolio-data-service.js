@@ -77,4 +77,56 @@ class PortfolioDataService {
     hasData() {
         return this.getData() !== null;
     }
+
+    /**
+     * 価格データでポートフォリオを更新（含み損益計算）
+     * @param {object} prices - 価格データオブジェクト
+     */
+    updateWithPrices(prices) {
+        const portfolioData = this.getData();
+        if (!portfolioData || !portfolioData.summary) return;
+
+        let totalUnrealizedProfit = 0;
+
+        portfolioData.summary.forEach(item => {
+            if (prices[item.coinName]) {
+                const currentPrice = prices[item.coinName].price_jpy;
+                item.currentPrice = currentPrice;
+
+                const unrealizedProfit = calculateUnrealizedProfit(
+                    item.holdingQuantity,
+                    currentPrice,
+                    item.averagePurchaseRate
+                );
+
+                if (unrealizedProfit !== 0) {
+                    item.currentValue = item.holdingQuantity * currentPrice;
+                    item.unrealizedProfit = unrealizedProfit;
+                    item.totalProfit = item.realizedProfit + unrealizedProfit;
+                    totalUnrealizedProfit += unrealizedProfit;
+                } else {
+                    item.currentValue = 0;
+                    item.unrealizedProfit = 0;
+                    item.totalProfit = item.realizedProfit;
+                }
+            } else {
+                item.currentPrice = 0;
+                item.currentValue = 0;
+                item.unrealizedProfit = 0;
+                item.totalProfit = item.realizedProfit;
+            }
+        });
+
+        // 統計に含み損益と総合損益を追加
+        portfolioData.stats.totalUnrealizedProfit = totalUnrealizedProfit;
+        portfolioData.stats.totalProfit = portfolioData.stats.totalRealizedProfit + totalUnrealizedProfit;
+
+        // 総合損益に基づく追加統計
+        portfolioData.stats.totalProfitableCoinNames = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) > 0).length;
+        portfolioData.stats.totalLossCoinNames = portfolioData.summary.filter(s => (s.totalProfit || s.realizedProfit) < 0).length;
+        portfolioData.stats.overallTotalProfitMargin = portfolioData.stats.totalInvestment > 0 ?
+            (portfolioData.stats.totalProfit / portfolioData.stats.totalInvestment) * 100 : 0;
+
+        this.updateData(portfolioData);
+    }
 }
