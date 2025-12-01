@@ -84,12 +84,12 @@ function showWarningMessage(message) {
 
 // ファイル名を保存
 function saveLoadedFileNames(fileNames) {
-    safeSetJSON('loadedFileNames', fileNames);
+    window.cache.setJSON('loadedFileNames', fileNames);
 }
 
 // 保存されたファイル名を取得
 function getLoadedFileNames() {
-    return safeGetJSON('loadedFileNames', []);
+    return window.cache.getJSON('loadedFileNames', []);
 }
 
 // 読み込み済みファイル情報を表示（fileServiceに委譲）
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // アップロード済みのデータがあるかチェック（localStorage）
-    const portfolioData = safeGetJSON('portfolioData');
+    const portfolioData = window.cache.getJSON('portfolioData');
     if (portfolioData) {
         // データがある場合はタブシステムで表示
         displayDashboard(portfolioData);

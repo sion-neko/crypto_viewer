@@ -102,6 +102,38 @@ class CacheService {
     }
 
     /**
+     * JSONデータをlocalStorageから安全に読み込む（TTLなし）
+     * @param {string} key - localStorageキー
+     * @param {*} defaultValue - 読み込み失敗時のデフォルト値
+     * @returns {*} パース済みのデータまたはデフォルト値
+     */
+    getJSON(key, defaultValue = null) {
+        try {
+            const data = this.storage.getItem(key);
+            return data ? JSON.parse(data) : defaultValue;
+        } catch (error) {
+            console.error(`localStorage読み込みエラー (${key}):`, error);
+            return defaultValue;
+        }
+    }
+
+    /**
+     * JSONデータをlocalStorageに安全に保存する（TTLなし）
+     * @param {string} key - localStorageキー
+     * @param {*} value - 保存する値（自動的にJSON文字列化される）
+     * @returns {boolean} 保存成功時true、失敗時false
+     */
+    setJSON(key, value) {
+        try {
+            this.storage.setItem(key, JSON.stringify(value));
+            return true;
+        } catch (error) {
+            console.error(`localStorage保存エラー (${key}):`, error);
+            return false;
+        }
+    }
+
+    /**
      * 特定のキャッシュを削除
      * @param {string} key - キャッシュキー
      */
@@ -291,7 +323,7 @@ class CacheService {
      * @returns {object|null} ポートフォリオデータまたはnull
      */
     getPortfolioData() {
-        return safeGetJSON('portfolioData', null);
+        return this.getJSON('portfolioData', null);
     }
 }
 
@@ -304,53 +336,8 @@ window.cache = new CacheService();
 window.CacheService = CacheService;
 
 // ========== LOCALSTORAGE UTILITY FUNCTIONS ==========
-
-/**
- * JSONデータをlocalStorageから安全に読み込む
- * @param {string} key - localStorageキー
- * @param {*} defaultValue - 読み込み失敗時のデフォルト値
- * @returns {*} パース済みのデータまたはデフォルト値
- */
-function safeGetJSON(key, defaultValue = null) {
-    try {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : defaultValue;
-    } catch (error) {
-        console.error(`localStorage読み込みエラー (${key}):`, error);
-        return defaultValue;
-    }
-}
-
-/**
- * JSONデータをlocalStorageに安全に保存する
- * @param {string} key - localStorageキー
- * @param {*} value - 保存する値（自動的にJSON文字列化される）
- * @returns {boolean} 保存成功時true、失敗時false
- */
-function safeSetJSON(key, value) {
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-        return true;
-    } catch (error) {
-        console.error(`localStorage保存エラー (${key}):`, error);
-        return false;
-    }
-}
-
-/**
- * localStorageからキーを安全に削除する
- * @param {string} key - localStorageキー
- * @returns {boolean} 削除成功時true、失敗時false
- */
-function safeRemoveItem(key) {
-    try {
-        localStorage.removeItem(key);
-        return true;
-    } catch (error) {
-        console.error(`localStorage削除エラー (${key}):`, error);
-        return false;
-    }
-}
+// 注: safeGetJSON/safeSetJSON/safeRemoveItemは削除されました
+// 代わりにCacheServiceのgetJSON/setJSON/deleteメソッドを使用してください
 
 /**
  * 日付フォーマットユーティリティ
@@ -460,7 +447,7 @@ function clearPriceDataFromPortfolio(portfolioData) {
  * @returns {object} {all, buy, sell} 取引配列
  */
 function getTransactionsByCoin(coinName) {
-    const rawTransactions = safeGetJSON('rawTransactions', []);
+    const rawTransactions = window.cache.getJSON('rawTransactions', []);
     const all = rawTransactions.filter(tx => tx.coinName === coinName);
     const buy = all.filter(tx => tx.type === '買');
     const sell = all.filter(tx => tx.type === '売');
