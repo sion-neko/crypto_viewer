@@ -2,50 +2,6 @@
 
 // PortfolioDataService は services/portfolio-data-service.js に移動済み
 
-// ========== PORTFOLIO UPDATE HELPER ==========
-
-/**
- * ポートフォリオ表示を更新（共通処理）
- * @param {object} portfolioData - ポートフォリオデータ（省略可）
- * @param {string} message - 成功メッセージ（省略可）
- */
-function refreshPortfolioDisplay(portfolioData = null, message = null) {
-    // ポートフォリオデータが渡された場合、PortfolioDataServiceを更新
-    if (portfolioData) {
-        portfolioDataService.updateData(portfolioData);
-    }
-
-    // PortfolioDataServiceから現在のデータとソート状態を取得
-    const currentData = portfolioDataService.getData();
-    const sortState = portfolioDataService.getSortState();
-
-    // 現在のソート順を維持してテーブル再描画
-    sortPortfolioData(sortState.field, sortState.direction);
-
-    const tableContainer = document.getElementById('portfolio-table-container');
-    if (tableContainer) {
-        tableContainer.innerHTML = generatePortfolioTable(currentData);
-    }
-
-    // サマリー部分も更新（総合損益反映のため）
-    updateDataStatus(currentData);
-
-    // 銘柄別サブタブを再生成（価格更新を反映）
-    try {
-        createCoinNameSubtabs(currentData);
-    } catch (error) {
-        console.error('❌ Error regenerating coin subtabs:', error);
-    }
-
-    // 成功メッセージ表示
-    if (message) {
-        showSuccessMessage(message);
-    }
-
-    // 価格ステータス更新
-    uiService.displayPriceDataStatus();
-}
-
 // ========== PORTFOLIO ANALYSIS FUNCTIONS ==========
 
 // ポートフォリオ分析（損益計算強化版）
@@ -325,7 +281,7 @@ async function fetchCurrentPrices() {
             message = `価格更新完了: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`;
         }
 
-        refreshPortfolioDisplay(currentPortfolioData, message);
+        window.uiService.dashboard.refreshDisplay(currentPortfolioData, message);
 
     } catch (error) {
         console.error('価格取得エラー:', error);
@@ -336,19 +292,6 @@ async function fetchCurrentPrices() {
 
 // ========== DASHBOARD AND DISPLAY FUNCTIONS ==========
 // (すべてui-service.js DashboardManagerに移行済み)
-
-// 後方互換性のためのラッパー関数
-function displayDashboard(portfolioData) {
-    window.uiService.dashboard.displayDashboard(portfolioData);
-}
-
-function updateDataStatus(portfolioData) {
-    window.uiService.dashboard.updateDataStatus(portfolioData);
-}
-
-function createCoinNameSubtabs(portfolioData) {
-    window.uiService.createCoinSubTabs(portfolioData);
-}
 
 // ========== UI生成関数は全てui-service.jsに移行済み ==========
 // displayDashboard, updateDataStatus, createCoinNameSubtabs

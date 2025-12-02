@@ -1202,6 +1202,41 @@ class DashboardManager {
             managementElement.style.display = 'none';
         }
     }
+
+    /**
+     * ポートフォリオ表示を更新（共通処理）
+     * @param {object} portfolioData - ポートフォリオデータ（省略可）
+     * @param {string} message - 成功メッセージ（省略可）
+     */
+    refreshDisplay(portfolioData = null, message = null) {
+        if (portfolioData) {
+            this.portfolioDataService.updateData(portfolioData);
+        }
+
+        const currentData = this.portfolioDataService.getData();
+        const sortState = this.portfolioDataService.getSortState();
+
+        window.sortPortfolioData(sortState.field, sortState.direction);
+
+        const tableContainer = document.getElementById('portfolio-table-container');
+        if (tableContainer) {
+            tableContainer.innerHTML = window.uiService.tableRenderer._renderDesktopPortfolioTable(currentData);
+        }
+
+        this.updateDataStatus(currentData);
+
+        try {
+            window.uiService.createCoinSubTabs(currentData);
+        } catch (error) {
+            console.error('❌ Error regenerating coin subtabs:', error);
+        }
+
+        if (message) {
+            window.uiService.showSuccess(message);
+        }
+
+        window.uiService.displayPriceDataStatus();
+    }
 }
 
 /**

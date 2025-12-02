@@ -343,7 +343,7 @@ class FileService {
                 this.portfolioDataService.updateData(portfolioData);
 
                 // ダッシュボードを更新
-                displayDashboard(portfolioData);
+                window.uiService.dashboard.displayDashboard(portfolioData);
 
                 this.uiService.showSuccess(`「${fileName}」を削除しました（${deletedCount}件の取引を削除）`);
             } else {
@@ -359,7 +359,7 @@ class FileService {
                 if (tabContainer) tabContainer.style.display = 'none';
 
                 // データステータス更新
-                updateDataStatus(null);
+                window.uiService.dashboard.updateDataStatus(null);
 
                 this.uiService.showSuccess(`「${fileName}」を削除しました（全データが削除されました）`);
             }

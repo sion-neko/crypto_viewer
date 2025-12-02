@@ -5,7 +5,7 @@ async function handleFiles(files) {
     const result = await window.fileService.handleFiles(files);
 
     if (result.success) {
-        displayDashboard(result.portfolioData);
+        window.uiService.dashboard.displayDashboard(result.portfolioData);
 
         if (result.addedCount > 0) {
             showSuccessMessage(`${result.totalFiles}個のCSVファイルを処理し、${result.addedCount}件の新しい取引を追加しました`);
@@ -102,7 +102,7 @@ function displayLoadedFiles() {
 // 全データクリア（サービスクラスへの委譲版）
 function clearAllData() {
     if (window.fileService.clearAllData()) {
-        updateDataStatus(null);
+        window.uiService.dashboard.updateDataStatus(null);
         // 価格データ状況を更新
         updatePriceDataStatusDisplay();
     }
@@ -333,9 +333,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const portfolioData = window.cache.getPortfolioData();
     if (portfolioData) {
         // データがある場合はタブシステムで表示
-        displayDashboard(portfolioData);
+        window.uiService.dashboard.displayDashboard(portfolioData);
     } else {
-        updateDataStatus(null);
+        window.uiService.dashboard.updateDataStatus(null);
     }
 
     // 起動時に旧形式の価格キャッシュをクリーンアップ
