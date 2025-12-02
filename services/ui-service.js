@@ -993,6 +993,217 @@ class ProgressManager {
     }
 }
 
+// ===================================================================
+// DASHBOARD MANAGER - ダッシュボード表示管理
+// ===================================================================
+
+/**
+ * ダッシュボード表示を管理するクラス
+ */
+class DashboardManager {
+    constructor() {
+        this.portfolioDataService = null;
+    }
+
+    /**
+     * サービスインスタンスを設定
+     * @param {PortfolioDataService} portfolioDataService
+     */
+    setServices(portfolioDataService) {
+        this.portfolioDataService = portfolioDataService;
+    }
+
+    /**
+     * ダッシュボードを表示（メイン関数）
+     * @param {object} portfolioData - ポートフォリオデータ
+     */
+    displayDashboard(portfolioData) {
+        this._initializeDashboardData(portfolioData);
+        this._toggleDashboardDisplay();
+        this._initializeChartContainer();
+        this._renderDashboardTables(portfolioData);
+        this._finalizeDashboardSetup(portfolioData);
+    }
+
+    /**
+     * データ保存とソート設定
+     * @private
+     */
+    _initializeDashboardData(portfolioData) {
+        this.portfolioDataService.updateData(portfolioData);
+        this.portfolioDataService.setSortState('realizedProfit', 'desc');
+        window.sortPortfolioData('realizedProfit', 'desc');
+    }
+
+    /**
+     * UI表示/非表示の切り替え
+     * @private
+     */
+    _toggleDashboardDisplay() {
+        document.getElementById('dashboardArea').style.display = 'none';
+        document.getElementById('tabContainer').style.display = 'block';
+    }
+
+    /**
+     * チャートコンテナの初期化
+     * @private
+     */
+    _initializeChartContainer() {
+        const chartContainer = document.getElementById('portfolio-chart-container');
+        if (chartContainer.hasChildNodes()) return;
+
+        if (window.isMobile && window.isMobile()) {
+            chartContainer.innerHTML = `
+                <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
+                    <div class="card-header">
+                        <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
+                        <div style="float: right;">
+                            <button onclick="window.renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                更新
+                            </button>
+                        </div>
+                    </div>
+                    <div style="height: 300px; padding: 10px; position: relative;">
+                        <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+            `;
+        } else {
+            chartContainer.innerHTML = `
+                <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
+                        <div>
+                            <button onclick="window.renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                チャート更新
+                            </button>
+                        </div>
+                    </div>
+                    <div style="height: 400px; position: relative;">
+                        <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * テーブル描画とキャッシュ価格復元
+     * @private
+     */
+    _renderDashboardTables(portfolioData) {
+        const tableContainer = document.getElementById('portfolio-table-container');
+        const currentData = this.portfolioDataService.getData();
+        tableContainer.innerHTML = window.uiService.tableRenderer._renderDesktopPortfolioTable(currentData);
+
+        const coinNames = portfolioData.summary.map(item => item.coinName);
+        const cacheTimestamps = [];
+        const cachedPriceData = {};
+
+        for (const coinName of coinNames) {
+            const cacheKey = window.cacheKeys.currentPrice(coinName);
+            const cached = window.cache.get(cacheKey);
+            if (cached) {
+                const rawData = window.cache.storage.getItem(cacheKey);
+                if (rawData) {
+                    const parsedData = JSON.parse(rawData);
+                    cacheTimestamps.push(parsedData.timestamp);
+                    cachedPriceData[coinName] = cached;
+                }
+            }
+        }
+
+        if (Object.keys(cachedPriceData).length > 0) {
+            const pricesObject = {};
+            for (const [coinName, priceData] of Object.entries(cachedPriceData)) {
+                pricesObject[coinName] = priceData;
+            }
+            pricesObject._metadata = { lastUpdate: Math.min(...cacheTimestamps) };
+
+            this.portfolioDataService.updateWithPrices(pricesObject);
+            const updatedData = this.portfolioDataService.getData();
+            tableContainer.innerHTML = window.uiService.tableRenderer._renderDesktopPortfolioTable(updatedData);
+
+            window.uiService.displayPriceDataStatus();
+        } else {
+            window.uiService.displayPriceDataStatus('価格データ取得中...');
+
+            setTimeout(() => {
+                window.fetchCurrentPrices();
+            }, 1000);
+        }
+
+        const tradingContainer = document.getElementById('trading-history-container');
+        tradingContainer.innerHTML = window.uiService.tableRenderer._renderDesktopTradingHistoryTable(portfolioData);
+    }
+
+    /**
+     * サブタブ作成、ステータス更新、チャート描画
+     * @private
+     */
+    _finalizeDashboardSetup(portfolioData) {
+        try {
+            window.uiService.createCoinSubTabs(portfolioData);
+        } catch (error) {
+            console.error('❌ Error in createCoinSubTabs:', error);
+        }
+
+        setTimeout(() => {
+            window.switchSubtab('summary');
+        }, 50);
+
+        this.updateDataStatus(portfolioData);
+        window.showPage('dashboard');
+
+        setTimeout(() => {
+            const coinNames = portfolioData.summary.map(item => item.coinName);
+            const hasCache = coinNames.some(coinName => {
+                const cacheKey = window.cacheKeys.priceHistory(coinName);
+                const cached = window.cache.get(cacheKey);
+                return cached && cached.data && cached.data.length > 0;
+            });
+
+            if (hasCache && window.renderAllCoinNamesProfitChart) {
+                window.renderAllCoinNamesProfitChart(portfolioData);
+            } else {
+                console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');
+            }
+        }, 800);
+    }
+
+    /**
+     * データステータス更新
+     * @param {object} portfolioData - ポートフォリオデータ
+     */
+    updateDataStatus(portfolioData) {
+        const statusElement = document.getElementById('data-status');
+        const managementElement = document.getElementById('data-management');
+
+        if (portfolioData && portfolioData.summary.length > 0) {
+            const stats = portfolioData.stats;
+            const displayProfit = stats.totalProfit || stats.totalRealizedProfit;
+            const profitColor = displayProfit >= 0 ? '#27ae60' : '#e74c3c';
+            const profitIcon = displayProfit > 0 ? '📈' : displayProfit < 0 ? '📉' : '➖';
+
+            statusElement.innerHTML = `
+                <div style="color: #27ae60; font-weight: 600;">✅ データあり</div>
+                <div style="margin-top: 5px; font-size: 0.8rem;">
+                    ${stats.coinNameCount}銘柄<br>
+                    投資額: ¥${stats.totalInvestment.toLocaleString()}<br>
+                    <span style="color: ${profitColor}; font-weight: 600;">
+                        ${profitIcon} ¥${Math.round(displayProfit).toLocaleString()}
+                    </span>
+                    ${stats.totalUnrealizedProfit !== undefined ? `<br><span style="font-size: 0.7rem; color: #6c757d;">実現+含み損益</span>` : ''}
+                </div>
+            `;
+            managementElement.style.display = 'block';
+        } else {
+            statusElement.innerHTML = `<div style="color: #7f8c8d;">データなし</div>`;
+            managementElement.style.display = 'none';
+        }
+    }
+}
+
 /**
  * UIサービスクラス
  * 全てのUI操作を統合的に管理
@@ -1003,6 +1214,7 @@ class UIService {
         this.tabManager = new TabManager();
         this.tableRenderer = new TableRenderer();
         this.progress = new ProgressManager();
+        this.dashboard = new DashboardManager();
     }
 
     // メッセージ管理への委譲
@@ -1139,3 +1351,4 @@ window.MessageManager = MessageManager;
 window.TabManager = TabManager;
 window.TableRenderer = TableRenderer;
 window.ProgressManager = ProgressManager;
+window.DashboardManager = DashboardManager;
