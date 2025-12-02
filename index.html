@@ -269,6 +269,9 @@
         // Initialize FileService instance (depends on portfolioDataService and uiService)
         window.fileService = new FileService(window.portfolioDataService, window.uiService);
 
+        // Initialize DashboardManager (depends on portfolioDataService)
+        window.uiService.dashboard.setServices(window.portfolioDataService);
+
         console.log('✅ All services initialized successfully');
     </script>
 </body>
