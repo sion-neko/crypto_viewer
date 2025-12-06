@@ -32,10 +32,10 @@
         </div>
         
         <nav>
-            <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+            <button class="nav-item active" onclick="document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); document.getElementById('page-dashboard').classList.add('active'); this.classList.add('active');" id="nav-dashboard">
                 ダッシュボード
             </button>
-            <button class="nav-item" onclick="showPage('upload')" id="nav-upload">
+            <button class="nav-item" onclick="document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); document.getElementById('page-upload').classList.add('active'); this.classList.add('active');" id="nav-upload">
                 CSVアップロード
             </button>
         </nav>
@@ -63,7 +63,7 @@
                     <button onclick="initializePriceHistoryAccumulation(true)" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#218838'" onmouseout="this.style.background='#28a745'">
                         価格履歴取得
                     </button>
-                    <button onclick="clearPriceData()" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #fd7e14; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#e8690b'" onmouseout="this.style.background='#fd7e14'">
+                    <button onclick="if (confirm('価格データをクリアしますか？チャート表示には再取得が必要になります。')) { const clearedCount = window.cache.clearPriceCache(); window.uiService.displayPriceDataStatus('価格データクリア済み'); updatePriceDataStatusDisplay(); window.uiService.showSuccess('価格データをクリアしました (' + clearedCount + '件)'); }" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #fd7e14; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#e8690b'" onmouseout="this.style.background='#fd7e14'">
                         価格クリア
                     </button>
                 </div>
@@ -88,22 +88,22 @@
                     <div class="no-data-message">
                         <h3>データがありません</h3>
                         <p>CSVファイルをアップロードしてポートフォリオを表示してください</p>
-                        <button class="nav-button" onclick="showPage('upload')">CSVをアップロード</button>
+                        <button class="nav-button" onclick="document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); document.getElementById('page-upload').classList.add('active'); document.getElementById('nav-upload').classList.add('active');">CSVをアップロード</button>
                     </div>
                 </div>
 
                 <!-- タブコンテンツエリア（データがある時に表示） -->
                 <div class="tab-container" id="tabContainer" style="display: none;">
                     <div class="tab-nav">
-                        <button class="tab-button active" onclick="switchTab('portfolio')" title="Ctrl+1 でポートフォリオタブに切り替え">ポートフォリオ</button>
-                        <button class="tab-button" onclick="switchTab('trading')" title="Ctrl+2 で取引履歴タブに切り替え">取引履歴</button>
+                        <button class="tab-button active" onclick="window.uiService.switchMainTab('portfolio')" title="Ctrl+1 でポートフォリオタブに切り替え">ポートフォリオ</button>
+                        <button class="tab-button" onclick="window.uiService.switchMainTab('trading')" title="Ctrl+2 で取引履歴タブに切り替え">取引履歴</button>
                     </div>
 
                     <!-- ポートフォリオタブ -->
                     <div class="tab-content active" id="tab-portfolio">
                         <!-- サブタブナビゲーション -->
                         <div class="subtab-nav" id="subtab-nav">
-                            <button class="subtab-button active" onclick="switchSubtab('summary')" id="subtab-summary" title="Ctrl+S でサマリーに切り替え / Ctrl+← 前のサブタブ / Ctrl+→ 次のサブタブ">サマリー</button>
+                            <button class="subtab-button active" onclick="window.uiService.switchSubTab('summary')" id="subtab-summary" title="Ctrl+S でサマリーに切り替え / Ctrl+← 前のサブタブ / Ctrl+→ 次のサブタブ">サマリー</button>
                             <!-- 銘柄別サブタブはJSで動的生成 -->
                         </div>
 
@@ -154,7 +154,7 @@
 
                                     <!-- 全データクリアボタン -->
                                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
-                                        <button onclick="clearAllData()" style="width: 100%; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s ease;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">
+                                        <button onclick="if (window.fileService.clearAllData()) { window.uiService.updateDataStatus(null); updatePriceDataStatusDisplay(); }" style="width: 100%; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s ease;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">
                                             全データクリア
                                         </button>
                                         <div style="font-size: 0.75rem; color: #6c757d; margin-top: 6px; text-align: center; line-height: 1.3;">
@@ -208,7 +208,7 @@
 
                         <!-- 全データクリアボタン -->
                         <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
-                            <button onclick="clearAllData()" style="width: 100%; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s ease;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">
+                            <button onclick="if (window.fileService.clearAllData()) { window.uiService.updateDataStatus(null); updatePriceDataStatusDisplay(); }" style="width: 100%; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s ease;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">
                                 全データクリア
                             </button>
                             <div style="font-size: 0.75rem; color: #6c757d; margin-top: 6px; text-align: center; line-height: 1.3;">

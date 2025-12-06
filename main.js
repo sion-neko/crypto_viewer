@@ -8,9 +8,9 @@ async function handleFiles(files) {
         window.uiService.displayDashboard(result.portfolioData);
 
         if (result.addedCount > 0) {
-            showSuccessMessage(`${result.totalFiles}個のCSVファイルを処理し、${result.addedCount}件の新しい取引を追加しました`);
+            window.uiService.showSuccess(`${result.totalFiles}個のCSVファイルを処理し、${result.addedCount}件の新しい取引を追加しました`);
         } else {
-            showInfoMessage(`${result.totalFiles}個のCSVファイルを処理しましたが、新しい取引はありませんでした（重複データのため）`);
+            window.uiService.showInfo(`${result.totalFiles}個のCSVファイルを処理しましたが、新しい取引はありませんでした（重複データのため）`);
         }
 
         // ファイル表示を更新
@@ -42,43 +42,11 @@ function showPage(pageId) {
     document.getElementById(`nav-${pageId}`).classList.add('active');
 }
 
-// タブ切り替え機能（サービスクラスへの委譲版）
-function switchTab(tabName) {
-    window.uiService.switchMainTab(tabName);
-}
-
-// サブタブ切り替え機能（サービスクラスへの委譲版）
-function switchSubtab(subtabName) {
-    window.uiService.switchSubTab(subtabName);
-}
-
-// サブタブ間の移動関数（サービスクラスへの委譲版）
-function switchToPreviousSubtab() {
-    window.uiService.switchToPreviousSubTab();
-}
-
-function switchToNextSubtab() {
-    window.uiService.switchToNextSubTab();
-}
+// タブ切り替え、サブタブ切り替えなどの関数は削除されました。
+// 直接 window.uiService のメソッドを呼び出してください。
 
 // ========== MESSAGE AND NOTIFICATION FUNCTIONS ==========
-
-// メッセージ表示（サービスクラスへの委譲版）
-function showSuccessMessage(message) {
-    window.uiService.showSuccess(message);
-}
-
-function showErrorMessage(message) {
-    window.uiService.showError(message);
-}
-
-function showInfoMessage(message) {
-    window.uiService.showInfo(message);
-}
-
-function showWarningMessage(message) {
-    window.uiService.showWarning(message);
-}
+// メッセージ表示関数は削除されました。直接 window.uiService.showSuccess/showError/showInfo/showWarning を使用してください。
 
 // ========== FILE MANAGEMENT FUNCTIONS ==========
 
@@ -99,58 +67,11 @@ function displayLoadedFiles() {
     }
 }
 
-// 全データクリア（サービスクラスへの委譲版）
-function clearAllData() {
-    if (window.fileService.clearAllData()) {
-        window.uiService.updateDataStatus(null);
-        // 価格データ状況を更新
-        updatePriceDataStatusDisplay();
-    }
-}
-
 // ========== PRICE DATA MANAGEMENT FUNCTIONS ==========
+// clearAllData() と clearPriceData() は削除されました。
+// HTMLから直接サービスを呼び出すように変更してください。
 
-// 価格データ管理機能（CacheService使用版）
-function clearPriceData() {
-    if (confirm('価格データをクリアしますか？チャート表示には再取得が必要になります。')) {
-        // CacheServiceを使用して価格キャッシュをクリア
-        const clearedCount = window.cache.clearPriceCache();
-
-        // 価格ステータス更新
-        uiService.displayPriceDataStatus('価格データクリア済み');
-
-        // サイドバーの価格データ状況を更新
-        updatePriceDataStatusDisplay();
-
-        showSuccessMessage(`価格データをクリアしました (${clearedCount}件)`);
-    }
-}
-
-// 価格データ状況表示（CacheService使用版）
-function showPriceDataStatus() {
-    try {
-        // CacheServiceから統計情報を取得
-        const stats = window.cache.getStorageStats();
-
-        const maxSizeMB = (AppConfig.cacheDurations.MAX_STORAGE_SIZE / 1024 / 1024).toFixed(0);
-
-        const message = `
-📊 ストレージ使用状況:
-💾 合計サイズ: ${stats.totalSizeMB}MB / ${maxSizeMB}MB
-📈 価格キャッシュ: ${stats.priceDataCount}件 (${stats.priceDataSizeMB}MB)
-📂 ポートフォリオデータ: ${stats.portfolioDataSizeMB}MB
-📊 使用率: ${(stats.usageRatio * 100).toFixed(1)}%
-
-詳細はブラウザのコンソール(F12)で確認できます。
-        `.trim();
-
-        alert(message);
-        console.log('ストレージ統計:', stats);
-    } catch (error) {
-        console.error('価格データ状況表示エラー:', error);
-        showErrorMessage('価格データ状況の取得に失敗しました');
-    }
-}
+// showPriceDataStatus() は削除されました。使用されていないため。
 
 // 価格データ状況を自動更新（サイドバーに表示）
 function updatePriceDataStatusDisplay() {
@@ -192,25 +113,25 @@ function initializeKeyboardShortcuts() {
         switch (e.key) {
             case '1':
                 e.preventDefault();
-                switchTab('portfolio');
+                window.uiService.switchMainTab('portfolio');
                 break;
             case '2':
                 e.preventDefault();
-                switchTab('trading');
+                window.uiService.switchMainTab('trading');
                 break;
             case 's':
                 e.preventDefault();
                 if (document.getElementById('tab-portfolio').classList.contains('active')) {
-                    switchSubtab('summary');
+                    window.uiService.switchSubTab('summary');
                 }
                 break;
             case 'ArrowLeft':
                 e.preventDefault();
-                switchToPreviousSubtab();
+                window.uiService.switchToPreviousSubTab();
                 break;
             case 'ArrowRight':
                 e.preventDefault();
-                switchToNextSubtab();
+                window.uiService.switchToNextSubTab();
                 break;
         }
     });
@@ -450,7 +371,7 @@ async function renderCoinProfitChart(coinName) {
         }
 
         // 価格履歴を取得
-        showInfoMessage(`${coinName}の価格履歴を取得中...`);
+        window.uiService.showInfo(`${coinName}の価格履歴を取得中...`);
         const priceHistory = await window.apiService.fetchPriceHistory(coinName, { days: 30 });
 
         // 損益推移データを生成
@@ -467,28 +388,18 @@ async function renderCoinProfitChart(coinName) {
             'coin'
         );
 
-        showSuccessMessage(`${coinName}の損益チャートを表示しました`);
+        window.uiService.showSuccess(`${coinName}の損益チャートを表示しました`);
 
     } catch (error) {
         console.error(`${coinName}チャート描画エラー:`, error);
-        showErrorMessage(`${coinName}チャート描画失敗: ${error.message}`);
+        window.uiService.showError(`${coinName}チャート描画失敗: ${error.message}`);
     }
 }
 
-// グローバル関数として明示的に定義（HTMLから呼び出し可能にする）
+// グローバル関数として明示的に定義（HTMLや他のJSファイルから呼び出し可能にする）
 (function () {
-    window.showPage = showPage;
-    window.switchTab = switchTab;
-    window.switchSubtab = switchSubtab;
-    window.clearAllData = clearAllData;
-    window.clearPriceData = clearPriceData;
-    window.showPriceDataStatus = showPriceDataStatus;
+    // 実際に使用されている関数のみをグローバルに公開
     window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
     window.renderCoinProfitChart = renderCoinProfitChart;
     window.initializePriceHistoryAccumulation = initializePriceHistoryAccumulation;
-    // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
-    window.showSuccessMessage = showSuccessMessage;
-    window.showErrorMessage = showErrorMessage;
-    window.showWarningMessage = showWarningMessage;
-    window.showInfoMessage = showInfoMessage;
 })();
