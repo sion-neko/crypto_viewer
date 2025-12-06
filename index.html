@@ -112,7 +112,7 @@
                             <!-- 価格更新セクション -->
                             <div id="price-update-section" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <button onclick="fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.3s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                                    <button onclick="window.uiService.fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.3s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
                                         価格更新
                                     </button>
                                     <span style="margin-left: 15px; font-size: 0.9rem; color: #6c757d;">
@@ -255,7 +255,6 @@
 
     <!-- Legacy files (for backward compatibility) -->
     <script src="charts.js"></script>
-    <script src="portfolio.js"></script>
     <script src="main.js"></script>
 
     <!-- Initialize service instances -->

@@ -57,7 +57,7 @@ class FileService {
             const addedCount = mergedData.length - existingData.length;
 
             // ポートフォリオ再計算
-            const portfolioData = analyzePortfolioData(mergedData);
+            const portfolioData = this.portfolioDataService.analyzePortfolioData(mergedData);
 
             // 生の取引データも保存
             localStorage.setItem('rawTransactions', JSON.stringify(mergedData));
@@ -338,19 +338,18 @@ class FileService {
 
             // 残りの取引データでポートフォリオを再計算
             if (remainingTransactions.length > 0) {
-                const portfolioData = analyzePortfolioData(remainingTransactions);
+                const portfolioData = this.portfolioDataService.analyzePortfolioData(remainingTransactions);
                 window.cache.setRawTransactions(remainingTransactions);
                 this.portfolioDataService.updateData(portfolioData);
 
                 // ダッシュボードを更新
-                displayDashboard(portfolioData);
+                this.uiService.displayDashboard(portfolioData);
 
                 this.uiService.showSuccess(`「${fileName}」を削除しました（${deletedCount}件の取引を削除）`);
             } else {
                 // 全データが削除された場合
                 localStorage.removeItem('portfolioData');
                 localStorage.removeItem('rawTransactions');
-                this.portfolioDataService.clearCache();
 
                 // UI初期状態に戻す
                 const dashboardArea = document.getElementById('dashboardArea');
@@ -359,7 +358,7 @@ class FileService {
                 if (tabContainer) tabContainer.style.display = 'none';
 
                 // データステータス更新
-                updateDataStatus(null);
+                this.uiService.updateDataStatus(null);
 
                 this.uiService.showSuccess(`「${fileName}」を削除しました（全データが削除されました）`);
             }
@@ -390,7 +389,6 @@ class FileService {
             localStorage.removeItem('rawTransactions');
             localStorage.removeItem('loadedFileNames');
 
-            this.portfolioDataService.clearCache();
             this.loadedFileNames = [];
 
             // UI初期状態に戻す

@@ -22,7 +22,7 @@ async function fetchCoinNamePriceHistory(coinName) {
  */
 async function renderAllCoinNamesProfitChart(portfolioData = null) {
     // データが渡されない場合はServiceから取得
-    const data = portfolioData || window.portfolioDataService.getData();
+    const data = portfolioData || window.cache.getPortfolioData();
 
     if (!data) {
         console.error('ポートフォリオデータがありません');

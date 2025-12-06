@@ -5,7 +5,7 @@ async function handleFiles(files) {
     const result = await window.fileService.handleFiles(files);
 
     if (result.success) {
-        displayDashboard(result.portfolioData);
+        window.uiService.displayDashboard(result.portfolioData);
 
         if (result.addedCount > 0) {
             showSuccessMessage(`${result.totalFiles}個のCSVファイルを処理し、${result.addedCount}件の新しい取引を追加しました`);
@@ -102,7 +102,7 @@ function displayLoadedFiles() {
 // 全データクリア（サービスクラスへの委譲版）
 function clearAllData() {
     if (window.fileService.clearAllData()) {
-        updateDataStatus(null);
+        window.uiService.updateDataStatus(null);
         // 価格データ状況を更新
         updatePriceDataStatusDisplay();
     }
@@ -315,16 +315,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ウィンドウリサイズ時にテーブル表示を更新
     window.addEventListener('resize', () => {
-        const currentData = portfolioDataService.getData();
+        const currentData = window.cache.getPortfolioData();
         if (currentData) {
             const tableContainer = document.getElementById('portfolio-table-container');
             if (tableContainer) {
-                tableContainer.innerHTML = generatePortfolioTable(currentData);
+                tableContainer.innerHTML = window.uiService.tableRenderer._renderDesktopPortfolioTable(currentData);
             }
 
             const tradingContainer = document.getElementById('trading-history-container');
             if (tradingContainer) {
-                tradingContainer.innerHTML = generateTradingHistoryTable(currentData);
+                tradingContainer.innerHTML = window.uiService.tableRenderer._renderDesktopTradingHistoryTable(currentData);
             }
         }
     });
@@ -333,9 +333,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const portfolioData = window.cache.getPortfolioData();
     if (portfolioData) {
         // データがある場合はタブシステムで表示
-        displayDashboard(portfolioData);
+        window.uiService.displayDashboard(portfolioData);
     } else {
-        updateDataStatus(null);
+        window.uiService.updateDataStatus(null);
     }
 
     // 起動時に旧形式の価格キャッシュをクリーンアップ
@@ -442,7 +442,7 @@ async function manualFetchPriceHistory() {
 async function renderCoinProfitChart(coinName) {
     try {
         // ポートフォリオデータを取得
-        const portfolioData = window.portfolioDataService.getData();
+        const portfolioData = window.cache.getPortfolioData();
         if (!portfolioData) {
             throw new Error('ポートフォリオデータが見つかりません');
         }

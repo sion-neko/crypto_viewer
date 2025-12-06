@@ -1,29 +1,128 @@
 // ========== PORTFOLIO DATA SERVICE ==========
 
 /**
- * ポートフォリオデータを管理するサービスクラス
+ * ポートフォリオデータのビジネスロジックを管理するサービスクラス
  * CacheServiceと連携してデータの取得・更新を行う
  */
 class PortfolioDataService {
     constructor() {
-        this.currentData = null;
-        this.sortField = 'realizedProfit';
-        this.sortDirection = 'desc';
+        // ビジネスロジック専用のサービスクラス
+        // データストレージはCacheServiceに委譲
     }
 
     /**
-     * ポートフォリオデータを取得
-     * @returns {object|null} ポートフォリオデータ
+     * 取引データからポートフォリオデータを分析・計算
+     * @param {Array} transactions - 取引データ配列
+     * @returns {object} ポートフォリオデータ
      */
-    getData() {
-        // メモリキャッシュがあればそれを返す
-        if (this.currentData) {
-            return this.currentData;
-        }
+    analyzePortfolioData(transactions) {
+        const coinNameData = {};
 
-        // なければCacheServiceから取得
-        this.currentData = cache.getPortfolioData();
-        return this.currentData;
+        transactions.forEach(tx => {
+            if (!coinNameData[tx.coinName]) {
+                coinNameData[tx.coinName] = {
+                    totalBuyAmount: 0,
+                    totalSellAmount: 0,
+                    totalQuantity: 0,
+                    totalFees: 0,
+                    totalBuyQuantity: 0,
+                    totalSellQuantity: 0,
+                    weightedRateSum: 0,
+                    // 取引配列は保存しない（rawTransactionsから取得）
+                    buyTransactionCount: 0,
+                    sellTransactionCount: 0
+                };
+            }
+
+            const data = coinNameData[tx.coinName];
+
+            if (tx.type === '買') {
+                data.totalBuyAmount += tx.amount;
+                data.totalBuyQuantity += tx.quantity;
+                data.weightedRateSum += tx.rate * tx.quantity;
+                data.buyTransactionCount++;
+            } else if (tx.type === '売') {
+                data.totalSellAmount += tx.amount;
+                data.totalSellQuantity += tx.quantity;
+                data.sellTransactionCount++;
+            }
+
+            data.totalQuantity += tx.type === '買' ? tx.quantity : -tx.quantity;
+            data.totalFees += tx.fee;
+        });
+
+        // 各銘柄の統計・損益計算
+        const portfolioSummary = [];
+        let totalInvestment = 0;
+        let totalRealizedProfit = 0;
+        let totalFees = 0;
+
+        Object.keys(coinNameData).forEach(coinName => {
+            const data = coinNameData[coinName];
+            const averagePurchaseRate = data.totalBuyQuantity > 0 ?
+                data.weightedRateSum / data.totalBuyQuantity : 0;
+
+            // 現在の保有分の投資額（平均購入レートベース）
+            const currentHoldingInvestment = data.totalQuantity > 0 ?
+                data.totalQuantity * averagePurchaseRate : 0;
+
+            // 実現損益計算（売却時の損益）
+            let realizedProfit = 0;
+            if (data.totalSellQuantity > 0 && averagePurchaseRate > 0) {
+                // 売却金額 - 売却分の平均購入コスト
+                const soldCost = data.totalSellQuantity * averagePurchaseRate;
+                realizedProfit = data.totalSellAmount - soldCost;
+            }
+
+            // 投資効率計算
+            const investmentEfficiency = data.totalBuyAmount > 0 ?
+                (realizedProfit / data.totalBuyAmount) * 100 : 0;
+
+            const summary = {
+                coinName: coinName,
+                holdingQuantity: data.totalQuantity,
+                totalInvestment: data.totalBuyAmount,
+                currentHoldingInvestment,
+                averagePurchaseRate,
+                totalFees: data.totalFees,
+                buyTransactionCount: data.buyTransactionCount,
+                sellTransactionCount: data.sellTransactionCount,
+                totalSellAmount: data.totalSellAmount,
+                realizedProfit,
+                investmentEfficiency,
+                // 表示用の損益ステータス
+                profitStatus: realizedProfit > 0 ? 'profit' : realizedProfit < 0 ? 'loss' : 'neutral'
+            };
+
+            totalInvestment += summary.totalInvestment;
+            totalRealizedProfit += realizedProfit;
+            totalFees += summary.totalFees;
+            portfolioSummary.push(summary);
+        });
+
+        // 全体統計（総合損益対応）
+        const portfolioStats = {
+            totalInvestment,
+            totalRealizedProfit,
+            totalFees,
+            overallProfitMargin: totalInvestment > 0 ? (totalRealizedProfit / totalInvestment) * 100 : 0,
+            coinNameCount: portfolioSummary.length,
+            profitableCoinNames: portfolioSummary.filter(s => s.realizedProfit > 0).length,
+            lossCoinNames: portfolioSummary.filter(s => s.realizedProfit < 0).length,
+            // 総合損益関連の統計（価格更新後に計算される）
+            totalUnrealizedProfit: 0,
+            totalProfit: totalRealizedProfit,
+            totalProfitableCoinNames: 0,
+            totalLossCoinNames: 0,
+            overallTotalProfitMargin: 0
+        };
+
+        return {
+            summary: portfolioSummary,
+            stats: portfolioStats,
+            coins: coinNameData,
+            lastUpdated: new Date().toISOString()
+        };
     }
 
     /**
@@ -32,8 +131,6 @@ class PortfolioDataService {
      */
     updateData(portfolioData) {
         if (portfolioData) {
-            this.currentData = portfolioData;
-
             // 保存用のコピーを作成して価格情報をクリア
             // （価格は個別キャッシュ price_btc などから取得するため、永続化不要）
             const dataToSave = JSON.parse(JSON.stringify(portfolioData));
@@ -43,47 +140,11 @@ class PortfolioDataService {
     }
 
     /**
-     * 現在のソート状態を取得
-     * @returns {object} {field, direction}
-     */
-    getSortState() {
-        return {
-            field: this.sortField,
-            direction: this.sortDirection
-        };
-    }
-
-    /**
-     * ソート状態を更新
-     * @param {string} field - ソートフィールド
-     * @param {string} direction - ソート方向 ('asc' or 'desc')
-     */
-    setSortState(field, direction) {
-        this.sortField = field;
-        this.sortDirection = direction;
-    }
-
-    /**
-     * メモリキャッシュをクリア（次回getData()時に再読み込み）
-     */
-    clearCache() {
-        this.currentData = null;
-    }
-
-    /**
-     * ポートフォリオデータが存在するか確認
-     * @returns {boolean}
-     */
-    hasData() {
-        return this.getData() !== null;
-    }
-
-    /**
      * 価格データでポートフォリオを更新（含み損益計算）
      * @param {object} prices - 価格データオブジェクト
      */
     updateWithPrices(prices) {
-        const portfolioData = this.getData();
+        const portfolioData = window.cache.getPortfolioData();
         if (!portfolioData || !portfolioData.summary) return;
 
         let totalUnrealizedProfit = 0;
@@ -127,6 +188,9 @@ class PortfolioDataService {
         portfolioData.stats.overallTotalProfitMargin = portfolioData.stats.totalInvestment > 0 ?
             (portfolioData.stats.totalProfit / portfolioData.stats.totalInvestment) * 100 : 0;
 
-        this.updateData(portfolioData);
+        // 価格情報を含めたまま保存（表示用の一時的な保存）
+        // 注意: 次回updateData()が呼ばれると価格情報はクリアされる
+        const dataToSave = JSON.parse(JSON.stringify(portfolioData));
+        window.cache.setPortfolioData(dataToSave);
     }
 }

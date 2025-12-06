@@ -566,7 +566,7 @@ class TableRenderer {
             <div style="padding: 16px; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px;">
                 <div style="font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 4px;">価格データがありません</div>
                 <div style="font-size: 12px; color: #78350f; margin-bottom: 10px;">価格更新ボタンをクリックして最新価格を取得してください</div>
-                <button onclick="fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                <button onclick="window.uiService.fetchCurrentPrices()" style="background: #3b82f6; color: white; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
                     価格を更新
                 </button>
             </div>
@@ -592,14 +592,14 @@ class TableRenderer {
             </colgroup>
             <thead>
                 <tr style="background-color: #f9fafb;">
-                    <th onclick="sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #374151;">銘柄 <span id="sort-coinName">${getSortIcon('coinName')}</span></th>
-                    <th onclick="sortTable('currentPrice')" class="table-sortable">現在価格 <span id="sort-currentPrice">${getSortIcon('currentPrice')}</span></th>
-                    <th onclick="sortTable('averagePurchaseRate')" class="table-sortable">平均購入レート <span id="sort-averagePurchaseRate">${getSortIcon('averagePurchaseRate')}</span></th>
-                    <th onclick="sortTable('currentValue')" class="table-sortable">評価額 <span id="sort-currentValue">${getSortIcon('currentValue')}</span></th>
-                    <th onclick="sortTable('totalInvestment')" class="table-sortable">合計購入額 <span id="sort-totalInvestment">${getSortIcon('totalInvestment')}</span></th>
-                    <th onclick="sortTable('unrealizedProfit')" class="table-sortable">含み損益 <span id="sort-unrealizedProfit">${getSortIcon('unrealizedProfit')}</span></th>
-                    <th onclick="sortTable('realizedProfit')" class="table-sortable">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${getSortIcon('realizedProfit')}</span></th>
-                    <th onclick="sortTable('totalProfit')" class="table-sortable">総合損益 <span id="sort-totalProfit">${getSortIcon('totalProfit')}</span></th>
+                    <th onclick="window.uiService.sortTable('coinName')" style="cursor: pointer; user-select: none; position: relative; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 0.9rem; color: #374151;">銘柄 <span id="sort-coinName">${window.uiService.getSortIcon('coinName')}</span></th>
+                    <th onclick="window.uiService.sortTable('currentPrice')" class="table-sortable">現在価格 <span id="sort-currentPrice">${window.uiService.getSortIcon('currentPrice')}</span></th>
+                    <th onclick="window.uiService.sortTable('averagePurchaseRate')" class="table-sortable">平均購入レート <span id="sort-averagePurchaseRate">${window.uiService.getSortIcon('averagePurchaseRate')}</span></th>
+                    <th onclick="window.uiService.sortTable('currentValue')" class="table-sortable">評価額 <span id="sort-currentValue">${window.uiService.getSortIcon('currentValue')}</span></th>
+                    <th onclick="window.uiService.sortTable('totalInvestment')" class="table-sortable">合計購入額 <span id="sort-totalInvestment">${window.uiService.getSortIcon('totalInvestment')}</span></th>
+                    <th onclick="window.uiService.sortTable('unrealizedProfit')" class="table-sortable">含み損益 <span id="sort-unrealizedProfit">${window.uiService.getSortIcon('unrealizedProfit')}</span></th>
+                    <th onclick="window.uiService.sortTable('realizedProfit')" class="table-sortable">実現損益 <span id="sort-realizedProfit" style="color: #3b82f6;">${window.uiService.getSortIcon('realizedProfit')}</span></th>
+                    <th onclick="window.uiService.sortTable('totalProfit')" class="table-sortable">総合損益 <span id="sort-totalProfit">${window.uiService.getSortIcon('totalProfit')}</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -1003,6 +1003,9 @@ class UIService {
         this.tabManager = new TabManager();
         this.tableRenderer = new TableRenderer();
         this.progress = new ProgressManager();
+        // ソート状態管理（UI状態として管理）
+        this.sortField = 'realizedProfit';
+        this.sortDirection = 'desc';
     }
 
     // メッセージ管理への委譲
@@ -1060,6 +1063,451 @@ class UIService {
         return this.tableRenderer.renderCoinDetailPage(coinSummary);
     }
 
+    // ========== PORTFOLIO UI HELPER FUNCTIONS (migrated from portfolio.js) ==========
+
+    /**
+     * ポートフォリオ表示を更新（共通処理）
+     * @param {object|null} portfolioData - ポートフォリオデータ（省略可）
+     * @param {string|null} message - 成功メッセージ（省略可）
+     */
+    refreshPortfolioDisplay(portfolioData = null, message = null) {
+        const portfolioDataService = window.portfolioDataService;
+
+        // ポートフォリオデータが渡された場合、PortfolioDataServiceを更新
+        if (portfolioData) {
+            portfolioDataService.updateData(portfolioData);
+        }
+
+        // CacheServiceから現在のデータを取得
+        const currentData = window.cache.getPortfolioData();
+        const sortState = this.getSortState();
+
+        // 現在のソート順を維持してテーブル再描画
+        this.sortPortfolioData(sortState.field, sortState.direction);
+
+        const tableContainer = document.getElementById('portfolio-table-container');
+        if (tableContainer) {
+            tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(currentData);
+        }
+
+        // サマリー部分も更新（総合損益反映のため）
+        this.updateDataStatus(currentData);
+
+        // 銘柄別サブタブを再生成（価格更新を反映）
+        try {
+            this.createCoinSubTabs(currentData);
+        } catch (error) {
+            console.error('❌ Error regenerating coin subtabs:', error);
+        }
+
+        // 成功メッセージ表示
+        if (message) {
+            this.showSuccess(message);
+        }
+
+        // 価格ステータス更新
+        this.displayPriceDataStatus();
+    }
+
+    // ========== SORT STATE MANAGEMENT ==========
+
+    /**
+     * 現在のソート状態を取得
+     * @returns {object} {field, direction}
+     */
+    getSortState() {
+        return {
+            field: this.sortField,
+            direction: this.sortDirection
+        };
+    }
+
+    /**
+     * ソート状態を更新
+     * @param {string} field - ソートフィールド
+     * @param {string} direction - ソート方向 ('asc' or 'desc')
+     */
+    setSortState(field, direction) {
+        this.sortField = field;
+        this.sortDirection = direction;
+    }
+
+    // ========== TABLE SORTING ==========
+
+    sortTable(field) {
+        const portfolioDataService = window.portfolioDataService;
+        const currentData = window.cache.getPortfolioData();
+        if (!currentData) return;
+
+        const sortState = this.getSortState();
+        let newDirection;
+
+        // 同じフィールドクリック時は方向を逆転
+        if (sortState.field === field) {
+            newDirection = sortState.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            // 新しいフィールドの場合は降順から開始
+            newDirection = 'desc';
+        }
+
+        // ソート状態を更新
+        this.setSortState(field, newDirection);
+
+        this.sortPortfolioData(field, newDirection);
+
+        // ソート後のデータを取得（sortPortfolioDataで変更されたデータ）
+        const sortedData = window.cache.getPortfolioData();
+        
+        // テーブル再描画
+        const tableContainer = document.getElementById('portfolio-table-container');
+        if (tableContainer) {
+            tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(sortedData);
+        }
+    }
+
+    sortPortfolioData(field, direction) {
+        const portfolioDataService = window.portfolioDataService;
+        const currentData = window.cache.getPortfolioData();
+        if (!currentData || !currentData.summary) return;
+
+        currentData.summary.sort((a, b) => {
+            let aVal, bVal;
+
+            // フィールド値取得
+            switch (field) {
+                case 'coinName':
+                    aVal = a.coinName;
+                    bVal = b.coinName;
+                    break;
+                case 'averagePurchaseRate':
+                    aVal = a.averagePurchaseRate;
+                    bVal = b.averagePurchaseRate;
+                    break;
+                case 'totalInvestment':
+                    aVal = a.totalInvestment;
+                    bVal = b.totalInvestment;
+                    break;
+                case 'heldInvestment':
+                    aVal = a.currentHoldingInvestment;
+                    bVal = b.currentHoldingInvestment;
+                    break;
+                case 'currentPrice':
+                    aVal = a.currentPrice || 0;
+                    bVal = b.currentPrice || 0;
+                    break;
+                case 'currentValue':
+                    aVal = a.currentValue || 0;
+                    bVal = b.currentValue || 0;
+                    break;
+                case 'realizedProfit':
+                    aVal = a.realizedProfit;
+                    bVal = b.realizedProfit;
+                    break;
+                case 'unrealizedProfit':
+                    aVal = a.unrealizedProfit || 0;
+                    bVal = b.unrealizedProfit || 0;
+                    break;
+                case 'totalProfit':
+                    aVal = a.totalProfit || a.realizedProfit;
+                    bVal = b.totalProfit || b.realizedProfit;
+                    break;
+                default:
+                    return 0;
+            }
+
+            // ソート実行
+            if (field === 'coinName') {
+                // 文字列ソート
+                if (direction === 'asc') {
+                    return aVal.localeCompare(bVal);
+                } else {
+                    return bVal.localeCompare(aVal);
+                }
+            } else {
+                // 数値ソート
+                if (direction === 'asc') {
+                    return aVal - bVal;
+                } else {
+                    return bVal - aVal;
+                }
+            }
+        });
+
+        // ソート後のデータをキャッシュに保存（価格情報を含むため直接保存）
+        const dataToSave = JSON.parse(JSON.stringify(currentData));
+        window.cache.setPortfolioData(dataToSave);
+
+        this.updateSortIndicators(field, direction);
+    }
+
+    getSortIcon(field) {
+        const sortState = this.getSortState();
+        if (sortState.field === field) {
+            return sortState.direction === 'asc' ? '▲' : '▼';
+        }
+        return '';
+    }
+
+    updateSortIndicators(activeField, direction) {
+        const fields = ['coinName', 'holdingQuantity', 'averagePurchaseRate', 'totalInvestment',
+            'currentPrice', 'currentValue', 'totalSellAmount', 'realizedProfit',
+            'unrealizedProfit', 'totalProfit'];
+
+        fields.forEach(field => {
+            const indicator = document.getElementById(`sort-${field}`);
+            if (indicator) {
+                if (field === activeField) {
+                    indicator.textContent = direction === 'asc' ? '▲' : '▼';
+                    indicator.style.color = '#3498db';
+                } else {
+                    indicator.textContent = '';
+                    indicator.style.color = '';
+                }
+            }
+        });
+    }
+
+    // ========== PRICE UPDATE (wrapper around APIService) ==========
+
+    async fetchCurrentPrices() {
+        try {
+            const portfolioDataService = window.portfolioDataService;
+            const currentPortfolioData = window.cache.getPortfolioData();
+
+            if (!currentPortfolioData) {
+                throw new Error('ポートフォリオデータが見つかりません。先にCSVファイルをアップロードしてください。');
+            }
+
+            if (!currentPortfolioData.summary || currentPortfolioData.summary.length === 0) {
+                throw new Error('ポートフォリオサマリーデータが見つかりません');
+            }
+
+            const portfolioCoinNames = currentPortfolioData.summary.map(item => item.coinName);
+
+            this.showInfo('価格データを取得中...');
+            const prices = await window.apiService.fetchCurrentPrices(portfolioCoinNames);
+
+            portfolioDataService.updateWithPrices(prices);
+
+            const validCoinNames = prices._metadata?.coinNames || [];
+            let message = `価格更新完了: ${validCoinNames.length}銘柄`;
+
+            if (prices._metadata?.source === 'price_history_cache') {
+                message = `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`;
+            } else if (prices._metadata?.lastUpdate) {
+                const cacheDate = new Date(prices._metadata.lastUpdate);
+                const cacheTimeStr = cacheDate.toLocaleString('ja-JP', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric'
+                });
+                message = `価格更新完了: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`;
+            }
+
+            this.refreshPortfolioDisplay(currentPortfolioData, message);
+
+        } catch (error) {
+            console.error('価格取得エラー:', error);
+            this.showError(`価格取得失敗: ${error.message}`);
+            this.displayPriceDataStatus('取得失敗');
+        }
+    }
+
+    // ========== DASHBOARD DISPLAY ==========
+
+    displayDashboard(portfolioData) {
+        this._initializeDashboardData(portfolioData);
+        this._toggleDashboardDisplay();
+        this._initializeChartContainer();
+        this._renderDashboardTables(portfolioData);
+        this._finalizeDashboardSetup(portfolioData);
+    }
+
+    _initializeDashboardData(portfolioData) {
+        const portfolioDataService = window.portfolioDataService;
+        portfolioDataService.updateData(portfolioData);
+        this.setSortState('realizedProfit', 'desc');
+        this.sortPortfolioData('realizedProfit', 'desc');
+    }
+
+    _toggleDashboardDisplay() {
+        document.getElementById('dashboardArea').style.display = 'none';
+        document.getElementById('tabContainer').style.display = 'block';
+    }
+
+    _initializeChartContainer() {
+        const chartContainer = document.getElementById('portfolio-chart-container');
+        if (!chartContainer || chartContainer.hasChildNodes()) return;
+
+        if (isMobile()) {
+            chartContainer.innerHTML = `
+            <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
+                <div class="card-header">
+                    <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
+                    <div style="float: right;">
+                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            更新
+                        </button>
+                    </div>
+                </div>
+                <div style="height: 300px; padding: 10px; position: relative;">
+                    <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+        `;
+        } else {
+            chartContainer.innerHTML = `
+            <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
+                    <div>
+                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                            チャート更新
+                        </button>
+                    </div>
+                </div>
+                <div style="height: 400px; position: relative;">
+                    <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+        `;
+        }
+    }
+
+    _renderDashboardTables(portfolioData) {
+        const portfolioDataService = window.portfolioDataService;
+        const tableContainer = document.getElementById('portfolio-table-container');
+        const currentData = window.cache.getPortfolioData();
+        tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(currentData);
+
+        const coinNames = portfolioData.summary.map(item => item.coinName);
+        const cacheTimestamps = [];
+        const cachedPriceData = {};
+
+        for (const coinName of coinNames) {
+            // 1. 個別銘柄キャッシュ（currentPrice）から取得を試行
+            const currentPriceCacheKey = window.cacheKeys.currentPrice(coinName);
+            const cachedCurrentPrice = window.cache.get(currentPriceCacheKey);
+            if (cachedCurrentPrice) {
+                const rawData = window.cache.storage.getItem(currentPriceCacheKey);
+                if (rawData) {
+                    const parsedData = JSON.parse(rawData);
+                    cacheTimestamps.push(parsedData.timestamp);
+                    cachedPriceData[coinName] = cachedCurrentPrice;
+                    continue;
+                }
+            }
+
+            // 2. 価格履歴キャッシュ（priceHistory）から最新価格を取得
+            const priceHistoryCacheKey = window.cacheKeys.priceHistory(coinName);
+            const historyValue = window.cache.get(priceHistoryCacheKey);
+            if (historyValue) {
+                const priceData = historyValue?.data || historyValue;
+                if (priceData && Array.isArray(priceData) && priceData.length > 0) {
+                    const latestPrice = priceData[priceData.length - 1].price;
+                    cachedPriceData[coinName] = {
+                        price_jpy: latestPrice,
+                        last_updated_at: Date.now() / 1000
+                    };
+                    // 価格履歴のタイムスタンプを取得
+                    const historyRawData = window.cache.storage.getItem(priceHistoryCacheKey);
+                    if (historyRawData) {
+                        const historyParsed = JSON.parse(historyRawData);
+                        cacheTimestamps.push(historyParsed.timestamp || Date.now());
+                    }
+                }
+            }
+        }
+
+        if (Object.keys(cachedPriceData).length > 0) {
+            const pricesObject = {};
+            for (const [coinName, priceData] of Object.entries(cachedPriceData)) {
+                pricesObject[coinName] = priceData;
+            }
+            pricesObject._metadata = { lastUpdate: Math.min(...cacheTimestamps) };
+
+            portfolioDataService.updateWithPrices(pricesObject);
+            const updatedData = window.cache.getPortfolioData();
+            
+            // ソート状態を維持して再ソート
+            const sortState = this.getSortState();
+            this.sortPortfolioData(sortState.field, sortState.direction);
+            
+            tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(updatedData);
+
+            this.displayPriceDataStatus();
+        } else {
+            this.displayPriceDataStatus('価格データ取得中...');
+
+            setTimeout(() => {
+                this.fetchCurrentPrices();
+            }, 1000);
+        }
+
+        const tradingContainer = document.getElementById('trading-history-container');
+        tradingContainer.innerHTML = this.tableRenderer._renderDesktopTradingHistoryTable(portfolioData);
+    }
+
+    _finalizeDashboardSetup(portfolioData) {
+        try {
+            this.createCoinSubTabs(portfolioData);
+        } catch (error) {
+            console.error('❌ Error in createCoinNameSubtabs:', error);
+        }
+
+        setTimeout(() => {
+            this.switchSubTab('summary');
+        }, 50);
+
+        this.updateDataStatus(portfolioData);
+        showPage('dashboard');
+
+        setTimeout(() => {
+            const coinNames = portfolioData.summary.map(item => item.coinName);
+            const hasCache = coinNames.some(coinName => {
+                const cacheKey = window.cacheKeys.priceHistory(coinName);
+                const cached = window.cache.get(cacheKey);
+                return cached && cached.data && cached.data.length > 0;
+            });
+
+            if (hasCache) {
+                renderAllCoinNamesProfitChart(portfolioData);
+            } else {
+                console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');
+            }
+        }, 800);
+    }
+
+    updateDataStatus(portfolioData) {
+        const statusElement = document.getElementById('data-status');
+        const managementElement = document.getElementById('data-management');
+
+        if (portfolioData && portfolioData.summary.length > 0) {
+            const stats = portfolioData.stats;
+            // 総合損益を優先表示（含み損益込み）
+            const displayProfit = stats.totalProfit || stats.totalRealizedProfit;
+            const profitColor = displayProfit >= 0 ? '#27ae60' : '#e74c3c';
+            const profitIcon = displayProfit > 0 ? '📈' : displayProfit < 0 ? '📉' : '➖';
+
+            statusElement.innerHTML = `
+            <div style="color: #27ae60; font-weight: 600;">✅ データあり</div>
+            <div style="margin-top: 5px; font-size: 0.8rem;">
+                ${stats.coinNameCount}銘柄<br>
+                投資額: ¥${stats.totalInvestment.toLocaleString()}<br>
+                <span style="color: ${profitColor}; font-weight: 600;">
+                    ${profitIcon} ¥${Math.round(displayProfit).toLocaleString()}
+                </span>
+                ${stats.totalUnrealizedProfit !== undefined ? `<br><span style="font-size: 0.7rem; color: #6c757d;">実現+含み損益</span>` : ''}
+            </div>
+        `;
+            managementElement.style.display = 'block';
+        } else {
+            statusElement.innerHTML = `<div style="color: #7f8c8d;">データなし</div>`;
+            managementElement.style.display = 'none';
+        }
+    }
+
     /**
      * 価格データの状態を表示（個別銘柄キャッシュ対応版）
      * @param {string|null} message - カスタムメッセージ（省略時は自動計算）
@@ -1074,7 +1522,7 @@ class UIService {
         }
 
         // ポートフォリオデータから銘柄リストを取得
-        const portfolioData = window.portfolioDataService.getData();
+        const portfolioData = window.cache.getPortfolioData();
         if (!portfolioData || !portfolioData.summary) {
             statusElement.textContent = '価格データなし';
             statusElement.style.color = '#6c757d';
