@@ -60,7 +60,7 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button onclick="manualFetchPriceHistory()" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#218838'" onmouseout="this.style.background='#28a745'">
+                    <button onclick="initializePriceHistoryAccumulation(true)" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#218838'" onmouseout="this.style.background='#28a745'">
                         価格履歴取得
                     </button>
                     <button onclick="clearPriceData()" style="flex: 1; min-width: 80px; padding: 6px 8px; background: #fd7e14; color: white; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#e8690b'" onmouseout="this.style.background='#fd7e14'">
@@ -254,7 +254,6 @@
     <script src="services/file-service.js"></script>
 
     <!-- Legacy files (for backward compatibility) -->
-    <script src="charts.js"></script>
     <script src="main.js"></script>
 
     <!-- Initialize service instances -->

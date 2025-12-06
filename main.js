@@ -426,12 +426,6 @@ async function initializePriceHistoryAccumulation(isManualTrigger = false) {
     }
 }
 
-/**
- * 手動で価格履歴を取得（初回取得用）
- */
-async function manualFetchPriceHistory() {
-    await initializePriceHistoryAccumulation(true);
-}
 
 // ========== INDIVIDUAL COIN PROFIT CHART RENDERING ==========
 
@@ -457,16 +451,16 @@ async function renderCoinProfitChart(coinName) {
 
         // 価格履歴を取得
         showInfoMessage(`${coinName}の価格履歴を取得中...`);
-        const priceHistory = await fetchCoinNamePriceHistory(coinName);
+        const priceHistory = await window.apiService.fetchPriceHistory(coinName, { days: 30 });
 
         // 損益推移データを生成
-        const profitData = generateHistoricalProfitTimeSeries(
+        const profitData = window.chartService._generateHistoricalProfitTimeSeries(
             transactions.all,
             priceHistory
         );
 
         // チャートを描画（含み損益のみ）
-        displayProfitChart(
+        window.chartService.displayProfitChart(
             canvasId,
             profitData,
             `${coinName} 含み損益推移（過去1か月）`,
@@ -491,7 +485,7 @@ async function renderCoinProfitChart(coinName) {
     window.showPriceDataStatus = showPriceDataStatus;
     window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
     window.renderCoinProfitChart = renderCoinProfitChart;
-    window.manualFetchPriceHistory = manualFetchPriceHistory;
+    window.initializePriceHistoryAccumulation = initializePriceHistoryAccumulation;
     // トースト通知関数をグローバルに公開（他のJSファイルから呼び出し可能に）
     window.showSuccessMessage = showSuccessMessage;
     window.showErrorMessage = showErrorMessage;

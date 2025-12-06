@@ -1346,7 +1346,7 @@ class UIService {
                 <div class="card-header">
                     <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
                     <div style="float: right;">
-                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        <button onclick="const data = window.cache.getPortfolioData(); if (data) window.chartService.renderPortfolioProfitChart(data);" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                             更新
                         </button>
                     </div>
@@ -1362,7 +1362,7 @@ class UIService {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
                     <div>
-                        <button onclick="renderAllCoinNamesProfitChart()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                        <button onclick="const data = window.cache.getPortfolioData(); if (data) window.chartService.renderPortfolioProfitChart(data);" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
                             チャート更新
                         </button>
                     </div>
@@ -1472,7 +1472,10 @@ class UIService {
             });
 
             if (hasCache) {
-                renderAllCoinNamesProfitChart(portfolioData);
+                const data = portfolioData || window.cache.getPortfolioData();
+                if (data) {
+                    window.chartService.renderPortfolioProfitChart(data);
+                }
             } else {
                 console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');
             }
