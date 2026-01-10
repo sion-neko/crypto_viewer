@@ -157,14 +157,13 @@ class TabManager {
             targetContent.classList.add('active');
         }
 
-        // 個別銘柄タブの場合、チャートを自動描画
-        if (subtabName !== 'summary' && typeof window.renderCoinProfitChart === 'function') {
-            const coinName = subtabName.toUpperCase();
-            // DOM準備後にチャートを描画
-            setTimeout(() => {
-                window.renderCoinProfitChart(coinName);
-            }, 100);
-        }
+        // チャート機能は無効化されました
+        // if (subtabName !== 'summary' && typeof window.renderCoinProfitChart === 'function') {
+        //     const coinName = subtabName.toUpperCase();
+        //     setTimeout(() => {
+        //         window.renderCoinProfitChart(coinName);
+        //     }, 100);
+        // }
     }
 
     /**
@@ -447,18 +446,7 @@ class TableRenderer {
      */
     _renderCoinChartSection(coinSummary) {
         return `
-            <!-- 銘柄チャート -->
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ${coinSummary.coinName} 含み損益推移（過去1か月）</h3>
-                    <button onclick="renderCoinProfitChart('${coinSummary.coinName}')" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                        チャート更新
-                    </button>
-                </div>
-                <div style="height: 350px; position: relative;">
-                    <canvas id="${coinSummary.coinName.toLowerCase()}-profit-chart" style="max-height: 350px;"></canvas>
-                </div>
-            </div>
+            <!-- チャート機能は無効化されました -->
         `;
     }
 
@@ -1337,42 +1325,7 @@ class UIService {
     }
 
     _initializeChartContainer() {
-        const chartContainer = document.getElementById('portfolio-chart-container');
-        if (!chartContainer || chartContainer.hasChildNodes()) return;
-
-        if (isMobile()) {
-            chartContainer.innerHTML = `
-            <div class="table-card" style="background: white; border: 1px solid #cbd5e1; margin-bottom: 15px;">
-                <div class="card-header">
-                    <span>📈 ポートフォリオ総合損益推移（過去1か月）</span>
-                    <div style="float: right;">
-                        <button onclick="const data = window.cache.getPortfolioData(); if (data) window.chartService.renderPortfolioProfitChart(data);" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                            更新
-                        </button>
-                    </div>
-                </div>
-                <div style="height: 300px; padding: 10px; position: relative;">
-                    <canvas id="mobile-all-coinNames-profit-chart" style="max-height: 300px;"></canvas>
-                </div>
-            </div>
-        `;
-        } else {
-            chartContainer.innerHTML = `
-            <div style="margin-bottom: 25px; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1e293b;">📈 ポートフォリオ総合損益推移（過去1か月）</h3>
-                    <div>
-                        <button onclick="const data = window.cache.getPortfolioData(); if (data) window.chartService.renderPortfolioProfitChart(data);" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                            チャート更新
-                        </button>
-                    </div>
-                </div>
-                <div style="height: 400px; position: relative;">
-                    <canvas id="all-coinNames-profit-chart" style="max-height: 400px;"></canvas>
-                </div>
-            </div>
-        `;
-        }
+        // チャート機能は無効化されました
     }
 
     _renderDashboardTables(portfolioData) {
@@ -1471,14 +1424,13 @@ class UIService {
                 return cached && cached.data && cached.data.length > 0;
             });
 
-            if (hasCache) {
-                const data = portfolioData || window.cache.getPortfolioData();
-                if (data) {
-                    window.chartService.renderPortfolioProfitChart(data);
-                }
-            } else {
-                console.log('💡 価格履歴キャッシュがありません。「チャート更新」ボタンをクリックして取得してください。');
-            }
+            // チャート機能は無効化されました
+            // if (hasCache) {
+            //     const data = portfolioData || window.cache.getPortfolioData();
+            //     if (data) {
+            //         window.chartService.renderPortfolioProfitChart(data);
+            //     }
+            // }
         }, 800);
     }
 

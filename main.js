@@ -351,55 +351,18 @@ async function initializePriceHistoryAccumulation(isManualTrigger = false) {
 // ========== INDIVIDUAL COIN PROFIT CHART RENDERING ==========
 
 /**
- * 個別銘柄の損益推移チャートを描画
+ * 個別銘柄の損益推移チャートを描画（無効化）
  * @param {string} coinName - 銘柄シンボル（例: "BTC"）
  */
 async function renderCoinProfitChart(coinName) {
-    try {
-        // ポートフォリオデータを取得
-        const portfolioData = window.cache.getPortfolioData();
-        if (!portfolioData) {
-            throw new Error('ポートフォリオデータが見つかりません');
-        }
-
-        const canvasId = `${coinName.toLowerCase()}-profit-chart`;
-
-        // rawTransactionsから該当銘柄の取引を取得
-        const transactions = getTransactionsByCoin(coinName);
-        if (!transactions || transactions.all.length === 0) {
-            throw new Error(`${coinName}の取引データが見つかりません`);
-        }
-
-        // 価格履歴を取得
-        window.uiService.showInfo(`${coinName}の価格履歴を取得中...`);
-        const priceHistory = await window.apiService.fetchPriceHistory(coinName, { days: 30 });
-
-        // 損益推移データを生成
-        const profitData = window.chartService._generateHistoricalProfitTimeSeries(
-            transactions.all,
-            priceHistory
-        );
-
-        // チャートを描画（含み損益のみ）
-        window.chartService.displayProfitChart(
-            canvasId,
-            profitData,
-            `${coinName} 含み損益推移（過去1か月）`,
-            'coin'
-        );
-
-        window.uiService.showSuccess(`${coinName}の損益チャートを表示しました`);
-
-    } catch (error) {
-        console.error(`${coinName}チャート描画エラー:`, error);
-        window.uiService.showError(`${coinName}チャート描画失敗: ${error.message}`);
-    }
+    console.log(`チャート機能は無効化されています: ${coinName}`);
+    // チャート機能は無効化されました
 }
 
 // グローバル関数として明示的に定義（HTMLや他のJSファイルから呼び出し可能にする）
 (function () {
     // 実際に使用されている関数のみをグローバルに公開
     window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
-    window.renderCoinProfitChart = renderCoinProfitChart;
+    // window.renderCoinProfitChart = renderCoinProfitChart; // チャート機能無効化
     window.initializePriceHistoryAccumulation = initializePriceHistoryAccumulation;
 })();

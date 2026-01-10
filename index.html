@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>暗号資産ポートフォリオビューアー</title>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- External CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -127,9 +124,6 @@
                             <div id="portfolio-table-container">
                                 <!-- ポートフォリオテーブルをここに表示 -->
                             </div>
-
-                            <!-- チャート表示エリア（固定） -->
-                            <div id="portfolio-chart-container"></div>
                         </div>
                         
                         <!-- 銘柄別サブタブ内容（JSで動的生成） -->
@@ -249,7 +243,7 @@
     <!-- Service Layer (Object-Oriented Architecture) -->
     <script src="services/portfolio-data-service.js"></script>
     <script src="services/api-service.js"></script>
-    <script src="services/chart-service.js"></script>
+    <!-- <script src="services/chart-service.js"></script> -->
     <script src="services/ui-service.js"></script>
     <script src="services/file-service.js"></script>
 
@@ -261,13 +255,13 @@
         // Initialize PortfolioDataService instance (no dependencies)
         window.portfolioDataService = new PortfolioDataService();
 
-        // Initialize ChartService instance (depends on apiService and portfolioDataService)
-        window.chartService = new ChartService(window.apiService, window.portfolioDataService, AppConfig);
+        // ChartService is disabled
+        // window.chartService = new ChartService(window.apiService, window.portfolioDataService, AppConfig);
 
         // Initialize FileService instance (depends on portfolioDataService and uiService)
         window.fileService = new FileService(window.portfolioDataService, window.uiService);
 
-        console.log('✅ All services initialized successfully');
+        console.log('✅ All services initialized successfully (chart service disabled)');
     </script>
 </body>
 </html>
