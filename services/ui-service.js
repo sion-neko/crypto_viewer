@@ -338,8 +338,8 @@ class TableRenderer {
      */
     renderCoinDetailPage(coinSummary) {
         return this._renderCoinSummarySection(coinSummary) +
-               this._renderCoinChartSection(coinSummary) +
-               this._renderCoinTransactionsTable(coinSummary);
+            this._renderCoinChartSection(coinSummary) +
+            this._renderCoinTransactionsTable(coinSummary);
     }
 
     // ========== 個別銘柄詳細ページ生成ヘルパー ==========
@@ -535,12 +535,12 @@ class TableRenderer {
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
                     ${coinsWithPrice.map(item => {
-                        const priceChange = item.currentPrice && item.averagePurchaseRate ?
-                            ((item.currentPrice - item.averagePurchaseRate) / item.averagePurchaseRate * 100) : 0;
-                        const isPositive = priceChange >= 0;
-                        const bgColor = isPositive ? '#f0fdf4' : '#fef2f2';
-                        const borderColor = isPositive ? '#86efac' : '#fca5a5';
-                        return `
+            const priceChange = item.currentPrice && item.averagePurchaseRate ?
+                ((item.currentPrice - item.averagePurchaseRate) / item.averagePurchaseRate * 100) : 0;
+            const isPositive = priceChange >= 0;
+            const bgColor = isPositive ? '#f0fdf4' : '#fef2f2';
+            const borderColor = isPositive ? '#86efac' : '#fca5a5';
+            return `
                             <div style="padding: 12px; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;" onclick="window.uiService.switchSubTab('${item.coinName.toLowerCase()}')" onmouseover="this.style.backgroundColor='${isPositive ? '#dcfce7' : '#fee2e2'}'; this.style.borderColor='#3b82f6'" onmouseout="this.style.backgroundColor='${bgColor}'; this.style.borderColor='${borderColor}'">
                                 <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">${item.coinName}</div>
                                 <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">¥${item.currentPrice.toLocaleString()}</div>
@@ -550,7 +550,7 @@ class TableRenderer {
                                 </div>
                             </div>
                         `;
-                    }).join('')}
+        }).join('')}
                 </div>
             </div>
             ` : `
@@ -647,8 +647,8 @@ class TableRenderer {
         const hasPriceData = coinsWithPrice.length > 0;
 
         return this._renderPortfolioSummarySection(stats, coinsWithPrice, hasPriceData) +
-               this._renderPortfolioTableHeader() +
-               this._renderPortfolioTableBody(portfolioData);
+            this._renderPortfolioTableHeader() +
+            this._renderPortfolioTableBody(portfolioData);
     }
 
     _renderDesktopTradingHistoryTable(portfolioData) {
@@ -1070,24 +1070,24 @@ class UIService {
             portfolioDataService.updateData(portfolioData);
         }
 
-        // CacheServiceから現在のデータを取得
-        const currentData = window.cache.getPortfolioData();
-        const sortState = this.getSortState();
-
         // 現在のソート順を維持してテーブル再描画
+        const sortState = this.getSortState();
         this.sortPortfolioData(sortState.field, sortState.direction);
+
+        // ソート後のデータを取得
+        const sortedData = window.cache.getPortfolioData();
 
         const tableContainer = document.getElementById('portfolio-table-container');
         if (tableContainer) {
-            tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(currentData);
+            tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(sortedData);
         }
 
         // サマリー部分も更新（総合損益反映のため）
-        this.updateDataStatus(currentData);
+        this.updateDataStatus(sortedData);
 
         // 銘柄別サブタブを再生成（価格更新を反映）
         try {
-            this.createCoinSubTabs(currentData);
+            this.createCoinSubTabs(sortedData);
         } catch (error) {
             console.error('❌ Error regenerating coin subtabs:', error);
         }
@@ -1149,7 +1149,7 @@ class UIService {
 
         // ソート後のデータを取得（sortPortfolioDataで変更されたデータ）
         const sortedData = window.cache.getPortfolioData();
-        
+
         // テーブル再描画
         const tableContainer = document.getElementById('portfolio-table-container');
         if (tableContainer) {
@@ -1292,6 +1292,9 @@ class UIService {
 
             portfolioDataService.updateWithPrices(prices);
 
+            // 価格更新後のデータを取得
+            const updatedPortfolioData = window.cache.getPortfolioData();
+
             const validCoinNames = prices._metadata?.coinNames || [];
             let message = `価格更新完了: ${validCoinNames.length}銘柄`;
 
@@ -1308,7 +1311,7 @@ class UIService {
                 message = `価格更新完了: ${validCoinNames.length}銘柄\n${cacheTimeStr}保存`;
             }
 
-            this.refreshPortfolioDisplay(currentPortfolioData, message);
+            this.refreshPortfolioDisplay(null, message);
 
         } catch (error) {
             console.error('価格取得エラー:', error);
@@ -1391,13 +1394,15 @@ class UIService {
             pricesObject._metadata = { lastUpdate: Math.min(...cacheTimestamps) };
 
             portfolioDataService.updateWithPrices(pricesObject);
-            const updatedData = window.cache.getPortfolioData();
 
             // ソート状態を維持して再ソート
             const sortState = this.getSortState();
             this.sortPortfolioData(sortState.field, sortState.direction);
 
-            tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(updatedData);
+            // ソート後のデータを取得
+            const sortedData = window.cache.getPortfolioData();
+
+            tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(sortedData);
 
             this.displayPriceDataStatus();
         } else {

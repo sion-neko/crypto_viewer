@@ -9,7 +9,7 @@
  * @returns {string} キャッシュキー
  */
 function getAccumulatedPriceHistoryCacheKey(coinName) {
-  return `${coinName.toLowerCase()}_accumulated_price_history`;
+    return `${coinName.toLowerCase()}_accumulated_price_history`;
 }
 
 /**
@@ -18,7 +18,7 @@ function getAccumulatedPriceHistoryCacheKey(coinName) {
 * @returns {string} キャッシュキー
 */
 function getCurrentPriceCacheKey(coinName) {
-  return `price_${coinName.toLowerCase()}`;
+    return `price_${coinName.toLowerCase()}`;
 }
 
 /**
@@ -28,16 +28,16 @@ function getCurrentPriceCacheKey(coinName) {
 * @returns {string} キャッシュキー
 */
 function getCurrentPricesCacheKey(coinNames) {
-  // 後方互換性: 単一銘柄の場合は個別キャッシュキーを返す
-  if (typeof coinNames === 'string') {
-    return getCurrentPriceCacheKey(coinNames);
-  }
-  // 配列の場合も個別キャッシュに誘導するため、最初の銘柄のキーを返す
-  if (Array.isArray(coinNames) && coinNames.length === 1) {
-    return getCurrentPriceCacheKey(coinNames[0]);
-  }
-  // 互換性のため、従来形式も維持（将来削除予定）
-  return `prices_${coinNames.sort().join('_')}`;
+    // 後方互換性: 単一銘柄の場合は個別キャッシュキーを返す
+    if (typeof coinNames === 'string') {
+        return getCurrentPriceCacheKey(coinNames);
+    }
+    // 配列の場合も個別キャッシュに誘導するため、最初の銘柄のキーを返す
+    if (Array.isArray(coinNames) && coinNames.length === 1) {
+        return getCurrentPriceCacheKey(coinNames[0]);
+    }
+    // 互換性のため、従来形式も維持（将来削除予定）
+    return `prices_${coinNames.sort().join('_')}`;
 }
 
 // キャッシュの有効期限設定を AppConfig から取得
@@ -395,17 +395,7 @@ window.CacheService = CacheService;
  * @param {Object} data - ポートフォリオデータ
  * @returns {Object} 価格情報を削除したデータ
  */
-function clearPriceDataFromPortfolio(data) {
-    if (data?.summary) {
-        data.summary.forEach(item => {
-            delete item.currentPrice;
-            delete item.currentValue;
-            delete item.unrealizedProfit;
-            delete item.totalProfit;
-        });
-    }
-    return data;
-}
+
 
 /**
  * 指定銘柄の取引履歴を取得
@@ -546,4 +536,3 @@ function getTransactionsByCoin(coinName) {
     return { all, buy, sell };
 }
 
-  
