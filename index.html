@@ -243,7 +243,6 @@
     <!-- Service Layer (Object-Oriented Architecture) -->
     <script src="services/portfolio-data-service.js"></script>
     <script src="services/api-service.js"></script>
-    <!-- <script src="services/chart-service.js"></script> -->
     <script src="services/ui-service.js"></script>
     <script src="services/file-service.js"></script>
 
@@ -255,13 +254,10 @@
         // Initialize PortfolioDataService instance (no dependencies)
         window.portfolioDataService = new PortfolioDataService();
 
-        // ChartService is disabled
-        // window.chartService = new ChartService(window.apiService, window.portfolioDataService, AppConfig);
-
         // Initialize FileService instance (depends on portfolioDataService and uiService)
         window.fileService = new FileService(window.portfolioDataService, window.uiService);
 
-        console.log('✅ All services initialized successfully (chart service disabled)');
+        console.log('✅ All services initialized successfully');
     </script>
 </body>
 </html>

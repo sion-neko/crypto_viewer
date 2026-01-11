@@ -5,7 +5,7 @@ async function handleFiles(files) {
     const result = await window.fileService.handleFiles(files);
 
     if (result.success) {
-        window.uiService.displayDashboard(result.portfolioData);
+        await window.uiService.displayDashboard(result.portfolioData);
 
         if (result.addedCount > 0) {
             window.uiService.showSuccess(`${result.totalFiles}個のCSVファイルを処理し、${result.addedCount}件の新しい取引を追加しました`);
@@ -101,6 +101,11 @@ function updatePriceDataStatusDisplay() {
 
 // キーボードショートカット機能
 function initializeKeyboardShortcuts() {
+    // 重複登録を防止
+    if (window._keyboardShortcutsInitialized) {
+        return;
+    }
+
     document.addEventListener('keydown', (e) => {
         // 入力フィールドにフォーカスがある場合はショートカットを無効化
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
@@ -135,6 +140,8 @@ function initializeKeyboardShortcuts() {
                 break;
         }
     });
+
+    window._keyboardShortcutsInitialized = true;
 }
 
 // モバイルメニューの初期化（ハンバーガーメニュー）
@@ -194,7 +201,7 @@ function isMobile() {
 // ========== INITIALIZATION ==========
 
 // ページ読み込み時の初期化
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // DOM要素を取得してイベントリスナーを設定（ローカル変数）
     const uploadZone = document.getElementById('uploadZone');
     const fileInput = document.getElementById('fileInput');
@@ -235,26 +242,30 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMobileMenu();
 
     // ウィンドウリサイズ時にテーブル表示を更新
-    window.addEventListener('resize', () => {
-        const currentData = window.cache.getPortfolioData();
-        if (currentData) {
-            const tableContainer = document.getElementById('portfolio-table-container');
-            if (tableContainer) {
-                tableContainer.innerHTML = window.uiService.tableRenderer._renderDesktopPortfolioTable(currentData);
-            }
+    if (!window._resizeListenerInitialized) {
+        window.addEventListener('resize', () => {
+            const currentData = window.cache.getPortfolioData();
+            if (currentData) {
+                const tableContainer = document.getElementById('portfolio-table-container');
+                if (tableContainer) {
+                    tableContainer.innerHTML = window.uiService.tableRenderer._renderDesktopPortfolioTable(currentData);
+                }
 
-            const tradingContainer = document.getElementById('trading-history-container');
-            if (tradingContainer) {
-                tradingContainer.innerHTML = window.uiService.tableRenderer._renderDesktopTradingHistoryTable(currentData);
+                const tradingContainer = document.getElementById('trading-history-container');
+                if (tradingContainer) {
+                    tradingContainer.innerHTML = window.uiService.tableRenderer._renderDesktopTradingHistoryTable(currentData);
+                }
             }
-        }
-    });
+        });
+
+        window._resizeListenerInitialized = true;
+    }
 
     // アップロード済みのデータがあるかチェック（localStorage）
     const portfolioData = window.cache.getPortfolioData();
     if (portfolioData) {
         // データがある場合はタブシステムで表示
-        window.uiService.displayDashboard(portfolioData);
+        await window.uiService.displayDashboard(portfolioData);
     } else {
         window.uiService.updateDataStatus(null);
     }
@@ -321,48 +332,41 @@ async function initializePriceHistoryAccumulation(isManualTrigger = false) {
         window.uiService.showInfo(`価格履歴を取得中です（${coinNames.length}銘柄、数分かかる場合があります）...`);
     }
 
-    // fetchMultiplePriceHistoriesを使用（直列実行でAPI制限対策）
-    // API制限対策: 3000ms（3秒）間隔で取得（20 calls/分ペース）
-    const days = isManualTrigger ? 365 : 30;
-    const delayMs = 3000; // 常に3秒間隔（API制限: 30 calls/分に対し安全マージン込み）
-    const results = await window.apiService.fetchMultiplePriceHistories(coinNames, { days, delayMs });
+    try {
+        // fetchMultiplePriceHistoriesを使用（直列実行でAPI制限対策）
+        // API制限対策: 3000ms（3秒）間隔で取得（20 calls/分ペース）
+        const days = isManualTrigger ? 365 : 30;
+        const delayMs = 3000; // 常に3秒間隔（API制限: 30 calls/分に対し安全マージン込み）
+        const results = await window.apiService.fetchMultiplePriceHistories(coinNames, { days, delayMs });
 
-    // 成功・失敗をカウント
-    let successCount = 0;
-    let errorCount = 0;
-    for (const coinName in results) {
-        if (results[coinName]) {
-            successCount++;
-        } else {
-            errorCount++;
+        // 成功・失敗をカウント
+        let successCount = 0;
+        let errorCount = 0;
+        for (const coinName in results) {
+            if (results[coinName]) {
+                successCount++;
+            } else {
+                errorCount++;
+            }
         }
-    }
 
-    console.log(`価格履歴の${hasCache ? '差分' : '初回'}更新完了: 成功${successCount}件、失敗${errorCount}件`);
+        console.log(`価格履歴の${hasCache ? '差分' : '初回'}更新完了: 成功${successCount}件、失敗${errorCount}件`);
 
-    if (successCount > 0) {
-        window.uiService.showSuccess(`価格履歴を最新化しました（${successCount}/${coinNames.length}銘柄）`);
-    } else if (errorCount > 0) {
-        window.uiService.showError(`価格履歴の取得に失敗しました。しばらく待ってから再試行してください。`);
+        if (successCount > 0) {
+            window.uiService.showSuccess(`価格履歴を最新化しました（${successCount}/${coinNames.length}銘柄）`);
+        } else if (errorCount > 0) {
+            window.uiService.showError(`価格履歴の取得に失敗しました。しばらく待ってから再試行してください。`);
+        }
+    } catch (error) {
+        console.error('価格履歴蓄積エラー:', error);
+        window.uiService.showError(`価格履歴の取得に失敗しました: ${error.message}`);
     }
 }
 
-
-// ========== INDIVIDUAL COIN PROFIT CHART RENDERING ==========
-
-/**
- * 個別銘柄の損益推移チャートを描画（無効化）
- * @param {string} coinName - 銘柄シンボル（例: "BTC"）
- */
-async function renderCoinProfitChart(coinName) {
-    console.log(`チャート機能は無効化されています: ${coinName}`);
-    // チャート機能は無効化されました
-}
 
 // グローバル関数として明示的に定義（HTMLや他のJSファイルから呼び出し可能にする）
 (function () {
     // 実際に使用されている関数のみをグローバルに公開
     window.updatePriceDataStatusDisplay = updatePriceDataStatusDisplay;
-    // window.renderCoinProfitChart = renderCoinProfitChart; // チャート機能無効化
     window.initializePriceHistoryAccumulation = initializePriceHistoryAccumulation;
 })();

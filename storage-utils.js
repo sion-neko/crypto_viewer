@@ -387,7 +387,48 @@ window.CacheService = CacheService;
 // 代わりにCacheServiceの専用メソッドを使用してください:
 //   - cache.getPortfolioData() / cache.setPortfolioData()
 //   - cache.getRawTransactions() / cache.setRawTransactions()
-//   - cache.getLoadedFileNames() / cache.setLoadedFileNames()
+
+// ========== PORTFOLIO DATA UTILITY FUNCTIONS ==========
+
+/**
+ * ポートフォリオデータから価格情報を削除
+ * @param {Object} data - ポートフォリオデータ
+ * @returns {Object} 価格情報を削除したデータ
+ */
+function clearPriceDataFromPortfolio(data) {
+    if (data?.summary) {
+        data.summary.forEach(item => {
+            delete item.currentPrice;
+            delete item.currentValue;
+            delete item.unrealizedProfit;
+            delete item.totalProfit;
+        });
+    }
+    return data;
+}
+
+/**
+ * 指定銘柄の取引履歴を取得
+ * @param {string} coinName - 銘柄名
+ * @returns {Object} { all: [], buy: [], sell: [] } 形式の取引履歴
+ */
+function getTransactionsByCoin(coinName) {
+    const portfolioData = window.cache.getPortfolioData();
+    if (!portfolioData?.coins?.[coinName]) {
+        return { all: [], buy: [], sell: [] };
+    }
+
+    const coinData = portfolioData.coins[coinName];
+    return {
+        all: coinData.allTransactions || [],
+        buy: coinData.buyTransactions || [],
+        sell: coinData.sellTransactions || []
+    };
+}
+
+// グローバルに公開
+window.clearPriceDataFromPortfolio = clearPriceDataFromPortfolio;
+window.getTransactionsByCoin = getTransactionsByCoin;
 
 /**
  * 日付フォーマットユーティリティ

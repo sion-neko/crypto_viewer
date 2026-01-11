@@ -132,6 +132,11 @@ class APIService {
                     if (response.status === 429) {
                         console.warn('API制限に達しました (429) - キャッシュデータを使用します');
                         // 429エラーの場合は例外をスローせず、キャッシュデータのみで続行
+                        // メタデータに記録
+                        prices._metadata = prices._metadata || {};
+                        prices._metadata.uncachedCoins = uncachedCoins;
+                        prices._metadata.isPartialSuccess = true;
+                        prices._metadata.apiLimitReached = true;
                     } else {
                         throw new Error(`API Error: ${response.status}`);
                     }
@@ -157,11 +162,19 @@ class APIService {
             } catch (error) {
                 console.error('現在価格取得エラー:', error.message);
                 // エラーが発生してもキャッシュデータで続行
+                // エラー情報をメタデータに記録
+                prices._metadata = prices._metadata || {};
+                prices._metadata.errors = prices._metadata.errors || [];
+                prices._metadata.errors.push({
+                    message: error.message,
+                    timestamp: new Date().toISOString()
+                });
             }
         }
 
-        // メタデータ追加
+        // メタデータ追加（既存のメタデータがあればマージ）
         prices._metadata = {
+            ...prices._metadata,
             lastUpdate: Date.now(),
             coinNames: validCoinNames,
             cachedCount: validCoinNames.length - uncachedCoins.length,

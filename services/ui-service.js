@@ -111,7 +111,11 @@ class TabManager {
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
         // 選択されたタブをアクティブに
-        const tabButton = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabButton = Array.from(tabButtons).find(btn => {
+            const onclick = btn.getAttribute('onclick');
+            return onclick && onclick.includes(`'${tabName}'`);
+        });
         if (tabButton) {
             tabButton.classList.add('active');
         }
@@ -1275,6 +1279,17 @@ class UIService {
             this.showInfo('価格データを取得中...');
             const prices = await window.apiService.fetchCurrentPrices(portfolioCoinNames);
 
+            // エラー情報をチェック
+            if (prices._metadata?.errors && prices._metadata.errors.length > 0) {
+                this.showWarning(`価格取得中にエラーが発生しました: ${prices._metadata.errors[0].message}`);
+            }
+
+            // 部分的成功をチェック
+            if (prices._metadata?.isPartialSuccess) {
+                const uncachedCount = prices._metadata.uncachedCoins?.length || 0;
+                this.showWarning(`API制限のため、${uncachedCount}銘柄はキャッシュから取得しました`);
+            }
+
             portfolioDataService.updateWithPrices(prices);
 
             const validCoinNames = prices._metadata?.coinNames || [];
@@ -1304,11 +1319,10 @@ class UIService {
 
     // ========== DASHBOARD DISPLAY ==========
 
-    displayDashboard(portfolioData) {
+    async displayDashboard(portfolioData) {
         this._initializeDashboardData(portfolioData);
         this._toggleDashboardDisplay();
-        this._initializeChartContainer();
-        this._renderDashboardTables(portfolioData);
+        await this._renderDashboardTables(portfolioData);
         this._finalizeDashboardSetup(portfolioData);
     }
 
@@ -1324,11 +1338,7 @@ class UIService {
         document.getElementById('tabContainer').style.display = 'block';
     }
 
-    _initializeChartContainer() {
-        // チャート機能は無効化されました
-    }
-
-    _renderDashboardTables(portfolioData) {
+    async _renderDashboardTables(portfolioData) {
         const portfolioDataService = window.portfolioDataService;
         const tableContainer = document.getElementById('portfolio-table-container');
         const currentData = window.cache.getPortfolioData();
@@ -1382,20 +1392,25 @@ class UIService {
 
             portfolioDataService.updateWithPrices(pricesObject);
             const updatedData = window.cache.getPortfolioData();
-            
+
             // ソート状態を維持して再ソート
             const sortState = this.getSortState();
             this.sortPortfolioData(sortState.field, sortState.direction);
-            
+
             tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(updatedData);
 
             this.displayPriceDataStatus();
         } else {
+            // キャッシュがない場合は価格取得を待つ
             this.displayPriceDataStatus('価格データ取得中...');
 
-            setTimeout(() => {
-                this.fetchCurrentPrices();
-            }, 1000);
+            try {
+                await this.fetchCurrentPrices();
+                this.displayPriceDataStatus('取得完了');
+            } catch (error) {
+                console.error('初期価格取得エラー:', error);
+                this.displayPriceDataStatus('取得失敗');
+            }
         }
 
         const tradingContainer = document.getElementById('trading-history-container');
@@ -1415,23 +1430,6 @@ class UIService {
 
         this.updateDataStatus(portfolioData);
         showPage('dashboard');
-
-        setTimeout(() => {
-            const coinNames = portfolioData.summary.map(item => item.coinName);
-            const hasCache = coinNames.some(coinName => {
-                const cacheKey = window.cacheKeys.priceHistory(coinName);
-                const cached = window.cache.get(cacheKey);
-                return cached && cached.data && cached.data.length > 0;
-            });
-
-            // チャート機能は無効化されました
-            // if (hasCache) {
-            //     const data = portfolioData || window.cache.getPortfolioData();
-            //     if (data) {
-            //         window.chartService.renderPortfolioProfitChart(data);
-            //     }
-            // }
-        }, 800);
     }
 
     updateDataStatus(portfolioData) {
