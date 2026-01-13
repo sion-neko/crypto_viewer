@@ -1352,25 +1352,6 @@ class UIService {
                 }
             }
 
-            // 2. 価格履歴キャッシュ（priceHistory）から最新価格を取得
-            const priceHistoryCacheKey = window.cacheKeys.priceHistory(coinName);
-            const historyValue = window.cache.get(priceHistoryCacheKey);
-            if (historyValue) {
-                const priceData = historyValue?.data || historyValue;
-                if (priceData && Array.isArray(priceData) && priceData.length > 0) {
-                    const latestPrice = priceData[priceData.length - 1].price;
-                    cachedPriceData[coinName] = {
-                        price_jpy: latestPrice,
-                        last_updated_at: Date.now() / 1000
-                    };
-                    // 価格履歴のタイムスタンプを取得
-                    const historyRawData = window.cache.storage.getItem(priceHistoryCacheKey);
-                    if (historyRawData) {
-                        const historyParsed = JSON.parse(historyRawData);
-                        cacheTimestamps.push(historyParsed.timestamp || Date.now());
-                    }
-                }
-            }
         }
 
         if (Object.keys(cachedPriceData).length > 0) {
