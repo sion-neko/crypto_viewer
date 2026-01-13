@@ -1297,6 +1297,7 @@ class UIService {
 
             const validCoinNames = prices._metadata?.coinNames || [];
             const now = new Date();
+            const updateTimestamp = now.getTime();
             const dateTimeStr = now.toLocaleString('ja-JP', {
                 year: 'numeric',
                 month: 'numeric',
@@ -1310,6 +1311,9 @@ class UIService {
 
             if (prices._metadata?.source === 'price_history_cache') {
                 message = `キャッシュから表示: ${validCoinNames.length}銘柄\n価格履歴データより`;
+            } else {
+                // 価格更新成功時のみ、最新の更新日時を保存
+                localStorage.setItem('lastPriceUpdateTime', updateTimestamp);
             }
 
             this.refreshPortfolioDisplay(null, message);
@@ -1489,59 +1493,12 @@ class UIService {
             return;
         }
 
-        const coinNames = portfolioData.summary.map(item => item.coinName);
+        // 最新の価格更新日時を取得（価格更新ボタンを押した日時）
+        const lastPriceUpdateTime = localStorage.getItem('lastPriceUpdateTime');
 
-        // 個別銘柄キャッシュを確認（最も古いキャッシュのタイムスタンプを取得）
-        let oldestUpdateTime = null;
-        let cachedCount = 0;
-
-        for (const coinName of coinNames) {
-            let timestamp = null;
-
-            // 1. 個別銘柄キャッシュ（currentPrice）を確認
-            const currentCacheKey = window.cacheKeys.currentPrice(coinName);
-            const rawCurrentData = localStorage.getItem(currentCacheKey);
-
-            if (rawCurrentData) {
-                try {
-                    const cacheData = JSON.parse(rawCurrentData);
-                    if (cacheData.timestamp) {
-                        timestamp = cacheData.timestamp;
-                    }
-                } catch (e) {
-                    // エラー無視
-                }
-            }
-
-            // 2. なければ価格履歴キャッシュ（priceHistory）を確認
-            if (!timestamp) {
-                const historyCacheKey = window.cacheKeys.priceHistory(coinName);
-                const rawHistoryData = localStorage.getItem(historyCacheKey);
-
-                if (rawHistoryData) {
-                    try {
-                        const cacheData = JSON.parse(rawHistoryData);
-                        if (cacheData.timestamp) {
-                            // priceHistoryはタイムスタンプ更新頻度が低い場合があるが、
-                            // キャッシュ書き込み時刻(timestamp)を使用する
-                            timestamp = cacheData.timestamp;
-                        }
-                    } catch (e) {
-                        // エラー無視
-                    }
-                }
-            }
-
-            if (timestamp) {
-                cachedCount++;
-                if (!oldestUpdateTime || timestamp < oldestUpdateTime) {
-                    oldestUpdateTime = timestamp;
-                }
-            }
-        }
-
-        if (cachedCount > 0 && oldestUpdateTime) {
-            const lastUpdate = new Date(oldestUpdateTime);
+        if (lastPriceUpdateTime) {
+            const updateTime = parseInt(lastPriceUpdateTime);
+            const lastUpdate = new Date(updateTime);
             const timeStr = lastUpdate.toLocaleString('ja-JP', {
                 year: 'numeric',
                 month: 'numeric',
@@ -1550,9 +1507,9 @@ class UIService {
                 minute: 'numeric',
                 second: 'numeric'
             });
-            const ageMinutes = Math.round((Date.now() - oldestUpdateTime) / 1000 / 60);
+            const ageMinutes = Math.round((Date.now() - updateTime) / 1000 / 60);
 
-            statusElement.textContent = `取得日時: ${timeStr}`;
+            statusElement.textContent = `取得日時: ${timeStr} (${ageMinutes}分前)`;
 
             // 30分以上古い場合は警告色
             if (ageMinutes >= 30) {
