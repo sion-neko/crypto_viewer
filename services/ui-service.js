@@ -160,14 +160,6 @@ class TabManager {
         if (targetContent) {
             targetContent.classList.add('active');
         }
-
-        // チャート機能は無効化されました
-        // if (subtabName !== 'summary' && typeof window.renderCoinProfitChart === 'function') {
-        //     const coinName = subtabName.toUpperCase();
-        //     setTimeout(() => {
-        //         window.renderCoinProfitChart(coinName);
-        //     }, 100);
-        // }
     }
 
     /**
@@ -338,7 +330,6 @@ class TableRenderer {
      */
     renderCoinDetailPage(coinSummary) {
         return this._renderCoinSummarySection(coinSummary) +
-            this._renderCoinChartSection(coinSummary) +
             this._renderCoinTransactionsTable(coinSummary);
     }
 
@@ -444,15 +435,6 @@ class TableRenderer {
         `;
     }
 
-    /**
-     * 銘柄チャートセクション生成
-     * @private
-     */
-    _renderCoinChartSection(coinSummary) {
-        return `
-            <!-- チャート機能は無効化されました -->
-        `;
-    }
 
     /**
      * 取引履歴テーブル生成
