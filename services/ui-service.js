@@ -1427,10 +1427,14 @@ class UIService {
                 ${stats.totalUnrealizedProfit !== undefined ? `<br><span style="font-size: 0.7rem; color: #6c757d;">実現+含み損益</span>` : ''}
             </div>
         `;
-            managementElement.style.display = 'block';
+            if (managementElement) {
+                managementElement.style.display = 'block';
+            }
         } else {
             statusElement.innerHTML = `<div style="color: #7f8c8d;">データなし</div>`;
-            managementElement.style.display = 'none';
+            if (managementElement) {
+                managementElement.style.display = 'none';
+            }
         }
     }
 
