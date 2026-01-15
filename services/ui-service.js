@@ -1401,41 +1401,7 @@ class UIService {
             this.switchSubTab('summary');
         }, 50);
 
-        this.updateDataStatus(portfolioData);
         showPage('dashboard');
-    }
-
-    updateDataStatus(portfolioData) {
-        const statusElement = document.getElementById('data-status');
-        const managementElement = document.getElementById('data-management');
-
-        if (portfolioData && portfolioData.summary.length > 0) {
-            const stats = portfolioData.stats;
-            // 総合損益を優先表示（含み損益込み）
-            const displayProfit = stats.totalProfit || stats.totalRealizedProfit;
-            const profitColor = displayProfit >= 0 ? '#27ae60' : '#e74c3c';
-            const profitIcon = displayProfit > 0 ? '📈' : displayProfit < 0 ? '📉' : '➖';
-
-            statusElement.innerHTML = `
-            <div style="color: #27ae60; font-weight: 600;">✅ データあり</div>
-            <div style="margin-top: 5px; font-size: 0.8rem;">
-                ${stats.coinNameCount}銘柄<br>
-                投資額: ¥${stats.totalInvestment.toLocaleString()}<br>
-                <span style="color: ${profitColor}; font-weight: 600;">
-                    ${profitIcon} ¥${Math.round(displayProfit).toLocaleString()}
-                </span>
-                ${stats.totalUnrealizedProfit !== undefined ? `<br><span style="font-size: 0.7rem; color: #6c757d;">実現+含み損益</span>` : ''}
-            </div>
-        `;
-            if (managementElement) {
-                managementElement.style.display = 'block';
-            }
-        } else {
-            statusElement.innerHTML = `<div style="color: #7f8c8d;">データなし</div>`;
-            if (managementElement) {
-                managementElement.style.display = 'none';
-            }
-        }
     }
 
     /**
