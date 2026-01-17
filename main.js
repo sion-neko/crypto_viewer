@@ -237,8 +237,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (portfolioData) {
         // データがある場合はタブシステムで表示
         await window.uiService.displayDashboard(portfolioData);
-    } else {
-        window.uiService.updateDataStatus(null);
     }
 });
 

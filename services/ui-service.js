@@ -1064,9 +1064,6 @@ class UIService {
             tableContainer.innerHTML = this.tableRenderer._renderDesktopPortfolioTable(sortedData);
         }
 
-        // サマリー部分も更新（総合損益反映のため）
-        this.updateDataStatus(sortedData);
-
         // 銘柄別サブタブを再生成（価格更新を反映）
         try {
             this.createCoinSubTabs(sortedData);

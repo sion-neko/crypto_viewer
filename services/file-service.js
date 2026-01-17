@@ -357,9 +357,6 @@ class FileService {
                 if (dashboardArea) dashboardArea.style.display = 'block';
                 if (tabContainer) tabContainer.style.display = 'none';
 
-                // データステータス更新
-                this.uiService.updateDataStatus(null);
-
                 this.uiService.showSuccess(`「${fileName}」を削除しました（全データが削除されました）`);
             }
 

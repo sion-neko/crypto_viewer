@@ -74,10 +74,6 @@ class PortfolioDataService {
                 realizedProfit = data.totalSellAmount - soldCost;
             }
 
-            // 投資効率計算
-            const investmentEfficiency = data.totalBuyAmount > 0 ?
-                (realizedProfit / data.totalBuyAmount) * 100 : 0;
-
             const summary = {
                 coinName: coinName,
                 holdingQuantity: data.totalQuantity,
@@ -88,10 +84,7 @@ class PortfolioDataService {
                 buyTransactionCount: data.buyTransactionCount,
                 sellTransactionCount: data.sellTransactionCount,
                 totalSellAmount: data.totalSellAmount,
-                realizedProfit,
-                investmentEfficiency,
-                // 表示用の損益ステータス
-                profitStatus: realizedProfit > 0 ? 'profit' : realizedProfit < 0 ? 'loss' : 'neutral'
+                realizedProfit
             };
 
             totalInvestment += summary.totalInvestment;
@@ -105,10 +98,7 @@ class PortfolioDataService {
             totalInvestment,
             totalRealizedProfit,
             totalFees,
-            overallProfitMargin: totalInvestment > 0 ? (totalRealizedProfit / totalInvestment) * 100 : 0,
             coinNameCount: portfolioSummary.length,
-            profitableCoinNames: portfolioSummary.filter(s => s.realizedProfit > 0).length,
-            lossCoinNames: portfolioSummary.filter(s => s.realizedProfit < 0).length,
             // 総合損益関連の統計（価格更新後に計算される）
             totalUnrealizedProfit: 0,
             totalProfit: totalRealizedProfit,
