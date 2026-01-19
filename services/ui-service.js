@@ -1459,10 +1459,3 @@ class UIService {
 
 // グローバルシングルトンインスタンスを作成
 window.uiService = new UIService();
-
-// 後方互換性のためのエクスポート
-window.UIService = UIService;
-window.MessageManager = MessageManager;
-window.TabManager = TabManager;
-window.TableRenderer = TableRenderer;
-window.ProgressManager = ProgressManager;
